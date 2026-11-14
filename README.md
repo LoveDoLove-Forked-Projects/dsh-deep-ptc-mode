@@ -1,6 +1,6 @@
 # Deep PTC mode
 
-[中文](README.zh.md) · MIT · **1.9.4**
+[中文](README.zh.md) · MIT · **1.9.5**
 
 [Changelog](CHANGELOG.md) · [Test report](TEST_REPORT.md) · [Plugin workflows and verification](COMPATIBILITY.md)
 
@@ -77,7 +77,7 @@ The Deep PTC mode label, settings, and conversation UI switch between Chinese an
 - **The capsule** shows the environment, subagent count and tool notices, and toggles the independent side panel. Its position is a setting (Settings → Deep PTC → Appearance): auto, below the composer, in the composer toolbar, or hidden. Auto uses the toolbar beside dsh-claude-style so a one-row composer stays one row. When hidden, open the panel from the Deep PTC tab on the right sidebar.
 - **Panel width**: drag the panel's left edge, or focus it and use the arrow keys (Shift for larger steps) or Home/End; a double click restores 280px. The width is remembered, from 240 to 640px, and a docked panel leaves at least 540px for the conversation.
 
-Visual effects apply **only while the conversation on screen is a Deep PTC session**: calmer light and dark colours and fonts, a hairline on the focused composer, a blue gradient send button, soft blue user bubbles, pointer spotlight, click ripple, a magnetic send button; while running, a glowing composer, a send-button ring and sparks rising above the composer.
+Visual effects apply **only while the conversation on screen is a Deep PTC session**, and only on the composer, send button, message bubbles, reply typography and session rows. They never rewrite the host's colour tokens or fonts, so switching conversations does not restyle the whole page: a hairline on the focused composer, a blue gradient send button, soft blue user bubbles, pointer spotlight, click ripple, a magnetic send button; while running, a glowing composer, a send-button ring and sparks rising above the composer.
 
 - Light rendering: effect styles target DSH's own stable attributes instead of measuring elements every frame; looping animations change only opacity or transforms; the spark canvas covers only the area around the composer at no more than 1.5 device pixels per CSS pixel and stops drawing when nothing moves or the window is hidden.
 - With an appearance plugin such as dsh-claude-style or dsh-refined-ui installed, effects start off; turning them on keeps your choice. The standalone dsh-refined-ui is never drawn twice.
@@ -215,10 +215,10 @@ A prompt changes the model's working tendency, not the real token limit or billi
 Requires Node `>=24` and DSH `>=0.2.2-rc.1`. The installer rejects the current package on DSH `0.2.1-rc.5` based on its manifest. macOS/Zsh checks cover configuration, argv and tool mounting.
 
 ```js
-plugin_manager({ action: "install_bundle", target: "dsh-deep-ptc-mode@1.9.4" })
+plugin_manager({ action: "install_bundle", target: "dsh-deep-ptc-mode@1.9.5" })
 // Or from a local checkout or archive:
 plugin_manager({ action: "install_bundle", target: "C:\\path\\to\\dsh-deep-ptc-mode" })
-// Or target: "C:\\path\\to\\dsh-deep-ptc-mode-1.9.4.tgz"
+// Or target: "C:\\path\\to\\dsh-deep-ptc-mode-1.9.5.tgz"
 ```
 
 Repository locator: `github:lishize20040802-rgb/dsh-deep-ptc-mode`. It installs content actually published there; a local upgrade does not publish to GitHub or npm.
@@ -272,6 +272,13 @@ Deep PTC mode is written and maintained by [lishize20040802-rgb](https://github.
 
 - Issues and feature requests: [GitHub issues](https://github.com/lishize20040802-rgb/dsh-deep-ptc-mode/issues)
 - Email: lishize20040802@gmail.com
+
+### Contributors
+
+Thanks to these contributors for merged pull requests:
+
+- [Freezecatmeow](https://github.com/Freezecatmeow): found and fixed the Web profile boot timeout caused by plugin startup waiting on host services ([#18](https://github.com/lishize20040802-rgb/dsh-deep-ptc-mode/issues/18), [#19](https://github.com/lishize20040802-rgb/dsh-deep-ptc-mode/pull/19)).
+- [GYT-Lucas](https://github.com/GYT-Lucas): the duplicated Agent presets settings entry and official preset-gate compatibility ([#13](https://github.com/lishize20040802-rgb/dsh-deep-ptc-mode/pull/13), [#14](https://github.com/lishize20040802-rgb/dsh-deep-ptc-mode/pull/14)).
 
 Bugs in DeepSeek Harness itself belong upstream, at [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness).
 

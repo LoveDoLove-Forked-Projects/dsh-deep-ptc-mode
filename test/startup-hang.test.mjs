@@ -1,79 +1,77 @@
-// Regression: apply() must not hang when a host service is slow or never ready.
+// Regression for #18: apply() must never hold the Host boot.
 //
-// Before the fix, apply() awaited `ctx.plugin({inject:[...]}).await()` and
-// agentPresets reads/registration without a bound. If a service never settled on a
-// given boot, apply() never resolved, the plugin stayed in the Host's `starting`
-// phase, and the whole profile failed to boot:
+// Earlier, apply() awaited `ctx.plugin({inject:[...]}).await()` and the agent-presets registry. When a
+// service never settled on a given boot, the plugin stayed `starting` and the profile failed:
 //   "Host startup exceeded 60 seconds; Still loading: deep-ptc-settings
 //    (dsh-deep-ptc-mode, starting, 56 s)."
+// Thanks to Freezecatmeow for the diagnosis and the first version of these tests (#19).
 //
-// These tests stand in a ctx whose services never resolve and assert apply() still
-// settles, and that with ready services apply() settles fast and publishes.
+// Now apply() waits for no service: the layers start when their services exist, the preset is
+// published in the background, and only a Deep PTC resolve waits for that first publication.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { apply, Config } from '../lib/index.mjs';
 
-// A ctx whose awaited services never settle: reproduce the failing boot.
-function stalledContext() {
-  const never = () => new Promise(() => {});
+const never = () => new Promise(() => {});
+function deferred() {
+  let resolve;
+  const promise = new Promise(done => { resolve = done; });
+  return { promise, resolve };
+}
+// A minimal valid PTC composition so the official and creative presets parse.
+const presetDocument = () => ({ content: '- id: ptc\n  config:\n    plugins:\n      - name: example-plugin\n        config: {}\n' });
+
+function context({ plugin = () => ({ await: async () => {}, dispose: async () => {} }), agentPresets }) {
   const warnings = [];
   const ctx = {
     logger: { info() {}, warn: (...args) => warnings.push(args.join(' ')), error() {} },
-    plugin: () => ({ await: never, dispose: async () => {} }),
-    effect: () => () => {},
-    on: () => () => {},
-    inject() {},
-    get commands() { return { register() {} }; },
-    get sessionProjections() { return { register: never }; },
-    get agentPresets() {
-      return { register: never, readDocument: never, list: never, compositionInventory: never };
-    },
-  };
-  return { ctx, warnings };
-}
-
-// A ctx whose services are ready: the ordinary, healthy boot.
-function readyContext() {
-  const ctx = {
-    logger: { info() {}, warn() {}, error() {} },
-    plugin: () => ({ await: async () => {}, dispose: async () => {} }),
+    plugin,
     effect: () => () => {},
     on: () => () => {},
     inject() {},
     get commands() { return { register() {} }; },
     get sessionProjections() { return { register: async () => ({ stateOf: () => undefined, dispose() {} }) }; },
-    get agentPresets() {
-      return {
-        register: async () => () => {},
-        readDocument: async () => ({ content: readyPresetDocument() }),
-        list: async () => [],
-        compositionInventory: async () => [],
-      };
-    },
+    agentPresets,
   };
-  return ctx;
+  return { ctx, warnings };
 }
 
-// A minimal valid PTC composition so loadCurrentPreset/loadCreativePreset parse it.
-function readyPresetDocument() {
-  return '- id: ptc\n  config:\n    plugins:\n      - name: example-plugin\n        config: {}\n';
-}
-
-test('apply() settles when host services never become ready (bounded, does not hang the boot)', async () => {
-  const { ctx, warnings } = stalledContext();
-  const started = Date.now();
-  // If apply() were still unbounded this would hang; the test-runner timeout catches it too.
-  await apply(ctx, Config({}));
-  const elapsed = Date.now() - started;
-  // Worst case budget is 44 s (6+6+6+6 service/signature + 20 publication); allow headroom.
-  assert.ok(elapsed < 60_000, `apply() should settle well under the Host's 60 s limit, took ${elapsed} ms`);
-  assert.ok(warnings.some(line => /did not become ready/i.test(line)), 'a timeout should be reported as a warning');
-}, { timeout: 90_000 });
-
-test('apply() settles quickly when services are ready (healthy boot is unchanged)', async () => {
-  const ctx = readyContext();
+test('apply() returns at once even when no host service ever becomes ready', async () => {
+  const { ctx } = context({
+    plugin: () => ({ await: never, dispose: async () => {} }),
+    agentPresets: { register: never, readDocument: never, list: never, compositionInventory: never },
+  });
   const started = Date.now();
   await apply(ctx, Config({}));
-  const elapsed = Date.now() - started;
-  assert.ok(elapsed < 5_000, `a healthy boot should settle in well under a second, took ${elapsed} ms`);
+  assert.ok(Date.now() - started < 1_000, 'nothing in apply() waits for a service');
+});
+
+test('the preset is still published in the background on a healthy boot', async () => {
+  const published = deferred();
+  const { ctx } = context({ agentPresets: {
+    register: async definition => { published.resolve(definition); return () => {}; },
+    readDocument: async () => presetDocument(), list: async () => [], compositionInventory: async () => [],
+  } });
+  await apply(ctx, Config({}));
+  const definition = await published.promise;
+  assert.equal(definition.id, 'deep-ptc');
+});
+
+test('a Deep PTC resolve waits for the first publication; other presets do not', async () => {
+  const registry = deferred();
+  const resolved = [];
+  const agentPresets = {
+    async resolve(id) { resolved.push(id); return { id }; },
+    register: async () => { await registry.promise; return () => {}; },
+    readDocument: async () => presetDocument(), list: async () => [], compositionInventory: async () => [],
+  };
+  const { ctx } = context({ agentPresets });
+  await apply(ctx, Config({}));
+  const deep = agentPresets.resolve('deep-ptc');
+  await agentPresets.resolve('ptc');
+  await new Promise(done => setTimeout(done, 50));
+  assert.deepEqual(resolved, ['ptc'], 'deep-ptc is held until our preset is registered');
+  registry.resolve();
+  assert.deepEqual(await deep, { id: 'deep-ptc' });
+  assert.deepEqual(resolved, ['ptc', 'deep-ptc']);
 });

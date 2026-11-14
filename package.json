@@ -1,6 +1,6 @@
 {
   "name": "dsh-deep-ptc-mode",
-  "version": "1.9.4",
+  "version": "1.9.5",
   "description": "Deep PTC for DeepSeek Harness: interruptible jobs, selectable shells, a side panel with clickable outputs and compact subagent rows, general SSH and DSH Go assistance, bilingual UI, and on-demand tools and skills for drawing, design and research.",
   "type": "module",
   "keywords": [
@@ -27,6 +27,16 @@
     "email": "lishize20040802@gmail.com",
     "url": "https://github.com/lishize20040802-rgb"
   },
+  "contributors": [
+    {
+      "name": "Freezecatmeow",
+      "url": "https://github.com/Freezecatmeow"
+    },
+    {
+      "name": "GYT-Lucas",
+      "url": "https://github.com/GYT-Lucas"
+    }
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/lishize20040802-rgb/dsh-deep-ptc-mode.git"
@@ -92,14 +102,14 @@
     "sync:snapshot": "node scripts/sync-snapshot.mjs"
   },
   "peerDependencies": {
-    "@deepseek-ai/schemastery": "^3.18.4",
+    "@deepseek-ai/dsh-base": ">=0.2.2-rc.1",
+    "@deepseek-ai/dsh-client-locale": ">=0.2.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-commands": ">=0.2.2-rc.1",
     "@deepseek-ai/dsh-client-ui-renderer": ">=0.2.2-rc.1",
     "@deepseek-ai/dsh-client-ui-settings": ">=0.2.2-rc.1",
     "@deepseek-ai/dsh-client-ui-slots": ">=0.2.2-rc.1",
-    "@deepseek-ai/dsh-client-locale": ">=0.2.2-rc.1",
     "@deepseek-ai/dsh-web-app": ">=0.2.2-rc.1",
-    "@deepseek-ai/dsh-base": ">=0.2.2-rc.1",
-    "@deepseek-ai/dsh-client-ui-commands": ">=0.2.2-rc.1"
+    "@deepseek-ai/schemastery": "^3.18.4"
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/schemastery": {
@@ -131,6 +141,7 @@
     "js-yaml": "4.3.2"
   },
   "devDependencies": {
+    "@deepseek-ai/schemastery": "3.19.0",
     "react": "18.3.1",
     "react-test-renderer": "18.3.1"
   }

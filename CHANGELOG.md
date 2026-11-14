@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.9.5 — 2026-11-14
+
+- 插件启动不再等待任何宿主服务（#18）。技能卡、工具状态和输出/SSH 记录在各自服务就绪后自行启动；晚注册的会话投影首次读取时会折叠完整日志，不丢记录。预设在后台发布，只有打开深度 PTC 会话时才会等待首次发布完成，不会拖住整个 Host 启动。感谢 @Freezecatmeow 定位问题并提交 #19。
+- 界面特效不再改写宿主的配色变量、字体和全站控件过渡（#17）。特效只作用于输入框、发送键、消息气泡、回复排版和会话行，私有变量固定定义在根元素上；在深度 PTC 会话之间切换时特效不会先摘后挂，离开时延迟 150ms 关闭。减少动态效果模式只针对这些元素生效。
+- README 新增贡献者名单。
+- Plugin startup no longer waits for any host service (#18). The skill card, tool state and output/SSH activity start when their services are ready; a projection registered late folds the whole log on first read. The preset publishes in the background, and only opening a Deep PTC conversation waits for the first publication, so the Host boot is never held. Thanks to @Freezecatmeow for the diagnosis and #19.
+- Visual effects no longer rewrite host colour tokens, fonts or transitions on every control (#17). They touch only the composer, send button, message bubbles, reply typography and session rows; private variables are defined once on the root. Moving between Deep PTC conversations keeps the effects on instead of removing and re-adding them, and leaving waits 150ms before switching off. Reduced motion applies to those elements only.
+- Add a contributors section to the README.
+
 ## 1.9.4 — 2026-11-13
 
 - 胶囊位置可选：自动 / 输入框下方 / 工具栏 / 隐藏。「自动」检测到 dsh-claude-style 时把胶囊放进输入框工具栏（`conversation.input.right`），不再单独占一行（#16，也补上 #12 的第 3 点）。隐藏后，右侧栏新建页签引导中会出现「深度 PTC」，页签内的按钮可打开面板。

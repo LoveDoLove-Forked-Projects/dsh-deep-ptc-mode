@@ -1,6 +1,6 @@
 # 深度 PTC 模式
 
-[English](README.md) · MIT · 当前版本 **1.9.4**
+[English](README.md) · MIT · 当前版本 **1.9.5**
 
 [更新日志](CHANGELOG.md) · [测试报告](TEST_REPORT.md) · [插件协作与验证范围](COMPATIBILITY.md)
 
@@ -77,7 +77,7 @@ Deep PTC 的模式名称、设置页和会话界面会随 DSH「设置 → 通�
 - **小胶囊**显示执行环境、子代理数和工具提醒，点击展开或收起独立的侧边面板。位置可在「设置 → 深度 PTC → 外观」中选择：自动、输入框下方、工具栏或隐藏。「自动」在 dsh-claude-style 下放进输入框工具栏，紧凑的输入框保持单行。隐藏后，可从右侧栏的「深度 PTC」页签打开面板。
 - **面板宽度**：拖动面板左边缘调整；也可以聚焦左边缘后用方向键（按住 Shift 步长更大）或 Home/End 调整，双击恢复 280px。宽度会被记住，范围 240–640px；停靠时对话区至少保留 540px。
 
-界面特效**只在当前显示的是深度 PTC 会话时生效**：更克制的明暗配色与字体、输入框聚焦细线、蓝色渐变发送键、淡蓝用户气泡、指针追光、点击涟漪、磁吸发送键；运行时输入框发光、发送键光环和输入框上方的光点。
+界面特效**只在当前显示的是深度 PTC 会话时生效**，且只作用于输入框、发送键、消息气泡、回复排版和会话行，不改写宿主的配色变量与字体，切换会话不会触发整页重绘：输入框聚焦细线、蓝色渐变发送键、淡蓝用户气泡、指针追光、点击涟漪、磁吸发送键；运行时输入框发光、发送键光环和输入框上方的光点。
 
 - 轻量渲染：特效样式直接作用于 DSH 自带的稳定属性，不再逐帧计算元素样式；循环动画只改变透明度或位移；光点画布只覆盖输入框附近，像素密度上限 1.5，无动画或窗口隐藏时停止绘制。
 - 检测到 dsh-claude-style、dsh-refined-ui 等外观插件时默认关闭特效；你手动打开后保留你的选择。dsh-refined-ui 运行时始终不重复绘制。
@@ -219,10 +219,10 @@ Deep PTC 可以把其他插件提供的能力接进同一项任务：用 **DrawA
 本地目录或构建产物可通过插件管理器安装：
 
 ```js
-plugin_manager({ action: "install_bundle", target: "dsh-deep-ptc-mode@1.9.4" })
+plugin_manager({ action: "install_bundle", target: "dsh-deep-ptc-mode@1.9.5" })
 // 也可从本地目录或安装包安装：
 plugin_manager({ action: "install_bundle", target: "C:\\path\\to\\dsh-deep-ptc-mode" })
-// 或 target: "C:\\path\\to\\dsh-deep-ptc-mode-1.9.4.tgz"
+// 或 target: "C:\\path\\to\\dsh-deep-ptc-mode-1.9.5.tgz"
 ```
 
 GitHub 地址：`github:lishize20040802-rgb/dsh-deep-ptc-mode`。该地址安装远端实际内容；本地升级不会自动发布到 GitHub/npm。
@@ -289,6 +289,13 @@ npm pack
 
 - 问题与需求：[GitHub Issues](https://github.com/lishize20040802-rgb/dsh-deep-ptc-mode/issues)
 - 邮箱：lishize20040802@gmail.com
+
+### 贡献者
+
+感谢以下贡献者提交并合并的 PR：
+
+- [Freezecatmeow](https://github.com/Freezecatmeow)：定位并修复插件启动等待宿主服务导致 Web profile 启动超时的问题（[#18](https://github.com/lishize20040802-rgb/dsh-deep-ptc-mode/issues/18)、[#19](https://github.com/lishize20040802-rgb/dsh-deep-ptc-mode/pull/19)）。
+- [GYT-Lucas](https://github.com/GYT-Lucas)：设置导航中重复的「Agent 预设」入口，以及官方预设门禁的兼容（[#13](https://github.com/lishize20040802-rgb/dsh-deep-ptc-mode/pull/13)、[#14](https://github.com/lishize20040802-rgb/dsh-deep-ptc-mode/pull/14)）。
 
 上游 DeepSeek Harness 本身的问题请提到 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness)。
 

@@ -430,6 +430,10 @@ test('the effects switch removes and restores the effects at once and remembers 
       await act(async () => control().props.onClick());
       assert.deepEqual([...layers].map(layer => layer.tagName), ['canvas']);
       await act(async () => bridge.update(renderBridge('standard')));
+      // Leaving Deep PTC keeps the effects for a short grace, so a switch between conversations never flips them.
+      assert.equal(attrs.has('data-dpt-ui'), true);
+      await act(async () => { await new Promise(resolve => setTimeout(resolve, 200)); });
+      assert.equal(attrs.has('data-dpt-ui'), false);
       assert.equal(layers.size, 0);
       assert.equal(keyHandlers.size, 0);
     });
@@ -733,4 +737,42 @@ test('a widget pinned to the bottom-right corner leaves the panel bottom clear',
   await withPanel(fixture({ snapshot: windows() }), {}, async view => {
     assert.equal(view.root.findByProps({ className: 'dpt-sidecar' }).props.style['--dpt-inset-bottom'], undefined);
   });
+});
+
+test('moving between two Deep PTC conversations never removes and re-adds the effects', async () => {
+  const document = fakeDocument();
+  const writes = [];
+  const attrs = new Set();
+  Object.assign(document, { createElement: tagName => ({ tagName, dataset: {}, style: {}, setAttribute() {}, getContext: () => null, remove() {} }) });
+  Object.assign(document.body, {
+    toggleAttribute: (name, on) => { if (name === 'data-dpt-ui') writes.push(on); on ? attrs.add(name) : attrs.delete(name); },
+    hasAttribute: name => attrs.has(name), removeAttribute: name => attrs.delete(name), appendChild() {},
+  });
+  const f = fixture({ snapshot: windows(), activeEffects: true, browser: { document, MutationObserver: class { observe() {} disconnect() {} } } });
+  const bridge = id => f.slots.get('conversation.session.header.actions#deep-ptc-session').render({
+    sessionId: id, useProjection: () => 'deep-ptc', useSessionStatus: () => new Map() });
+  let view;
+  try {
+    await act(async () => { view = Renderer.create(bridge('a')); });
+    assert.equal(attrs.has('data-dpt-ui'), true);
+    writes.length = 0;
+    // The host swaps the header: one bridge unmounts and the next mounts in the same commit.
+    await act(async () => view.update(bridge('b')));
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 200)); });
+    assert.equal(writes.includes(false), false, 'the attribute was never removed');
+    assert.equal(attrs.has('data-dpt-ui'), true);
+  } finally {
+    await act(async () => view?.unmount());
+    f.dispose();
+  }
+});
+
+test('the effects never rewrite host design tokens, fonts or every control on the page', () => {
+  const source = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8');
+  const theme = source.slice(source.indexOf('const THEME_CSS'), source.indexOf('function injectCss'));
+  assert.doesNotMatch(theme, /--dsw-[\w-]+:/u, 'no host design token is redefined');
+  assert.doesNotMatch(theme, /--ds-font-family[\w-]*:|text-rendering|font-smoothing/u, 'no page-wide font change');
+  assert.doesNotMatch(theme, /:where\(button/u, 'no transition on every control');
+  assert.doesNotMatch(theme, /\$\{ON\} \*/u, 'no rule over every element');
+  assert.match(theme, /^:root\{--dpt-dur-fast/mu, 'private variables are defined once, not toggled');
 });
