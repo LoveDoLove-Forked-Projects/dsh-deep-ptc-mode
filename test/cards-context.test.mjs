@@ -33,6 +33,7 @@ test('the tool stores a card and the command really stops it', async () => {
   const host = fakeHost();
   await install(host.ctx, host.records);
   assert.ok(host.registered.has(CARD_TOOL), 'ui_card must be registered');
+  assert.equal(host.registered.get(CARD_TOOL).resident, true, 'the card tool keeps its schema in the PTC SDK');
   assert.ok(host.handlers.has(CARD_COMMAND), 'the card command must be registered');
 
   const session = { id: 'session-1' };
@@ -88,4 +89,51 @@ test('a card without an action is still created and can be closed', async () => 
   assert.equal(host.store.get(session).cards[0].stop, undefined);
   assert.equal(created.id, 'card-1');
   assert.deepEqual(blankCards().cards, []);
+});
+
+test('a command card never falls back to another shell when the environment is not ready', async () => {
+  const host = fakeHost();
+  await install(host.ctx, host.records, { shell: () => undefined });
+  const session = { id: 'session-4' };
+  await host.registered.get(CARD_TOOL).execute({ action: 'show', id: 'srv', title: '服务', subtitle: '运行中',
+    blocks: [{ type: 'stats', items: [{ label: '请求', value: '12' }] }], stop: { command: 'true' } }, { agent: { session } });
+  host.handlers.get(CARD_COMMAND)({ agent: { session }, rawInput: JSON.stringify({ id: 'srv', action: 'stop' }) });
+  for (let tick = 0; tick < 20 && host.store.get(session).cards[0].phase === 'stopping'; tick++) {
+    await new Promise(resolve => setTimeout(resolve, 5));
+  }
+  const card = host.store.get(session).cards[0];
+  assert.equal(card.phase, 'failed');
+  assert.equal(card.result.command, 'failed');
+  assert.match(card.result.errors[0], /not ready/u);
+});
+
+test('buttons: a reply records the choice, a kept card reopens, bad values are refused', async () => {
+  const host = fakeHost();
+  const ran = [];
+  await install(host.ctx, host.records, { shell: () => ({ environment: 'wsl', distribution: 'Ubuntu' }) });
+  const session = { id: 'session-5' };
+  const tool = host.registered.get(CARD_TOOL);
+  await tool.execute({ action: 'show', id: 'deploy', title: '部署方案',
+    blocks: [{ type: 'choice', name: 'plan', options: [{ value: 'vps', label: 'VPS' }, { value: 'k8s', label: 'K8s' }] }],
+    actions: [{ id: 'pick', label: '就用这个', reply: '用 {plan}' }] }, { agent: { session } });
+  const command = payload => host.handlers.get(CARD_COMMAND)({ agent: { session }, rawInput: JSON.stringify(payload) });
+  assert.equal(command({ id: 'deploy', action: 'act', key: 'pick', values: { plan: 'gcp' } }).kind, 'error');
+  assert.equal(command({ id: 'deploy', action: 'act', key: 'nope' }).kind, 'error');
+  assert.equal(command({ id: 'deploy', action: 'act', key: 'pick', values: { plan: 'k8s' } }).kind, 'success');
+  const settled = host.store.get(session).cards[0];
+  assert.equal(settled.phase, STOPPED);
+  assert.deepEqual(settled.result.values, { plan: 'k8s' });
+  assert.equal(settled.result.action, 'pick');
+  assert.equal(command({ id: 'deploy', action: 'act', key: 'pick', values: { plan: 'vps' } }).text, 'Card already handled. / 卡片已处理。');
+
+  await tool.execute({ action: 'show', id: 'alarm', title: '闹钟', subtitle: '运行中',
+    blocks: [{ type: 'field', name: 'time', label: '时间', kind: 'time', value: '07:30' }],
+    actions: [{ id: 'snooze', label: '推迟', run: { schedules: ['s9'] }, keep: true }] }, { agent: { session } });
+  assert.equal(command({ id: 'alarm', action: 'act', key: 'snooze' }).kind, 'success');
+  for (let tick = 0; tick < 20 && host.store.get(session).cards[1].phase !== OPEN; tick++) await new Promise(resolve => setTimeout(resolve, 5));
+  const alarm = host.store.get(session).cards[1];
+  assert.equal(alarm.phase, OPEN, 'a kept card can be used again');
+  assert.deepEqual(alarm.result.schedules, ['s9']);
+  assert.deepEqual(alarm.result.values, { time: '07:30' });
+  assert.equal(ran.length, 0);
 });

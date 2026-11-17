@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { CARDS_EVENT, CARD_COMMAND, CARD_TOOL, blankCards, addCard, foldCardsState, parseCardsState, readCardInput, withCard, DISMISSED, OPEN, STOPPED } from '../lib/cards.mjs';
+import { BLOCK_TYPES, MAX_BLOCKS, blockSchema, fillPlaceholders, readValues } from '../lib/card-blocks.mjs';
+import { CARD_SKILL_CONTENT, CARD_SKILL_REGISTRATION } from '../lib/card-skill.mjs';
+
+const card = body => {
+  const parsed = readCardInput(body);
+  assert.equal(parsed.issues, undefined, JSON.stringify(parsed.issues));
+  return parsed.card;
+};
 
 test('the command and tool names stay stable', () => {
   assert.equal(CARD_COMMAND, 'deep-ptc-card-act');
@@ -8,8 +16,8 @@ test('the command and tool names stay stable', () => {
   assert.deepEqual(blankCards(), { v: 1, seq: 0, cards: [] });
 });
 
-test('a card keeps its title, rows, note and action, trimmed', () => {
-  const parsed = readCardInput({
+test('legacy lines become a leading rows block, everything trimmed', () => {
+  assert.deepEqual(card({
     action: 'show',
     title: '  每小时循环  ',
     subtitle: ' 运行中 ',
@@ -17,15 +25,74 @@ test('a card keeps its title, rows, note and action, trimmed', () => {
     note: '  试试  ',
     tone: 'warn',
     stop: { label: ' 停止 ', command: '  echo hi  ', schedules: [' s1 ', ''] },
-  });
-  assert.deepEqual(parsed.card, {
+  }), {
     title: '每小时循环',
     subtitle: '运行中',
-    lines: [{ label: '响铃', value: ':15 长响' }],
-    note: '试试',
     tone: 'warn',
-    stop: { label: '停止', command: 'echo hi', schedules: ['s1'] },
+    blocks: [{ type: 'rows', items: [{ label: '响铃', value: ':15 长响' }] }],
+    note: '试试',
+    actions: [{ id: 'stop', label: '停止', style: 'primary', run: { command: 'echo hi', schedules: ['s1'] } }],
   });
+});
+
+test('every block type reads, and reading a card twice changes nothing', () => {
+  const body = {
+    title: '仪表盘', icon: 'chart', tone: 'success',
+    blocks: [
+      { type: 'stats', items: [{ label: '成功率', value: 96.4, delta: '+2%', trend: 'up', tone: 'success', hint: '近 7 天' }] },
+      { type: 'line', title: '耗时', unit: 's', points: ['3', 2, 4.5], labels: ['a', 'b', 'c'] },
+      { type: 'bars', unit: 'GB', items: [{ label: 'x', value: '12' }, { label: 'y', value: 0 }] },
+      { type: 'donut', items: [{ label: 'a', value: 1 }, { label: 'b', value: 3 }] },
+      { type: 'progress', items: [{ label: '进度', value: 3, max: 5, tone: 'warn' }] },
+      { type: 'steps', items: [{ label: '一', state: 'done' }, { label: '二', state: 'active', value: '进行中' }] },
+    ],
+  };
+  const first = card(body);
+  assert.deepEqual(first.blocks[0].items[0], { label: '成功率', value: '96.4', delta: '+2%', trend: 'up', tone: 'success', hint: '近 7 天' });
+  assert.deepEqual(first.blocks[1].points, [3, 2, 4.5]);
+  assert.equal(first.blocks[2].items[0].value, 12);
+  assert.deepEqual(card(first), first);
+  const more = card({ title: 't', blocks: [
+    { type: 'table', columns: ['a', 'b'], rows: [['1', '2']] },
+    { type: 'tags', items: ['x', { label: 'y', tone: 'danger' }] },
+    { type: 'text', text: 'hello' },
+    { type: 'callout', tone: 'danger', text: 'careful' },
+    { type: 'rows', items: [{ label: 'k' }] },
+  ] });
+  assert.deepEqual(more.blocks[1].items, [{ label: 'x' }, { label: 'y', tone: 'danger' }]);
+  assert.deepEqual(card(more), more);
+  assert.deepEqual([...BLOCK_TYPES].sort(), ['bars', 'callout', 'choice', 'donut', 'field', 'line', 'progress', 'rows', 'stats', 'steps', 'table', 'tags', 'text']);
+});
+
+test('bad blocks are reported with their path, never silently dropped', () => {
+  const issues = body => readCardInput({ title: 't', ...body }).issues?.join(' | ') ?? '';
+  assert.match(issues({ blocks: [{ type: 'pie' }] }), /blocks\.0\.type/u);
+  assert.match(issues({ blocks: [{ type: 'line', points: [1] }] }), /blocks\.0\.points/u);
+  assert.match(issues({ blocks: [{ type: 'line', points: [1, 2], labels: ['a'] }] }), /labels/u);
+  assert.match(issues({ blocks: [{ type: 'bars', items: [{ label: 'a', value: -1 }] }] }), /blocks\.0\.items\.0/u);
+  assert.match(issues({ blocks: [{ type: 'donut', items: [{ label: 'a', value: 0 }, { label: 'b', value: 0 }] }] }), /above zero/u);
+  assert.match(issues({ blocks: [{ type: 'table', columns: ['a', 'b'], rows: [['1']] }] }), /2 cells/u);
+  assert.match(issues({ blocks: [{ type: 'steps', items: [{ label: 'a', state: 'maybe' }] }] }), /state/u);
+  assert.match(issues({ blocks: Array.from({ length: MAX_BLOCKS + 1 }, () => ({ type: 'text', text: 'x' })) }), /at most/u);
+  assert.match(issues({ subtitle: 's', icon: 'rocket' }), /icon/u);
+});
+
+test('the tool schema names every block type', () => {
+  const schema = blockSchema();
+  assert.deepEqual(schema.properties.type.enum, BLOCK_TYPES);
+  for (const type of BLOCK_TYPES) assert.match(schema.properties.type.description, new RegExp(`${type}:`, 'u'));
+});
+
+test('every built-in layout in the skill is a valid card', () => {
+  assert.equal(CARD_SKILL_REGISTRATION.name, 'deep-ptc-cards');
+  const examples = [...CARD_SKILL_CONTENT.matchAll(/```json\n([\s\S]+?)\n```/gu)].map(match => JSON.parse(match[1]));
+  assert.ok(examples.length >= 8, 'the skill ships a layout library');
+  for (const example of examples) {
+    assert.equal(example.action, 'show');
+    card(example);
+  }
+  const used = new Set(examples.flatMap(example => (example.blocks ?? []).map(block => block.type)));
+  assert.deepEqual([...BLOCK_TYPES].filter(type => !used.has(type)), [], 'every block type has an example');
 });
 
 test('a card needs visible content and a title', () => {
@@ -40,51 +107,87 @@ test('a stop action needs a command or schedule ids', () => {
 });
 
 test('a new card is open and updating it keeps its id', () => {
-  const first = addCard(blankCards(), { title: 'A' });
+  const first = addCard(blankCards(), { title: 'A', subtitle: 's' });
   assert.equal(first.card.phase, OPEN);
   assert.equal(first.card.id, 'card-1');
-  const again = addCard(first.state, { title: 'B' }, 'card-1');
+  const again = addCard(first.state, { title: 'B', subtitle: 's' }, 'card-1');
   assert.equal(again.state.cards.length, 1);
   assert.equal(again.state.cards[0].title, 'B');
   assert.equal(again.state.cards[0].phase, OPEN);
 });
 
-test('updating a card leaves a JSON-clean state without a stale result', () => {
+test('updating a card replaces its body and leaves a JSON-clean state without a stale result', () => {
   const noUndefined = value => {
     if (value === undefined) return false;
     if (value === null || typeof value !== 'object') return true;
     return Object.values(value).every(noUndefined);
   };
-  const first = addCard(blankCards(), { title: 'A', subtitle: 's' });
-  const again = addCard(first.state, { title: 'A2', subtitle: 's2' }, first.card.id);
+  const first = addCard(blankCards(), { title: 'A', subtitle: 's', note: 'old' });
+  const stopped = withCard(first.state, first.card.id, { phase: STOPPED, result: { command: 'ok' } });
+  const again = addCard(stopped, { title: 'A2', subtitle: 's2' }, first.card.id);
   assert.equal(again.state.cards.length, 1);
   assert.equal(again.state.cards[0].title, 'A2');
   assert.equal('result' in again.state.cards[0], false);
+  assert.equal('note' in again.state.cards[0], false, 'an update replaces the whole body');
   assert.ok(noUndefined(again.state));
+  assert.deepEqual(parseCardsState(again.state), again.state);
 });
 
 test('a closed card is kept and marked', () => {
-  const { state, card } = addCard(blankCards(), { title: 'A' });
-  const stopped = withCard(state, card.id, { phase: STOPPED, result: { schedules: ['s1'], command: 'ok' } });
+  const { state, card: created } = addCard(blankCards(), { title: 'A', subtitle: 's' });
+  const stopped = withCard(state, created.id, { phase: STOPPED, result: { schedules: ['s1'], command: 'ok' } });
   assert.equal(stopped.cards[0].phase, STOPPED);
   assert.deepEqual(stopped.cards[0].result, { schedules: ['s1'], command: 'ok' });
-  assert.equal(withCard(state, card.id, { phase: DISMISSED }).cards[0].phase, DISMISSED);
+  assert.deepEqual(parseCardsState(stopped).cards[0].result, { schedules: ['s1'], command: 'ok' });
+  assert.equal(withCard(state, created.id, { phase: DISMISSED }).cards[0].phase, DISMISSED);
 });
 
-test('state parsing rejects duplicates and keeps validated cards', () => {
-  const { state } = addCard(blankCards(), { title: 'A' });
+test('state parsing re-reads cards, upgrades legacy lines and rejects duplicates', () => {
+  const { state } = addCard(blankCards(), { title: 'A', subtitle: 's' });
   const view = parseCardsState(state);
   assert.equal(view.cards[0].title, 'A');
   assert.equal(view.cards[0].phase, OPEN);
+  // A card stored by 1.9.7/1.9.8 still loads.
+  const legacy = parseCardsState({ v: 1, seq: 1, cards: [{ id: 'old', title: 'T', phase: OPEN, lines: [{ label: 'a', value: 'b' }] }] });
+  assert.deepEqual(legacy.cards[0].blocks, [{ type: 'rows', items: [{ label: 'a', value: 'b' }] }]);
   assert.throws(() => parseCardsState({ v: 1, seq: 1, cards: [
-    { id: 'a', title: 'A', phase: OPEN }, { id: 'a', title: 'B', phase: OPEN }] }), /Duplicate/u);
-  assert.throws(() => parseCardsState({ v: 1, seq: 0, cards: [{ id: 'a', title: 'A', phase: 'weird' }] }), /Invalid/u);
+    { id: 'a', title: 'A', subtitle: 's', phase: OPEN }, { id: 'a', title: 'B', subtitle: 's', phase: OPEN }] }), /Duplicate/u);
+  assert.throws(() => parseCardsState({ v: 1, seq: 0, cards: [{ id: 'a', title: 'A', subtitle: 's', phase: 'weird' }] }), /Invalid/u);
 });
 
 test('folding applies only card records', () => {
-  const { state } = addCard(blankCards(), { title: 'A' });
+  const { state } = addCard(blankCards(), { title: 'A', subtitle: 's' });
   assert.deepEqual(foldCardsState(blankCards(), { type: 'turn/start', data: {}, seq: 1 }), blankCards());
   const folded = foldCardsState(blankCards(), { type: CARDS_EVENT, data: state, seq: 2 });
   assert.equal(folded.cards[0].title, 'A');
   assert.equal(foldCardsState(blankCards(), { type: CARDS_EVENT, data: { v: 2 }, seq: 3 }).cards.length, 0);
+});
+
+test('interactive inputs and buttons: values are validated before they reach a command', () => {
+  const alarm = card({ title: '闹钟', subtitle: '07:30', blocks: [
+    { type: 'field', name: 'time', label: '时间', kind: 'time', value: '07:30' },
+    { type: 'choice', name: 'plan', label: '方案', options: [{ value: 'vps', label: 'VPS' }, { value: 'k8s', label: 'K8s', hint: '贵' }], value: 'vps' },
+    { type: 'choice', name: 'deps', options: [{ value: 'react', label: 'react' }, { value: 'vite', label: 'vite' }], multiple: true, value: ['vite'] },
+  ], actions: [
+    { label: '改时间', run: { command: 'alarm set {time}' }, keep: true },
+    { id: 'go', label: '选这个', reply: '用 {plan} 部署', style: 'primary' },
+    { label: '取消闹钟', style: 'danger', run: { schedules: ['s1'] } },
+  ] });
+  assert.deepEqual(alarm.actions.map(action => action.id), ['action-1', 'go', 'action-3']);
+  assert.deepEqual(card(alarm), alarm, 'idempotent');
+  assert.deepEqual(readValues(alarm, {}), { values: { time: '07:30', plan: 'vps', deps: 'vite' } });
+  assert.deepEqual(readValues(alarm, { time: '6:5' }).error !== undefined, true);
+  assert.equal(readValues(alarm, { time: '07:30; rm -rf /' }).error !== undefined, true, 'free text never passes');
+  assert.equal(readValues(alarm, { plan: 'gcp' }).error !== undefined, true);
+  assert.equal(readValues(alarm, { plan: ['vps', 'k8s'] }).error !== undefined, true, 'single choice takes one');
+  assert.deepEqual(readValues(alarm, { deps: ['react', 'vite'] }).values.deps, 'react vite');
+  assert.deepEqual(fillPlaceholders('alarm set {time}', { time: '08:00' }), { text: 'alarm set 08:00' });
+  assert.deepEqual(fillPlaceholders('x {a} {b}', { a: '1' }), { missing: ['b'] });
+  const issues = body => readCardInput({ title: 't', subtitle: 's', ...body }).issues?.join(' | ') ?? '';
+  assert.match(issues({ actions: [{ label: 'x', run: { command: 'echo {nope}' } }] }), /\{nope\}/u);
+  assert.match(issues({ actions: [{ label: 'x' }] }), /run, reply/u);
+  assert.match(issues({ actions: Array.from({ length: 5 }, (_, i) => ({ label: 'b' + i, reply: true })) }), /at most 4/u);
+  assert.match(issues({ blocks: [{ type: 'field', name: 'a', label: 'A', kind: 'time' }, { type: 'field', name: 'a', label: 'B', kind: 'date' }] }), /own name/u);
+  assert.match(issues({ blocks: [{ type: 'choice', name: 'p', options: [{ value: 'a b', label: 'x' }, { value: 'c', label: 'y' }] }] }), /options\.0\.value/u);
+  assert.match(issues({ blocks: [{ type: 'field', name: 'n', label: 'N', kind: 'number', min: 1, max: 5, value: 9 }] }), /value/u);
 });

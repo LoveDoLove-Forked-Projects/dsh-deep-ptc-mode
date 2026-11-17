@@ -62,13 +62,41 @@ After each turn, a card at the end of that turn in the conversation (where offic
 - The card tracks skills loaded directly through the official `skill` tool and skills loaded by a PTC inner call inside `run_code`. The latter usually reach the program rather than the model context, so closing one only removes it from the card, not from program output. `/name` injections are not covered yet.
 - A switch leaves no command row in the conversation (the session log still records it); only a failed switch shows a short error line in place.
 
+## Conversation cards (1.9.9)
+
+The model leaves cards at the end of the conversation with the `ui_card` tool. Cards are **composed**, not picked from fixed templates: a header (title, subtitle, icon, state tone), up to 6 blocks, a note and up to 4 buttons. Any combination is valid, so the model can create a new card for any situation.
+
+- **Display blocks**: `stats` tiles, `rows`, `progress`, `bars`, `line` (with a hover tooltip), `donut`, `steps` (checklist or timeline), `table`, `tags`, `text`, `callout`.
+- **Interactive blocks**: `choice` (single or multiple, with a preselected recommendation) and `field` (time, date or number).
+- **Layout**: each card can set `size` (full / half / third); several cards form a grid, two side by side or three in a row, stacking in narrow windows.
+- **Buttons**: `run` really runs on the host (deletes scheduled tasks, or runs one command in **your selected execution environment**); `reply` sends the user's choice to the model as their next message; a button can do both. `keep` leaves the card usable after a press (restart, snooze, rerun).
+- **Safety**: `{name}` placeholders in a command are filled only from times, dates, numbers and option values the card declared, so free text never reaches a shell; the server validates them again. Destructive buttons use the `danger` style.
+- **Design**: one type scale, spacing and colour system that follows the host's light and dark themes; the chart palette is validated for colour-vision deficiency and every value is printed, so colour never carries meaning alone. Cards draw once, after the latest turn.
+
+The plugin ships the `deep-ptc-cards` skill, loaded on demand: the interface, a form-picking table, rules, and 18 **development-focused** samples — dev server controls, background jobs, test results, CI pipelines, coverage, code review (tick the findings to fix), lint, commit confirmation, branch cleanup, dependency upgrades (tick the packages), deploy plan choice, release and rollback, error triage, benchmarks, bundle size, plan approval and reminders (retime or cancel). The tests parse every sample with the real validator, so the skill never teaches a shape the tool would refuse.
+
+## Project cards (1.9.9)
+
+The project's standing rules and records, kept in `PROJECT-CARDS.md` at the workspace root. Like AGENTS.md it lives in the workspace, and other AI tools read it as plain documentation.
+
+- **Always in context, always current**: every DSH conversation in that workspace, Deep PTC or not, reads it in the system prompt and is told it takes precedence over other project guidance. The prompt is rebuilt on each request, so only the latest version is ever present and older ones are withdrawn. Conversations in other modes read the cards but cannot change them.
+- **Three kinds**:
+  - **Setting cards** (R ids) are yours, grouped as stack and environment, code conventions, constraints, workflow, product and other. The model can only propose changes, which take effect once you approve them.
+  - **Implemented features** (F ids) are kept by the model. You cannot edit them directly; you question an entry and the model checks and updates it.
+  - **User requirements** (Q ids) record the lasting requirements you have stated, with their status (active / done / superseded). The model checks new requests against them and asks you first when they conflict.
+- **The Project cards view** sits next to Chat / Trajectory / Stats in Deep PTC sessions. You can browse cards by group, edit and submit them, or tick a box to have the model polish your edit first (it comes back as a proposal for you to approve). You can also browse history and roll back, approve or reject proposals, and question the model's records. Each submit, approval and rollback sends the model a message.
+- **Getting started**: in a workspace without cards, "Set up with the model" has it ask you a few key questions with interactive cards, or draft from AGENTS.md / README, then propose the cards for approval.
+- **Safety**: every edit checks the revision, so concurrent sessions never overwrite each other. History and pending proposals live in `$DSH_HOME/storages/deep-ptc-project-cards.json`, not in the repository.
+- Under **Settings → Deep PTC → Cards** you can switch off conversation cards and project cards separately (both on by default).
+
 ## Panel, settings page and visual effects
 
 The Deep PTC mode label, settings, and conversation UI switch between Chinese and English with DSH **Settings → General → Language**. Every entry point uses an official DSH extension point; the plugin changes no host layout and registers no keyboard shortcuts.
 
-- **Settings → Deep PTC**: execution environment and shell, the visual effects switch, and copyable diagnostics to attach to interface bug reports.
+- **Settings → Deep PTC**: execution environment and shell; under Cards, the conversation cards and project cards switches; under Appearance, the visual effects switch and the capsule position (the effects switch lives only here, not in the side panel); copyable diagnostics to attach to interface bug reports.
 - **The Deep PTC panel beside the conversation** is open by default when there is room. It follows the conversation width and hides under a fullscreen native sidebar. On narrow screens the bottom capsule expands it.
   - **Execution environment**: WSL, PowerShell, native Bash or Zsh, for newly created Deep PTC sessions.
+  - **Order**: hover a section and drag the handle at its top left to reorder the environment, subagents, jobs, output files, SSH and tool state (or focus the handle and press ↑ ↓); the order is kept per browser.
   - **Subagents**: the state indicator and name on the left, with duration at the right of the same row; a row opens that subagent's chat in the official right sidebar.
   - **Background jobs**: six positions, up to five active jobs first and up to three finished jobs; overflow folds into one expandable row.
   - **Output files**: files this conversation wrote or delivered, newest first; click to open the file in DSH's native preview. Three positions are available, with overflow folded into one of them. The rule matches DSH's own deliverables card and also counts files written from `run_code`.
@@ -161,6 +189,25 @@ WSL source uses Linux/POSIX syntax, while file tools and `workdir` use Windows h
 Native PowerShell and the macOS/Linux shells use Harness sandbox, approval and process management. On Windows, WSL and native Bash require execution already authorized as `danger-full-access`. Choose PowerShell for confined Windows work.
 
 PowerShell, macOS/Linux Bash and Zsh can use a discovered executable. On Windows, native Bash accepts an absolute path to `bash.exe`, such as `<profile>/node_modules/dsh-ops/runtime/win32-x64/niubash/winuxcmd/bin/bash.exe`. If that path is unavailable, new sessions keep the official shell.
+
+
+### The selection holds on every execution path (1.9.9)
+
+- Card button commands used to run through Node's default shell (cmd.exe on Windows), bypassing the selection. They now run in the selected environment: WSL through `wsl.exe --exec bash -lc`, PowerShell through the chosen or discovered executable, Zsh/Bash through theirs. A button fails visibly when the environment is not ready instead of switching shells.
+- Safe mode used to fall back to the whole official composition, which is PowerShell on Windows. It now keeps the selected WSL/Bash/Zsh unless the failure is in the execution rows themselves.
+- The WSL instructions now say to work with Linux tools inside WSL by default and to call powershell.exe through interop only for steps that genuinely need Windows (GUI, registry, Windows-only programs), saying so when it does.
+
+### Hide a shell tool (#23)
+
+When another plugin should be the only entry for a shell (for example dsh-pwshx's `pwsh_safe`), set this once in a profile patch; upgrades keep it:
+
+```yaml
+- id: deep-ptc-settings
+  config:
+    disabledShellTools: ['pwsh']   # bash, pwsh or zsh; powershell counts as pwsh
+```
+
+That tool row is published with `disabled: true`, and the environment instructions tell the model to use the other plugin's tool. An official row that is already disabled stays disabled. The default empty list changes nothing.
 
 ## Plugin lab: official creative mode, in memory
 
