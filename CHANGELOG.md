@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.9.7 — 2026-11-17
+
+- 卡片改为插件自己的实现：会话投影保存卡片、宿主命令处理按钮、`conversation.chat.turnTail` 渲染、新增 `ui_card` 工具负责创建/更新/删除。不再依赖宿主 `actionCards` 的 `propose_action`——那个工具是“按需动态声明”的，进不了深度 PTC 的 `run_code` 工具集，卡片因此无法在 PTC 会话里出现。现在与 Skill 卡片同一套机制，在 PTC 和其它会话里都能用。
+- 卡片按钮执行真实动作：删除卡片指定的定时任务、运行一条命令（30 秒超时）；执行中/成功/失败三态直接显示在卡片上。
+- 移除 1.9.6 的 action-card 种类、技能与客户端 body（改用 `ui_card` 工具），并新增纯逻辑单测。
+- Cards now use the plugin's own mechanism: a session projection holds them, a host command handles the button, `conversation.chat.turnTail` renders them, and a new `ui_card` tool creates, updates and removes them. The host's `actionCards` `propose_action` is no longer used: that tool is declared conditionally and never reaches Deep PTC's `run_code` tool set, so cards could not appear in PTC sessions. This is the same mechanism the skill card uses, so cards work in PTC and elsewhere.
+- A card button really runs: it deletes the scheduled tasks the card names and runs one command (30s timeout); working/done/failed states render on the card itself.
+- Removes 1.9.6's action-card kind, skill and client body in favour of `ui_card`, and adds unit tests for the pure card logic.
+
 ## 1.9.6 — 2026-11-17
 
 - 新增「小卡片」：插件向宿主注册一个通用操作卡片种类（`deep-ptc-card`），模型可以在回答下方留一张静态卡片——标题、键值行、脚注——卡片上的按钮由宿主真正执行：删除指定的定时任务，或运行一条命令。卡片用宿主原生的 action-cards 界面渲染，不遮挡输入框；未注册 body 的宿主会退化成只有「暂不」的兜底卡片，不影响其他功能。
