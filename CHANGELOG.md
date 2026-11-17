@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.9.6 — 2026-11-17
+
+- 新增「小卡片」：插件向宿主注册一个通用操作卡片种类（`deep-ptc-card`），模型可以在回答下方留一张静态卡片——标题、键值行、脚注——卡片上的按钮由宿主真正执行：删除指定的定时任务，或运行一条命令。卡片用宿主原生的 action-cards 界面渲染，不遮挡输入框；未注册 body 的宿主会退化成只有「暂不」的兜底卡片，不影响其他功能。
+- 新增 `deep-ptc-cards` 技能，说明何时、如何放一张卡片，以及 details 的字段与限制（每轮最多一张）。
+- 新增卡片 body 的客户端实现、中英文案与轻量样式；卡片种类与技能都是可选层，缺少宿主服务时只关掉卡片本身。
+- New "small card" action kind (`deep-ptc-card`): the model can leave a static card under an answer — title, labelled rows, note — whose button really runs on the host: deleting the scheduled tasks it names or running one command. Cards use the host's native action-card UI and never cover the composer; a host without our body falls back to a dismiss-only card, so nothing else changes.
+- New `deep-ptc-cards` skill describing when and how to place a card, its details fields and the one-card-per-turn limit.
+- Adds the client card body, bilingual copy and lightweight styles. The kind and the skill are both optional layers: a missing host service disables the card alone.
+
 ## 1.9.5 — 2026-11-14
 
 - 插件启动不再等待任何宿主服务（#18）。技能卡、工具状态和输出/SSH 记录在各自服务就绪后自行启动；晚注册的会话投影首次读取时会折叠完整日志，不丢记录。预设在后台发布，只有打开深度 PTC 会话时才会等待首次发布完成，不会拖住整个 Host 启动。感谢 @Freezecatmeow 定位问题并提交 #19。
