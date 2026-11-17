@@ -107,6 +107,12 @@ async function withPanel(f, { sessions = {}, tools = noTools, activity, preset =
   await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
   try { await body(view); } finally { await act(async () => view.unmount()); }
 }
+// The Deep PTC settings page, where the appearance controls live.
+async function withSettings(f, body) {
+  let view;
+  await act(async () => { view = Renderer.create(React.createElement(f.slots.get('settings.section#deep-ptc').render, {})); });
+  try { await body(view); } finally { await act(async () => view.unmount()); }
+}
 const radios = view => view.root.findAllByProps({ role: 'radio' });
 const checked = view => radios(view).find(node => node.props['aria-checked']).props.children;
 const text = view => JSON.stringify(view.toJSON());
@@ -139,7 +145,8 @@ test('the panel holds the environment switch, outputs, SSH and tool state', asyn
     assert.equal(checked(view), 'PowerShell');
     assert.match(text(view), /envForNew/u, 'the switch applies to new sessions');
     assert.ok(view.root.findAllByType('button').some(node => node.props.children === 'toolReset'));
-    assert.deepEqual(sections(view), ['environment', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection', 'visualEffects']);
+    assert.deepEqual(sections(view), ['environment', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
+    assert.equal(view.root.findAllByProps({ role: 'switch', 'aria-label': 'visualEffects' }).length, 0, 'the effects switch lives in settings');
     assert.match(text(view), /outputsEmpty/u);
     assert.match(text(view), /sshEmpty/u);
   });
@@ -411,7 +418,7 @@ test('the effects switch removes and restores the effects at once and remembers 
   let bridge;
   try {
     await act(async () => { bridge = Renderer.create(renderBridge('deep-ptc')); });
-    await withPanel(f, {}, async view => {
+    await withSettings(f, async view => {
       const control = () => view.root.findByProps({ role: 'switch', 'aria-label': 'visualEffects' });
       assert.equal(control().props['aria-checked'], true);
       assert.match(text(view), /visualEffectsHint/u);
@@ -424,7 +431,7 @@ test('the effects switch removes and restores the effects at once and remembers 
       assert.equal(layers.size, 0);
       assert.equal(frames.size, 0);
       assert.equal(keyHandlers.size, 0);
-      await withPanel(fixture({ snapshot: windows(), storage }), {}, async fresh => {
+      await withSettings(fixture({ snapshot: windows(), storage }), async fresh => {
         assert.equal(fresh.root.findByProps({ role: 'switch', 'aria-label': 'visualEffects' }).props['aria-checked'], false);
       });
       await act(async () => control().props.onClick());
@@ -447,12 +454,12 @@ test('the effects switch removes and restores the effects at once and remembers 
 
 test('an appearance plugin turns effects off by default, but an explicit choice wins', async () => {
   const styled = { ...fakeDocument(), querySelector: selector => selector === 'style[data-plugin="dsh-claude-style"]' ? {} : null };
-  await withPanel(fixture({ snapshot: windows(), browser: { document: styled } }), {}, async view => {
+  await withSettings(fixture({ snapshot: windows(), browser: { document: styled } }), async view => {
     assert.equal(view.root.findByProps({ role: 'switch', 'aria-label': 'visualEffects' }).props['aria-checked'], false);
     assert.match(text(view), /visualEffectsAuto/u);
   });
   const chosen = new Map([['dsh-deep-ptc-mode:visual-effects', '1']]);
-  await withPanel(fixture({ snapshot: windows(), storage: chosen, browser: { document: styled } }), {}, async view => {
+  await withSettings(fixture({ snapshot: windows(), storage: chosen, browser: { document: styled } }), async view => {
     assert.equal(view.root.findByProps({ role: 'switch', 'aria-label': 'visualEffects' }).props['aria-checked'], true);
     assert.match(text(view), /visualEffectsHint/u);
   });
@@ -520,12 +527,12 @@ test('the reload button resets only the current conversation through the host co
 test('the panel and an existing reload result follow the DSH language', async () => {
   const f = fixture({ snapshot: windows(), localeId: 'en' });
   await withPanel(f, { sessions: { jobsBySession: { deep: jobs(1, 'running') } } }, async view => {
-    assert.match(text(view), /Background jobs.*Output files.*SSH connections.*Visual effects/u);
+    assert.match(text(view), /Background jobs.*Output files.*SSH connections.*Tool state/u);
     const reload = view.root.findAllByType('button').find(node => node.props.children === 'Reload all tool states');
     await act(async () => reload.props.onClick());
     assert.match(text(view), /Tool states reloaded for this conversation/u);
     await act(async () => f.setLocale('zh'));
-    assert.match(text(view), /后台任务.*运行中.*输出文件.*SSH 连接.*本对话工具状态已重载.*界面特效/u);
+    assert.match(text(view), /后台任务.*运行中.*输出文件.*SSH 连接.*本对话工具状态已重载/u);
     assert.doesNotMatch(text(view), /Tool states reloaded for this conversation/u);
     assert.equal(f.calls.length, 1);
     assert.equal(f.writes.length, 0);
@@ -775,4 +782,42 @@ test('the effects never rewrite host design tokens, fonts or every control on th
   assert.doesNotMatch(theme, /:where\(button/u, 'no transition on every control');
   assert.doesNotMatch(theme, /\$\{ON\} \*/u, 'no rule over every element');
   assert.match(theme, /^:root\{--dpt-dur-fast/mu, 'private variables are defined once, not toggled');
+});
+
+test('panel sections reorder by drag or keyboard, and the order is remembered', async () => {
+  const storage = new Map();
+  // The section under the pointer: the upper half of "environment" or the lower half of "outputs".
+  let under = { key: 'environment', top: 0 };
+  const document = { ...fakeDocument(), elementFromPoint: () => ({ closest: () => ({
+    getAttribute: () => under.key, getBoundingClientRect: () => ({ top: under.top, height: 100 }) }) }) };
+  const f = fixture({ snapshot: windows(), storage, browser: { document } });
+  await withPanel(f, {}, async view => {
+    const grips = () => view.root.findAll(node => node.props?.className === 'dpt-grip');
+    const order = () => sections(view);
+    const gripOf = key => view.root.find(node => node.props?.className === 'dpt-sortable' && node.props['data-key'] === key)
+      .find(node => node.props?.className === 'dpt-grip');
+    const drag = async (key, clientY) => {
+      await act(async () => gripOf(key).props.onPointerDown({ button: 0, pointerId: 1, preventDefault() {}, currentTarget: { setPointerCapture() {} } }));
+      await act(async () => gripOf(key).props.onPointerMove({ clientX: 0, clientY }));
+      assert.equal(view.root.findAll(node => node.props?.className === 'dpt-sortable' && node.props['data-drop']).length, 1, 'a drop line shows');
+      await act(async () => gripOf(key).props.onPointerUp({ clientX: 0, clientY }));
+    };
+    assert.deepEqual(order(), ['environment', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
+    // Drag SSH onto the upper half of the environment section: it moves to the top.
+    await drag('ssh', 10);
+    assert.deepEqual(order(), ['sshTitle', 'environment', 'jobsTitle', 'outputsTitle', 'toolsSection']);
+    // Drag SSH onto the lower half of output files: it lands after them.
+    under = { key: 'outputs', top: 0 };
+    await drag('ssh', 90);
+    assert.deepEqual(order(), ['environment', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
+    under = { key: 'environment', top: 0 };
+    await drag('ssh', 10);
+    assert.deepEqual(order(), ['sshTitle', 'environment', 'jobsTitle', 'outputsTitle', 'toolsSection']);
+    // Keyboard: the tool state section moves up one place.
+    await act(async () => grips()[4].props.onKeyDown({ key: 'ArrowUp', preventDefault() {} }));
+    assert.deepEqual(order(), ['sshTitle', 'environment', 'jobsTitle', 'toolsSection', 'outputsTitle']);
+    await act(async () => grips()[0].props.onKeyDown({ key: 'ArrowDown', preventDefault() {} }));
+    assert.deepEqual(order(), ['environment', 'sshTitle', 'jobsTitle', 'toolsSection', 'outputsTitle']);
+  });
+  assert.deepEqual(JSON.parse(storage.get('dsh-deep-ptc-mode:panel-order')), ['environment', 'agents', 'ssh', 'jobs', 'tools', 'outputs'], 'hidden sections keep a place too');
 });

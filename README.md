@@ -1,6 +1,6 @@
 # Deep PTC mode
 
-[中文](README.zh.md) · MIT · **1.9.5**
+[中文](README.zh.md) · MIT · **1.9.9**
 
 [Changelog](CHANGELOG.md) · [Test report](TEST_REPORT.md) · [Plugin workflows and verification](COMPATIBILITY.md)
 
@@ -12,11 +12,11 @@ The panel sits beside the conversation and shows the environment, subagents, job
 
 | # | Problem | What Deep PTC does |
 | --- | --- | --- |
-| 1 | **Working silently without reporting** | One sentence before every `run_code`; a longer update at milestones; never more than two or three silent tool calls; a short final result with failed tools and providers. |
-| 2 | **Guessing instead of asking** | Meaning belongs to the user, facts to the tools: ask one to three questions with options when names, targets, routes, scope or acceptance criteria are unclear; an unfamiliar term is asked about first and researched only when the user does not know it; inspectable facts are looked up. The user's statements outrank the model's prior beliefs: no silent change of approach, every part of a request checked off, nothing unverified reported as verified. |
+| 1 | **Working silently without reporting** | Share short updates before sustained work, at milestones and when blocked. Report the outcome, checks and remaining work. |
+| 2 | **Guessing instead of asking** | Inspect available evidence first. Ask when substantial ambiguity remains or a decision belongs to the user. |
 | 3 | **Sleeping or becoming unreachable** | Enforced in code: foreground waits move to the background after 30 s; a user message hands the waiting command to the background within about 2 s; foreground sleeps over 5 s are refused; job completion wakes the model. |
-| 4 | **No plan, or an invisible plan** | Plan by estimated size: act silently under 5 minutes; show the plan and start without approval for 5–20 minutes; show it and wait for approval over 20 minutes. Re-plan when the estimate moves up; the user can redirect at any step. |
-| 5 | **Not using the concise context and unlimited-token prompt** | Derive from the live official PTC composition, keep the tool catalog compact and load full schemas on demand, and state that this mode spends its token budget on reads, searches, commands and checks rather than rationing them. The prompt does not change billing or the real token limit. |
+| 4 | **No plan, or an invisible plan** | Work directly on small tasks. For multi-step work, outline the outcome, steps and verification. Ask before an unauthorized irreversible action. Explicit plan mode takes priority. |
+| 5 | **Tool definitions crowding the context** | Derive from the live official PTC composition, keep the catalog compact and load full tool schemas on demand. |
 
 ## Built for “everything is a plugin”
 
@@ -62,13 +62,41 @@ After each turn, a card at the end of that turn in the conversation (where offic
 - The card tracks skills loaded directly through the official `skill` tool and skills loaded by a PTC inner call inside `run_code`. The latter usually reach the program rather than the model context, so closing one only removes it from the card, not from program output. `/name` injections are not covered yet.
 - A switch leaves no command row in the conversation (the session log still records it); only a failed switch shows a short error line in place.
 
+## Conversation cards (1.9.9)
+
+The model leaves cards at the end of the conversation with the `ui_card` tool. Cards are **composed**, not picked from fixed templates: a header (title, subtitle, icon, state tone), up to 6 blocks, a note and up to 4 buttons. Any combination is valid, so the model can create a new card for any situation.
+
+- **Display blocks**: `stats` tiles, `rows`, `progress`, `bars`, `line` (with a hover tooltip), `donut`, `steps` (checklist or timeline), `table`, `tags`, `text`, `callout`.
+- **Interactive blocks**: `choice` (single or multiple, with a preselected recommendation) and `field` (time, date or number).
+- **Layout**: each card can set `size` (full / half / third); several cards form a grid, two side by side or three in a row, stacking in narrow windows.
+- **Buttons**: `run` really runs on the host (deletes scheduled tasks, or runs one command in **your selected execution environment**); `reply` sends the user's choice to the model as their next message; a button can do both. `keep` leaves the card usable after a press (restart, snooze, rerun).
+- **Safety**: `{name}` placeholders in a command are filled only from times, dates, numbers and option values the card declared, so free text never reaches a shell; the server validates them again. Destructive buttons use the `danger` style.
+- **Design**: one type scale, spacing and colour system that follows the host's light and dark themes; the chart palette is validated for colour-vision deficiency and every value is printed, so colour never carries meaning alone. Cards draw once, after the latest turn.
+
+Three built-in skills load on demand. `deep-ptc-cards` explains the conversation card interface and layout. `deep-ptc-card-examples` provides 20 validated templates covering development scenarios and multi-card layouts. `deep-ptc-project-cards` covers settings, proposals and project records.
+
+## Project cards (1.9.9)
+
+The project's standing rules and records, kept in `PROJECT-CARDS.md` at the workspace root. Like AGENTS.md it lives in the workspace, and other AI tools read it as plain documentation.
+
+- **Current file on each request**. The system prompt includes the current `PROJECT-CARDS.md` for DSH conversations in the workspace. User-approved settings take precedence among project documents. Earlier copies quoted in the conversation are historical. The project-card interface is read-only in other modes.
+- **Three kinds**:
+  - **Setting cards** (R ids) are yours, grouped as stack and environment, code conventions, constraints, workflow, product and other. The model can only propose changes, which take effect once you approve them.
+  - **Implemented features** (F): the model records verified behavior, its entry point and relevant checks. Before changing related code, it reads these entries and retests existing behavior affected by the change. Users can question records for the model to verify and correct.
+  - **User requirements** (Q ids) record the lasting requirements you have stated, with their status (active / done / superseded). The model checks new requests against them and asks you first when they conflict.
+- **The Project cards view** sits next to Chat / Trajectory / Stats in Deep PTC sessions. You can browse cards by group, edit and submit them, or tick a box to have the model polish your edit first (it comes back as a proposal for you to approve). You can also browse history and roll back, approve or reject proposals, and question the model's records. Each submit, approval and rollback sends the model a message.
+- **Getting started**: in a workspace without cards, "Set up with the model" has it ask you a few key questions with interactive cards, or draft from AGENTS.md / README, then propose the cards for approval.
+- **Edit protection**. Submit, delete and rollback check the file version from when the edit began. On a conflict, the editor keeps the draft and offers to merge it with the current content. Writes preserve Markdown outside the managed lines. History and proposals live in `$DSH_HOME/storages/deep-ptc-project-cards.json`.
+- Under **Settings → Deep PTC → Cards** you can switch off conversation cards and project cards separately (both on by default).
+
 ## Panel, settings page and visual effects
 
 The Deep PTC mode label, settings, and conversation UI switch between Chinese and English with DSH **Settings → General → Language**. Every entry point uses an official DSH extension point; the plugin changes no host layout and registers no keyboard shortcuts.
 
-- **Settings → Deep PTC**: execution environment and shell, the visual effects switch, and copyable diagnostics to attach to interface bug reports.
+- **Settings → Deep PTC**: execution environment and shell; under Cards, the conversation cards and project cards switches; under Appearance, the visual effects switch and the capsule position (the effects switch lives only here, not in the side panel); copyable diagnostics to attach to interface bug reports.
 - **The Deep PTC panel beside the conversation** is open by default when there is room. It follows the conversation width and hides under a fullscreen native sidebar. On narrow screens the bottom capsule expands it.
   - **Execution environment**: WSL, PowerShell, native Bash or Zsh, for newly created Deep PTC sessions.
+  - **Order**: hover a section and drag the handle at its top left to reorder the environment, subagents, jobs, output files, SSH and tool state (or focus the handle and press ↑ ↓); the order is kept per browser.
   - **Subagents**: the state indicator and name on the left, with duration at the right of the same row; a row opens that subagent's chat in the official right sidebar.
   - **Background jobs**: six positions, up to five active jobs first and up to three finished jobs; overflow folds into one expandable row.
   - **Output files**: files this conversation wrote or delivered, newest first; click to open the file in DSH's native preview. Three positions are available, with overflow folded into one of them. The rule matches DSH's own deliverables card and also counts files written from `run_code`.
@@ -162,6 +190,30 @@ Native PowerShell and the macOS/Linux shells use Harness sandbox, approval and p
 
 PowerShell, macOS/Linux Bash and Zsh can use a discovered executable. On Windows, native Bash accepts an absolute path to `bash.exe`, such as `<profile>/node_modules/dsh-ops/runtime/win32-x64/niubash/winuxcmd/bin/bash.exe`. If that path is unavailable, new sessions keep the official shell.
 
+
+### The selection holds on every execution path (1.9.9)
+
+- Card buttons use the shell tool, working directory, sandbox and approval policy of the current session. Confined WSL calls are refused. After a 30-second foreground wait, the host may return a managed background job ID.
+- Safe mode used to fall back to the whole official composition, which is PowerShell on Windows. It now keeps the selected WSL/Bash/Zsh unless the failure is in the execution rows themselves.
+- The WSL instructions now say to work with Linux tools inside WSL by default and to call powershell.exe through interop only for steps that genuinely need Windows (GUI, registry, Windows-only programs), saying so when it does.
+
+### Configure a tool replacement for the preset (#23)
+
+In the existing `deep-ptc-settings` configuration, specify a tool name and optionally its preset row and replacement. For example, install a plugin that provides `pwsh_safe`, then configure the preset:
+
+```yaml
+- id: deep-ptc-settings
+  config:
+    toolOverrides:
+      - tool: pwsh
+        row: tool-pwsh
+        replacement: pwsh_safe
+```
+
+The rule is scoped to Deep PTC. `tool` hides the inherited tool of that name. `row` disables the entire named preset row, including any other tools it registers. `replacement` is optional. If its provider has yet to load, the model is told that the replacement is unavailable for that request. Calls use the replacement’s own schema and permission policy.
+
+Existing `disabledShellTools: ['pwsh']` configurations keep working. A card command reports an error when its session’s shell is disabled. A reply button can send the decision to the model, which can then use an installed replacement. New sessions use the updated preset settings.
+
 ## Plugin lab: official creative mode, in memory
 
 Deep PTC is often used for programming, and it can also be used to design a DSH plugin. **Plugin lab is always on for a session**; there is no toggle. An existing `pluginLab` key in the Cordis settings is accepted for compatibility but ignored.
@@ -201,14 +253,10 @@ Limitation: this wraps the host's `agentPresets.composedPreset` instance and dep
 
 ## Working contract
 
-- Spend the budget on the work: the persona grants an unlimited token budget in this mode, so it does not skip reads, searches, commands or checks to save tokens. Guardrails forbid padding, and compaction, pruning and subagents keep each request inside its finite context window.
-- Stay reachable while work runs: no sleeps, busy-polls or long foreground calls. Long commands run as background jobs while the model continues short steps and checks progress without blocking; with nothing left to do it states what is running and ends the turn. Job completion wakes it, and user messages are handled immediately.
-- Plan by expected size: five minutes or less, plan internally and act; five to twenty minutes, show the plan and start without approval; more than twenty minutes, show the plan and wait for approval. Re-plan when the estimate moves up a band. Explicit plan mode always wins.
-- Ask instead of guessing intent: meaning belongs to the user, facts to the tools. Unfamiliar names, competing targets or routes, authoritative sources, expected process, acceptance criteria and scope are asked about rather than guessed or searched for; inspectable facts are looked up. One to three questions with options, recommended first; the user's answer wins.
-- Work visibly: one sentence before each `run_code`, longer updates at milestones, never more than two or three silent tool calls.
-- Verify changed behavior and stop when criteria are met; delegate only genuinely independent work and collect results through the actual tool's channel.
-
-A prompt changes the model's working tendency, not the real token limit or billing, and compliance is not guaranteed. The setting that actually controls thinking depth is the model's `reasoningEffort`.
+- Inspect facts. Ask when a material ambiguity remains, the scope expands, or an irreversible action requires authorization.
+- Do small tasks directly. Outline multi-step work and report sustained operations or meaningful changes.
+- Use managed jobs for long shell work. Keep the job IDs, respond to steering first, and collect the results required for completion.
+- Verify through the normal entry point and report what the evidence establishes.
 
 ## Install or upgrade
 
@@ -251,6 +299,7 @@ Because the declarations are resolved through the host runtime, every host packa
 
 ```sh
 npm ci
+npm run build:client
 npm run check
 npm test
 npm run check:upstream -- /path/to/the/new/upstream/ptc.patch.yml
@@ -260,9 +309,9 @@ PTC_RUNTIME_MODULES=/path/to/dsh/node_modules node scripts/check-reachability.mj
 npm pack
 ```
 
-The checker parses `!!js` as data and asserts the derivation invariants: every official row survives unchanged except the persona, the shell rows and the two wrapped tools (including when the official preset nests them in a group); row ids stay unique; derivation is deterministic across nine platform/environment pairs. Tests cover future compositions as well (unknown rows, reordered rows, removed shell or wrapped rows), plus platforms, argv boundaries, confined WSL refusal, atomic settings writes and stale revisions. Real-task evaluations should measure successful completion, unnecessary questions, scope expansion, background-work collection and latency.
+The checker parses `!!js` as data and asserts the derivation invariants: every official row survives unchanged except the persona, the shell rows and the two wrapped tools (including when the official preset nests them in a group); row ids stay unique; derivation is deterministic across ten platform/environment pairs. Tests cover future compositions as well (unknown rows, reordered rows, removed shell or wrapped rows), plus platforms, argv boundaries, confined WSL refusal, atomic settings writes and stale revisions. Real-task evaluations should measure successful completion, unnecessary questions, scope expansion, background-work collection and latency.
 
-Main files: `cordis.patch.yml` is the settings entry; `lib/index.mjs` manages revisions; `lib/model.mjs` builds isolated execution configurations; `lib/executor.mjs` extends the official bash executor for WSL/Zsh; `lib/terminal.mjs` runs the official shell tool the declaration names, with interruptible waits and the Zsh dialect; `lib/jobs-tool.mjs` and `lib/ask-user.mjs` run the official job and question tools the declaration names; `lib/host.mjs` resolves those official modules through the installed runtime; `lib/guard.mjs`, `lib/rules.mjs`, `lib/sleep-lint.mjs` and `lib/reachable.mjs` implement the pause/polling guard and interruptible waits; `lib/client.js` owns the bilingual settings card; `lib/upstream.mjs` locates and parses the installed PTC declaration; `lib/preset.json` holds the persona and the fallback snapshot used only when that declaration is unavailable.
+Main files: `cordis.patch.yml` is the settings entry; `lib/index.mjs` manages revisions; `lib/model.mjs` builds isolated execution configurations; `lib/executor.mjs` extends the official bash executor for WSL/Zsh; `lib/terminal.mjs` runs the official shell tool the declaration names, with interruptible waits and the Zsh dialect; `lib/jobs-tool.mjs` and `lib/ask-user.mjs` run the official job and question tools the declaration names; `lib/host.mjs` resolves those official modules through the installed runtime; `lib/guard.mjs`, `lib/rules.mjs`, `lib/sleep-lint.mjs` and `lib/reachable.mjs` implement the pause/polling guard and interruptible waits; `lib/client.js` is the generated client bundle built from `src/client/`; `lib/upstream.mjs` locates and parses the installed PTC declaration; `lib/preset.json` holds the persona and the fallback snapshot used only when that declaration is unavailable.
 
 Uninstall with `plugin_manager` action `remove_bundle`, target `dsh-deep-ptc-mode`. Local link installations depend on their source directory: uninstall before deleting it.
 

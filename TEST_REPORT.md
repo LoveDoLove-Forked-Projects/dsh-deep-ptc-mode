@@ -1,4 +1,16 @@
-# 1.9.5 测试报告 / Test report
+# Deep PTC 测试报告 / Test report
+
+## 1.9.9 · 2026-11-17
+
+- Windows、Node 24.18.0：258 项自动化测试通过。验证过期卡片按钮、卡片设置关闭、项目文件外部修改、保留 Markdown 和未提交草稿、按需 Skill 样板及预设恢复。
+- 实际 DSH 0.2.2-rc.1（隔离配置）：从卡片入口执行真实 PowerShell 和 WSL Bash 命令，验证宿主策略拒绝以及受限 WSL 拒绝。通过项目卡片命令创建设定、调用工具提出修改，再从宿主命令审批。核对工具作用域、预设声明更新、兼容降级与第三方工具按需加载。工具替换覆盖 Shell、非 Shell 工具、宿主继承与后加载的模拟提供者。
+- 界面交互由客户端组件测试覆盖。上述宿主测试无需模型调用。此轮未验证 macOS 或 Linux 的原生桌面交互，也未评估提示词改写对模型任务成功率的影响。
+
+- Windows, Node 24.18.0: 258 automated tests passed. Coverage includes stale buttons, the conversation-card switch, external file edits, Markdown and draft preservation, on-demand skill examples, and preset recovery.
+- Installed DSH 0.2.2-rc.1 (isolated profiles): card commands ran in PowerShell and WSL Bash, honored host policy, and refused confined WSL execution. Host commands and the project tool covered settings creation, proposal and approval. Composition checks covered tool scope, upstream refresh, fallback and on-demand external tools. Tool overrides covered a shell, a non-shell tool, inherited registrations and a stand-in provider loaded later.
+- Client behavior was verified with component tests; host checks required no model calls. Native macOS/Linux desktop interaction and model task success after the prompt rewrite were outside this run.
+
+## 历史记录 / Earlier releases
 
 > 1.9.5 启动与特效性能：210 项自动化测试及结构检查通过。新增覆盖：宿主服务永不就绪时 apply() 立即返回；预设仍在后台发布；深度 PTC 的 resolve 会等到首次发布完成，其他预设不等待；两个深度 PTC 会话之间切换时特效属性不被摘除；特效样式不包含宿主配色变量、字体、全站控件规则或通配元素规则。在本地 DSH 0.2.2-rc.1 测试 profile 中：启动正常，预设注册；开启特效时宿主变量（背景、文字、字体）与关闭时一致；4 个深度 PTC 会话之间切换，特效属性翻转 0 次。浏览器窗格处于隐藏状态，页面不渲染，因此未测量切换耗时。
 > Version 1.9.5 startup and effects performance: 210 tests and structural checks pass. New coverage: apply() returns at once when host services never become ready; the preset still publishes in the background; a Deep PTC resolve waits for the first publication while other presets do not; switching between two Deep PTC conversations never removes the effects attribute; the effects stylesheet contains no host colour tokens, fonts, page-wide control rules or universal rules. In a local DSH 0.2.2-rc.1 test profile, boot succeeded and the preset registered; host background, label and font variables were identical with effects on and off; moving among four Deep PTC conversations flipped the effects attribute 0 times. The browser pane was hidden, so the page did not render and switch timing was not measured.

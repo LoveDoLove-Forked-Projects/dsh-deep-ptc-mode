@@ -1,5 +1,36 @@
 # Changelog
 
+## 1.9.9 — 2026-11-17
+
+- 对话卡片升级为可组合的卡片接口：页头 + 最多 6 个块 + 脚注 + 最多 4 个按钮。新增 11 种展示块（指标卡、键值行、进度条、条形图、折线图、环形图、步骤、表格、标签、段落、提示）和 2 种交互块（选项、时间/日期/数字输入）。按钮可以在宿主上执行（删除定时任务或运行命令）、把用户的选择作为下一条消息发给模型，或两者兼做；`keep` 让卡片按完后继续可用。命令中的 `{name}` 只接受时间、日期、数字和卡片声明的选项值，服务端再次校验。1.9.7/1.9.8 的 `lines` 与 `stop` 仍可读取。
+- 卡片外观重做：统一的排版与配色，跟随明暗主题；图表配色经色盲安全校验且每个数值都直接印出；折线图悬停显示数值，环形图悬停联动图例；关闭按钮移到页头。修复卡片在每一轮末尾重复显示的问题，现在只在最新一轮末尾出现一次。
+- 对话卡片、20 个开发场景样板和项目卡片维护各有一份按需 Skill。样板用真实解析器校验。需判断权限、进程归属或部署目标的按钮把选择交回模型。
+- 卡片代码拆分为 `card-blocks.mjs`（块词汇与校验）、`cards.mjs`（卡片状态）、`card-runner.mjs`（按所选环境运行命令）、`card-skill.mjs`（skill）与 `cards-context.mjs`（宿主接线）；输入校验与存储状态解析共用同一套读取器。
+- 卡片按钮通过当前会话绑定的 Harness Shell、工作目录、沙箱与审批执行。拒绝旧版卡片操作和已关闭的功能。长任务可以返回宿主后台任务 ID。
+- 修复：安全模式会整体回到官方组合，Windows 上即变成 PowerShell。现在只要故障不在执行环境行，安全模式保留所选 Shell。WSL 说明补充：默认用 WSL 内的 Linux 工具，只在确实需要 Windows 时才通过互操作调用 powershell.exe。
+- 新增通用 `toolOverrides`（#23）。在当前预设停用指定工具行、屏蔽继承的同名工具并声明可选替代工具。支持 Shell 与其他插件工具，旧 `disabledShellTools` 继续有效。感谢 @Hermuc 提出问题。
+- 界面特效开关从侧边面板移到「设置 → 深度 PTC → 外观」。
+- 新增「特点卡片」。工作区的 `PROJECT-CARDS.md` 保存用户设定 R、已实现功能 F 和用户要求 Q。DSH 系统提示词每次请求读取当前文件，历史消息中引用的内容按历史版本处理。
+- 深度 PTC 会话新增「特点卡片」页，支持编辑、润色、审批、历史与回滚。提交比较编辑时的文件版本，遇到外部更新会保留草稿并提供合并，写入保留插件管理范围外的 Markdown。
+- 设置 → 深度 PTC 新增「卡片」：对话卡片、特点卡片各一个开关，默认开启，即时生效。
+- 对话卡片新增 `size`（full / half / third）：多张卡片排成网格，可两张并排或三张一行，窄窗口自动堆叠；skill 增加多卡片排版规范与并排样板。
+- 侧边面板的执行环境、子代理、后台任务、输出文件、SSH、工具状态可拖动排序（或聚焦后按 ↑ ↓），顺序按浏览器保存。
+- Conversation cards become a composable card interface: a header, up to 6 blocks, a note and up to 4 buttons. Adds 11 display blocks (stats, rows, progress, bars, line, donut, steps, table, tags, text, callout) and 2 interactive blocks (choice; time/date/number field). A button can run on the host (delete scheduled tasks or run a command), send the user's choice to the model as their next message, or both; `keep` leaves the card usable. `{name}` placeholders accept only times, dates, numbers and option values the card declared, validated again on the server. Cards from 1.9.7/1.9.8 (`lines`, `stop`) still load.
+- Redesigned card look: one type and colour system following light and dark themes; a colour-vision-safe chart palette with every value printed; a line-chart hover tooltip and a donut hover linked to its legend; the close button moves to the header. Fixes cards repeating after every turn: they now draw once, after the latest turn.
+- Separate on-demand skills cover the card interface, 20 validated development examples and project card maintenance. Actions requiring ownership or deployment checks hand the decision back to the model.
+- Card code splits into `card-blocks.mjs` (block vocabulary and readers), `cards.mjs` (card state), `card-runner.mjs` (commands in the selected environment), `card-skill.mjs` (the skill) and `cards-context.mjs` (host wiring); tool input and stored state share one reader.
+- Card buttons use the session’s bound Harness shell, working directory, sandbox and approval pipeline. The service rejects obsolete card actions and honors the feature switch. Long commands can return a managed job ID.
+- Fixed: safe mode fell back to the whole official composition, which is PowerShell on Windows. It now keeps the selected shell unless the execution rows failed. The WSL instructions now prefer Linux tools inside WSL and use powershell.exe interop only for steps that need Windows.
+- Add `toolOverrides` (#23) to disable a preset row, mask an inherited tool and suggest an optional replacement, for shells and other tools. Existing `disabledShellTools` settings still work. Thanks to @Hermuc for the report.
+- The visual effects switch moves from the side panel to Settings → Deep PTC → Appearance.
+- Project cards live in `PROJECT-CARDS.md` as user settings (R), implemented features (F) and user requirements (Q). The system prompt reads the current file on each request. Earlier quotes in chat remain historical.
+- The Project cards tab supports edits, draft polishing, approvals, history and rollback. Submissions check the file version, keep drafts on conflict and preserve surrounding Markdown.
+- Settings → Deep PTC gains a Cards section: one switch each for conversation cards and project cards, on by default and applied at once.
+- Conversation cards gain `size` (full / half / third): several cards form a grid, two side by side or three in a row, stacking in narrow windows; the skill adds multi-card layout rules and side-by-side samples.
+- The side panel's sections (environment, subagents, jobs, output files, SSH, tool state) can be reordered by dragging or with ↑ ↓ on a focused handle; the order is kept per browser.
+- F 卡片用于回归检查。改新功能前读取相关已实现行为，验证受影响的既有功能。精简常驻提示词，按功能拆分卡片界面源码。预设注册失败时尝试恢复上一个可用定义。
+- Use F cards as regression references for related changes. Shorten the resident persona and split card UI source by feature. Restore the last usable preset after a rejected registration.
+
 ## 1.9.8 — 2026-11-17
 
 - 修复：更新已有卡片时写入的状态里带了一个 `undefined` 字段，宿主判定为不可序列化而拒绝写入。现在更新会清除旧结果，状态保持纯 JSON。新增严格序列化守卫测试，这类问题以后会在提交前被测试拦下。

@@ -1,5 +1,9 @@
 # 插件协作与验证范围 / Plugin workflows and verification
 
+Deep PTC **1.9.9** 的卡片、宿主执行和预设兼容回归见 [测试报告](TEST_REPORT.md)。下方界面插件和第三方工具协作结果保留当时的验证版本。
+
+For the **1.9.9** card, host execution and preset checks, see the [test report](TEST_REPORT.md). The UI plugin and third-party tool results below retain their original tested versions.
+
 Deep PTC **1.9.5** · 核对日期：2026-11-13（界面插件）；插件协作部分核对于 2026-11-12。接口验证使用 DSH Desktop 0.2.2-rc.2 的校验器与 SDK 渲染器、内嵌 Node 24.21.0。
 
 ## 可以配合完成哪些工作
