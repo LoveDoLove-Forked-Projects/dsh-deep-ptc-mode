@@ -19,7 +19,13 @@ function fakeHost() {
     tools: { register(definition) { registered.set(definition.name, definition); return () => registered.delete(definition.name); } },
     get(name) { return name === 'schedule' ? schedule : undefined; },
   };
-  const records = async () => (session, _type, value) => { store.set(session, value); };
+  // The host serializer rejects non-JSON values, so the fake writer is just as strict.
+  const serializable = value => {
+    if (value === undefined) throw new Error('undefined is not serializable');
+    if (value === null || typeof value !== 'object') return;
+    for (const item of Array.isArray(value) ? value : Object.values(value)) serializable(item);
+  };
+  const records = async () => (session, _type, value) => { serializable(value); store.set(session, value); };
   return { ctx, records, handlers, registered, schedule, store };
 }
 

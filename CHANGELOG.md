@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.9.8 — 2026-11-17
+
+- 修复：更新已有卡片时写入的状态里带了一个 `undefined` 字段，宿主判定为不可序列化而拒绝写入。现在更新会清除旧结果，状态保持纯 JSON。新增严格序列化守卫测试，这类问题以后会在提交前被测试拦下。
+- 1.9.7 的对话卡片能力不变：`ui_card` 工具、`deep-ptcCards` 投影、`deep-ptc-card-act` 命令与 `turnTail` 渲染。
+- Fixed: updating an existing card wrote a state with an `undefined` field, which the host rejects as non-serializable. Updating now clears the previous result and keeps the state pure JSON, and a strict serializability guard in the tests catches this class of bug before release.
+- The card capability from 1.9.7 is unchanged: the `ui_card` tool, the `deepPtcCards` projection, the `deep-ptc-card-act` command and the `turnTail` rendering.
+
 ## 1.9.7 — 2026-11-17
 
 - 卡片改为插件自己的实现：会话投影保存卡片、宿主命令处理按钮、`conversation.chat.turnTail` 渲染、新增 `ui_card` 工具负责创建/更新/删除。不再依赖宿主 `actionCards` 的 `propose_action`——那个工具是“按需动态声明”的，进不了深度 PTC 的 `run_code` 工具集，卡片因此无法在 PTC 会话里出现。现在与 Skill 卡片同一套机制，在 PTC 和其它会话里都能用。
