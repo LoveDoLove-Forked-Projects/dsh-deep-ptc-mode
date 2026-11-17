@@ -43,7 +43,7 @@ function fixture({ formValue = {}, commandText = 'v2 · stack · +R3 ~R1' } = {}
   return { slots, calls, prompts, form };
 }
 
-const project = () => ({ v: 1, hash: 'h', path: 'D:\\repo\\PROJECT-CARDS.md', exists: true, warnings: [],
+const project = () => ({ v: 1, hash: 'h', fileVersion: 'alpha', path: 'D:\\repo\\PROJECT-CARDS.md', exists: true, warnings: [],
   cards: [
     { id: 'stack', kind: 'setting', category: 'stack', title: '技术栈', rev: 1, updated: '2026-11-17T12:00:00.000Z', items: [{ id: 'R1', text: 'React 18' }, { id: 'R2', text: 'Vite' }] },
     { id: 'features', kind: 'features', title: '已实现功能', rev: 2, updated: '2026-11-17T12:00:00.000Z', items: [{ id: 'F1', text: '卡片接口' }] },
@@ -101,7 +101,7 @@ test('approve, submit, polish and question each tell the model what happened', a
     const form = view.root.find(node => node.type === 'form');
     await act(async () => form.props.onSubmit({ preventDefault() {} }));
     const sent = JSON.parse(f.calls.at(-1)[1].slice('/deep-ptc-project '.length));
-    assert.deepEqual(sent, { op: 'submit', card: 'stack', title: '技术栈', category: 'stack', items: [{ id: 'R1', text: 'React 19' }, { id: 'R2', text: 'Vite' }], baseRev: 1 });
+    assert.deepEqual(sent, { op: 'submit', path: project().path, baseVersion: 'alpha', card: 'stack', title: '技术栈', category: 'stack', items: [{ id: 'R1', text: 'React 19' }, { id: 'R2', text: 'Vite' }], baseRev: 1 });
     assert.match(f.prompts.at(-1).content[0].text, /^projectMsgSubmit/u);
 
     // Polishing never writes: it asks the model to propose a cleaner version for approval.
@@ -110,7 +110,8 @@ test('approve, submit, polish and question each tell the model what happened', a
     const check = view.root.find(node => node.type === 'input' && node.props.type === 'checkbox');
     await act(async () => check.props.onChange({ target: { checked: true } }));
     await act(async () => view.root.find(node => node.type === 'form').props.onSubmit({ preventDefault() {} }));
-    assert.equal(f.calls.length, calls, 'no command for a polish request');
+    assert.equal(f.calls.length, calls + 1, 'polishing checks the draft version without writing');
+    assert.equal(JSON.parse(f.calls.at(-1)[1].slice('/deep-ptc-project '.length)).op, 'check');
     assert.match(f.prompts.at(-1).content[0].text, /^projectMsgPolish\{.*- R1 React 18\\n- R2 Vite/u);
 
     const question = buttons(view, 'projectQuestion')[0];
@@ -137,6 +138,32 @@ test('the project cards switch removes the view; the empty state offers a guided
     assert.match(JSON.stringify(view.toJSON()), /projectEmptyTitle/u);
     await act(async () => buttons(view, 'projectBootstrap')[0].props.onClick());
     assert.equal(f.prompts.at(-1).content[0].text, 'projectMsgBootstrap{}');
+  } finally {
+    await act(async () => view.unmount());
+    await act(async () => header.unmount());
+  }
+});
+
+test('an incoming edit preserves the draft and merges untouched rows on request', async () => {
+  const f = fixture();
+  const initial = project();
+  const { header, view, entry } = await renderView(f, initial);
+  try {
+    await act(async () => buttons(view, 'projectEdit')[0].props.onClick());
+    await act(async () => view.root.findAllByType('textarea')[0].props.onChange({ target: { value: 'Local draft' } }));
+    const latest = { ...initial, fileVersion: 'beta', cards: initial.cards.map(card => card.id === 'stack'
+      ? { ...card, rev: 2, category: 'conventions', items: [card.items[0], { ...card.items[1], text: 'External update' }] }
+      : card) };
+    await act(async () => view.update(React.createElement(entry.render, { ...entry.slot.inject('deep'), useProjection: () => latest })));
+    assert.equal(view.root.findAllByType('textarea')[0].props.value, 'Local draft');
+    assert.equal(buttons(view, 'projectSubmit')[0].props.disabled, true);
+    await act(async () => buttons(view, 'projectDraftRebase')[0].props.onClick());
+    assert.deepEqual(view.root.findAllByType('textarea').map(node => node.props.value), ['Local draft', 'External update']);
+    await act(async () => view.root.findByType('form').props.onSubmit({ preventDefault() {} }));
+    const sent = JSON.parse(f.calls.at(-1)[1].slice('/deep-ptc-project '.length));
+    assert.equal(sent.baseVersion, 'beta');
+    assert.equal(sent.baseRev, 2);
+    assert.equal(sent.category, 'conventions');
   } finally {
     await act(async () => view.unmount());
     await act(async () => header.unmount());

@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import React from 'react';
 import Renderer, { act } from 'react-test-renderer';
 import { readCardInput } from '../lib/cards.mjs';
-import { CARD_SKILL_CONTENT } from '../lib/card-skill.mjs';
+import { CARD_EXAMPLES_REGISTRATION } from '../lib/card-skill.mjs';
 
 function fixture({ commandResult = { ok: true }, prompt = true } = {}) {
   let plugin;
@@ -29,7 +29,7 @@ function fixture({ commandResult = { ok: true }, prompt = true } = {}) {
 }
 
 // The built-in samples, as the tool would store them.
-const samples = () => [...CARD_SKILL_CONTENT.matchAll(/```json\n([\s\S]+?)\n```/gu)].map(match => {
+const samples = () => [...CARD_EXAMPLES_REGISTRATION.content.matchAll(/```json\n([\s\S]+?)\n```/gu)].map(match => {
   const { card, issues } = readCardInput(JSON.parse(match[1]));
   assert.equal(issues, undefined);
   return { id: JSON.parse(match[1]).id, ...card, phase: 'open' };

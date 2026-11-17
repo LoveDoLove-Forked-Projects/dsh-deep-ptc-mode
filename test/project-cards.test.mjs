@@ -54,6 +54,7 @@ test('the prompt carries only the latest version, with editing rights by mode', 
   const deep = promptText(doc, { deep: true, path: 'D:\\p\\PROJECT-CARDS.md' });
   assert.match(deep, /Only this latest version applies/u);
   assert.match(deep, /project_cards propose/u);
+  assert.match(deep, /retest affected behavior/u);
   assert.match(deep, /- \*\*R1\*\* 前端 React 18/u);
   const plain = promptText(doc, { deep: false });
   assert.match(plain, /read-only/u);
@@ -107,7 +108,11 @@ test('the user edits setting cards; the model proposes and the user approves', a
   const host = fakeHost();
   await install(host.ctx, host.records, { store });
   const session = { id: 's1', header: { cwd: project } };
-  const run = payload => host.handlers.get(PROJECT_COMMAND)({ agent: { session }, rawInput: JSON.stringify(payload) });
+  const run = payload => {
+    const path = store.target(project);
+    const baseVersion = host.state.get(session)?.fileVersion ?? null;
+    return host.handlers.get(PROJECT_COMMAND)({ agent: { session }, rawInput: JSON.stringify({ path, baseVersion, ...payload }) });
+  };
 
   const created = await run({ op: 'submit', title: '代码规范', items: ['用两个空格缩进'] });
   assert.equal(created.kind, 'success');
@@ -155,6 +160,30 @@ test('every conversation in the workspace reads the cards; only Deep PTC edits t
   assert.equal(refused.kind, 'error');
   const off = await command({ ctx: fakeHost(true).ctx, store, publish: async () => {}, enabled: () => false }, context.agent.session, '{"op":"refresh"}');
   assert.match(off.text, /turned off/u);
+});
+
+test('external edits invalidate old drafts and proposals without removing surrounding Markdown', async () => {
+  const { project, store } = workspace();
+  const host = fakeHost();
+  await install(host.ctx, host.records, { store });
+  const session = { id: 'external-edit', header: { cwd: project } };
+  const path = store.target(project);
+  const run = request => host.handlers.get(PROJECT_COMMAND)({ agent: { session }, rawInput: JSON.stringify({ path, ...request }) });
+  writeFileSync(path, serializeDoc(sampleDoc()), 'utf8');
+  await run({ op: 'refresh' });
+  const original = host.state.get(session);
+  const card = original.cards.find(row => row.kind === 'setting');
+  const draft = { op: 'submit', card: card.id, baseRev: card.rev, baseVersion: original.fileVersion, items: [{ id: 'R1', text: 'Draft' }] };
+  const proposal = await projectToolDefinition().execute({ action: 'propose', card: card.id, items: [{ id: 'R1', text: 'Proposal' }] }, { agent: { session } });
+  const external = readFileSync(path, 'utf8').replace('- **R1** 前端 React 18 + Vite', '> Keep this note.\n- **R1** External edit');
+  writeFileSync(path, external, 'utf8');
+
+  assert.match((await run(draft)).text, /file changed/u);
+  assert.match((await run({ op: 'approve', proposal: proposal.proposal })).text, /card changed/u);
+  assert.equal(readFileSync(path, 'utf8'), external);
+  const latest = host.state.get(session);
+  assert.equal((await run({ ...draft, baseVersion: latest.fileVersion })).kind, 'success');
+  assert.match(readFileSync(path, 'utf8'), /> Keep this note\.\n- \*\*R1\*\* Draft/u);
 });
 
 test('the tool is a Deep PTC preset row and honours the settings switch', async () => {

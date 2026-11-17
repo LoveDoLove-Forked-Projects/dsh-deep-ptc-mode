@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { CARDS_EVENT, CARD_COMMAND, CARD_TOOL, blankCards, addCard, foldCardsState, parseCardsState, readCardInput, withCard, DISMISSED, OPEN, STOPPED } from '../lib/cards.mjs';
 import { BLOCK_TYPES, MAX_BLOCKS, blockSchema, fillPlaceholders, readValues } from '../lib/card-blocks.mjs';
-import { CARD_SKILL_CONTENT, CARD_SKILL_REGISTRATION } from '../lib/card-skill.mjs';
+import { CARD_EXAMPLES_REGISTRATION, CARD_SKILL_REGISTRATION } from '../lib/card-skill.mjs';
 
 const card = body => {
   const parsed = readCardInput(body);
@@ -85,7 +85,7 @@ test('the tool schema names every block type', () => {
 
 test('every built-in layout in the skill is a valid card', () => {
   assert.equal(CARD_SKILL_REGISTRATION.name, 'deep-ptc-cards');
-  const examples = [...CARD_SKILL_CONTENT.matchAll(/```json\n([\s\S]+?)\n```/gu)].map(match => JSON.parse(match[1]));
+  const examples = [...CARD_EXAMPLES_REGISTRATION.content.matchAll(/```json\n([\s\S]+?)\n```/gu)].map(match => JSON.parse(match[1]));
   assert.ok(examples.length >= 8, 'the skill ships a layout library');
   for (const example of examples) {
     assert.equal(example.action, 'show');

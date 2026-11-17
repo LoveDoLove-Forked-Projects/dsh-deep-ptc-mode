@@ -1,32 +1,38 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { cardArgv, runCardCommand, shellLabel } from '../lib/card-runner.mjs';
+import { runCardCommand } from '../lib/card-runner.mjs';
 import { deriveDeepPtc, environmentText, normalizeDisabledShellTools } from '../lib/model.mjs';
 import { touchesExecution } from '../lib/preset-health.mjs';
 import snapshot from '../lib/preset.json' with { type: 'json' };
 
-test('a card command runs in the selected environment, not the default shell', () => {
-  assert.deepEqual(cardArgv({ environment: 'wsl', distribution: 'Ubuntu' }, 'pkill -f vite', 'win32'),
-    ['wsl.exe', '--distribution', 'Ubuntu', '--exec', 'bash', '-lc', 'pkill -f vite']);
-  assert.deepEqual(cardArgv({ environment: 'wsl' }, 'true', 'win32'), ['wsl.exe', '--exec', 'bash', '-lc', 'true']);
-  assert.deepEqual(cardArgv({ environment: 'powershell', executable: 'C:\\pwsh.exe' }, 'Stop-Process 1', 'win32'),
-    ['C:\\pwsh.exe', '-NoProfile', '-NonInteractive', '-Command', 'Stop-Process 1']);
-  assert.equal(cardArgv({ environment: 'powershell' }, 'x', 'win32')[0], 'powershell.exe');
-  assert.deepEqual(cardArgv({ environment: 'zsh' }, 'x', 'darwin'), ['/bin/zsh', '-lc', 'x']);
-  assert.deepEqual(cardArgv({ environment: 'bash', executable: '/usr/bin/bash' }, 'x', 'linux'), ['/usr/bin/bash', '-lc', 'x']);
-  assert.throws(() => cardArgv({ environment: 'bash' }, 'x', 'win32'), /bash\.exe/u);
-  assert.throws(() => cardArgv({ environment: 'wsl', distribution: '-x' }, 'x', 'win32'), /dash/u);
-  assert.throws(() => cardArgv({ environment: 'auto' }, 'x', 'win32'), /Unknown/u);
-  assert.equal(shellLabel({ environment: 'wsl', distribution: 'Ubuntu' }), 'WSL Bash (Ubuntu)');
-});
-
-test('the runner passes the argv and workdir and reports the first stderr line', async () => {
-  const calls = [];
-  const ok = (file, args, options, done) => { calls.push({ file, args, cwd: options.cwd }); done(null, '', ''); };
-  await runCardCommand({ environment: 'wsl', workdir: 'D:\\work' }, 'ls', { platform: 'win32', run: ok });
-  assert.deepEqual(calls, [{ file: 'wsl.exe', args: ['--exec', 'bash', '-lc', 'ls'], cwd: 'D:\\work' }]);
-  const fail = (_file, _args, _options, done) => done(new Error('exit 1'), '', 'boom\nmore');
-  await assert.rejects(() => runCardCommand({ environment: 'wsl' }, 'false', { platform: 'win32', run: fail }), /^Error: boom$/u);
+test('card commands enter the host pipeline with the owning session and obey the outcome', async () => {
+  const agent = { id: 'existing-wsl-session' };
+  const signal = new AbortController().signal;
+  const invocation = { agent, signal, commandId: 'button-1', command: 'pwd', description: 'Show working directory' };
+  let names = ['bash'];
+  const ctx = { tools: { definitions(scope) { assert.equal(scope, agent); return names.map(name => ({ name })); } } };
+  let result = { value: { kind: 'foreground', exitCode: 0 } };
+  class ToolExecutionPipeline { constructor(context) { assert.equal(context, ctx); } }
+  const load = async () => ({
+    ToolExecutionPipeline,
+    executeToolBatch: async (input, pipeline) => {
+      assert.ok(pipeline instanceof ToolExecutionPipeline);
+      assert.equal(input.agent, agent);
+      assert.equal(input.signal, signal);
+      assert.equal(input.calls[0].name, 'bash');
+      assert.deepEqual(JSON.parse(input.calls[0].arguments), {
+        command: 'pwd', description: 'Show working directory', timeoutMs: 30_000,
+      });
+      return { results: [{ result }] };
+    },
+  });
+  assert.deepEqual(await runCardCommand(ctx, invocation, load), { command: 'ok' });
+  result = { isError: true, error: { message: 'Permission declined' } };
+  await assert.rejects(runCardCommand(ctx, invocation, load), /Permission declined/u);
+  result = { value: { kind: 'promoted', jobId: 'job-4' } };
+  assert.deepEqual(await runCardCommand(ctx, invocation, load), { command: 'background', jobId: 'job-4' });
+  names = ['bash', 'pwsh'];
+  await assert.rejects(runCardCommand(ctx, invocation, load), /single active Harness shell tool/u);
 });
 
 test('disabledShellTools hides the Deep PTC shell tool row (#23)', () => {

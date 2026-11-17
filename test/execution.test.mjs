@@ -71,7 +71,7 @@ test('environment selection isolates executors and leaves every other official t
     const shellExecutable = platform === 'win32' && environment === 'bash' ? 'C:/niubash/bash.exe' : '';
     const preset = configuredPreset(upstream, { environment, wslDistribution: 'Ubuntu', shellExecutable }, platform);
     const group = preset.plugins.find(row => row.id === 'execution');
-    assert.deepEqual(group.isolate, { shell: true });
+    assert.deepEqual(group.isolate, { shell: true, deepPtcCardShell: true });
     assert.equal(group.config.filter(row => row.id.startsWith('tool-')).length, 1);
     if (resolveEnvironment(environment, platform) === 'powershell')
       assert.equal(group.config[0].name, '@deepseek-ai/dsh-pwsh-sandbox');
@@ -135,6 +135,25 @@ test('teardown during asynchronous registration releases the late definition exa
   complete(async () => { releases++; });
   await Promise.all([refresh, disposal]);
   assert.equal(releases, 1);
+});
+
+test('a rejected registration restores the last usable preset', async () => {
+  let revision = 1;
+  let active;
+  const lifecycle = presetLifecycle(async definition => {
+    if (definition === 2) throw new Error('registration failed');
+    active = definition;
+    return () => { active = undefined; };
+  }, () => revision, () => {});
+  await lifecycle.refresh();
+  revision = 2;
+  await assert.rejects(lifecycle.refresh(), /registration failed/u);
+  assert.equal(active, 1);
+  revision = 3;
+  await lifecycle.refresh();
+  assert.equal(active, 3);
+  await lifecycle.dispose();
+  assert.equal(active, undefined);
 });
 
 test('package and verified fixture checks pass', () => {

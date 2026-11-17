@@ -1,7 +1,7 @@
 {
   "name": "dsh-deep-ptc-mode",
   "version": "1.9.9",
-  "description": "Deep PTC for DeepSeek Harness: interruptible jobs, selectable shells, a side panel with clickable outputs and compact subagent rows, general SSH and DSH Go assistance, bilingual UI, and on-demand tools and skills for drawing, design and research.",
+  "description": "Deep PTC for DeepSeek Harness: interruptible jobs, selectable shells, interactive conversation cards, versioned project cards, a sortable side panel, and on-demand tools and skills.",
   "type": "module",
   "keywords": [
     "dsh-plugin",
@@ -85,6 +85,7 @@
     "./ask-user": "./lib/ask-user.mjs",
     "./guard": "./lib/guard.mjs",
     "./tool-compatibility": "./lib/tool-compatibility.mjs",
+    "./tool-overrides": "./lib/tool-overrides.mjs",
     "./preset-compat": "./lib/preset-compat.mjs",
     "./skill-context": "./lib/skill-context.mjs",
     "./environment": "./lib/environment.mjs",
@@ -96,7 +97,8 @@
   },
   "scripts": {
     "test": "node --test",
-    "check": "node scripts/check.mjs",
+    "build:client": "node scripts/build-client.mjs",
+    "check": "node scripts/build-client.mjs --check && node scripts/check.mjs",
     "check:upstream": "node scripts/check.mjs --upstream",
     "check:parity": "node scripts/check-parity.mjs",
     "prepack": "npm run check && npm test",
@@ -109,6 +111,7 @@
     "@deepseek-ai/dsh-client-ui-renderer": ">=0.2.2-rc.1",
     "@deepseek-ai/dsh-client-ui-settings": ">=0.2.2-rc.1",
     "@deepseek-ai/dsh-client-ui-slots": ">=0.2.2-rc.1",
+    "@deepseek-ai/dsh-tools": ">=0.2.2-rc.1",
     "@deepseek-ai/dsh-web-app": ">=0.2.2-rc.1",
     "@deepseek-ai/schemastery": "^3.18.4"
   },
@@ -132,6 +135,9 @@
       "optional": true
     },
     "@deepseek-ai/dsh-base": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-tools": {
       "optional": true
     },
     "@deepseek-ai/dsh-client-ui-commands": {
