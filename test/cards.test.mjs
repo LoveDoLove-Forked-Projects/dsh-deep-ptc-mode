@@ -49,6 +49,20 @@ test('a new card is open and updating it keeps its id', () => {
   assert.equal(again.state.cards[0].phase, OPEN);
 });
 
+test('updating a card leaves a JSON-clean state without a stale result', () => {
+  const noUndefined = value => {
+    if (value === undefined) return false;
+    if (value === null || typeof value !== 'object') return true;
+    return Object.values(value).every(noUndefined);
+  };
+  const first = addCard(blankCards(), { title: 'A', subtitle: 's' });
+  const again = addCard(first.state, { title: 'A2', subtitle: 's2' }, first.card.id);
+  assert.equal(again.state.cards.length, 1);
+  assert.equal(again.state.cards[0].title, 'A2');
+  assert.equal('result' in again.state.cards[0], false);
+  assert.ok(noUndefined(again.state));
+});
+
 test('a closed card is kept and marked', () => {
   const { state, card } = addCard(blankCards(), { title: 'A' });
   const stopped = withCard(state, card.id, { phase: STOPPED, result: { schedules: ['s1'], command: 'ok' } });
