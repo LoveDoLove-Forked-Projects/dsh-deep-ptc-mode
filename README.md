@@ -1,12 +1,16 @@
 # Deep PTC mode
 
-[中文](README.zh.md) · MIT · **1.9.9**
+[中文](README.zh.md) · MIT · **2.0.0**
 
 [Changelog](CHANGELOG.md) · [Test report](TEST_REPORT.md) · [Plugin workflows and verification](COMPATIBILITY.md)
 
 Deep PTC is a DeepSeek Harness agent mode with progress reports, clarifying questions, task-size planning, and interruptible background work. It builds on the installed official PTC preset with selectable shells, on-demand tools and skills, and a two-layer preset identity adapter for third-party plugins.
 
 The panel sits beside the conversation and shows the environment, subagents, jobs, output files, SSH connections and tool state. The panel width can be dragged. The capsule expands or collapses it; it sits below the composer by default and can move into the toolbar or be hidden. Deep PTC also has its own settings page. Visual effects are lightweight and start off when an appearance plugin is installed.
+
+## Changes in 2.0.0
+
+Version 2 restores the original 1.9.9 persona and adds proactive cards and progress reminders. Workspace setup remembers guidance, pending proposals and deferral. Independent sources keep separate proposals. Stale proposals require merging and fresh approval. End and restart the panel guide without losing pending proposals. For feature changes the model uses related F records to report new and existing behavior checks together.
 
 ## Five basic problems
 

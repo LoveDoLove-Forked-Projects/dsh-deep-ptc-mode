@@ -6,13 +6,14 @@
 import { registerHooks, createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 
 const modules = process.env.PTC_RUNTIME_MODULES;
 if (!modules) throw new Error('Set PTC_RUNTIME_MODULES to the runtime node_modules directory');
 const stage = path.resolve(import.meta.dirname, '..');
+const accountHome = process.env.DSH_HOME || path.join(homedir(), '.dsh');
 const home = mkdtempSync(path.join(tmpdir(), 'deep-ptc-parity-'));
 process.env.HOME = home;
 process.env.USERPROFILE = home;
@@ -39,7 +40,7 @@ const fixture = name => pathToFileURL(path.join(stage, 'scripts', 'fixtures', na
 const config = path.join(home, 'cordis.yml');
 writeFileSync(config, '[]\n');
 const extra = {
-  plain: [], cards: [], guide: [], 'cards-wsl': [], 'tool-overrides': [], 'runtime-update': [], 'own-row-fails': [],
+  plain: [], live: [], cards: [], guide: [], 'cards-wsl': [], 'tool-overrides': [], 'runtime-update': [], 'own-row-fails': [],
   misbehaving: [{ id: 'misbehaving', name: fixture('misbehaving-plugin.mjs') }],
   'broken-plugin': [{ id: 'broken', name: fixture('broken-plugin.mjs') }],
 }[scenario];
@@ -57,6 +58,11 @@ const patches = [
   } }] },
   ...extra.length ? [{ insert: extra }] : [],
 ];
+if (scenario === 'live') {
+  // Only the real-model scenario uses the host's credential provider. Sessions and project files remain isolated.
+  const credentials = patches.flatMap(patch => patch.insert ?? []).find(row => row.id === 'credentials');
+  credentials.config = { ...credentials.config, path: path.join(accountHome, '.credentials.yaml') };
+}
 let updateFile, updateSource;
 if(scenario==='runtime-update'){
  updateSource=readFileSync(path.join(modules,'@deepseek-ai/dsh-web-app/presets/ptc.patch.yml'),'utf8');
@@ -74,6 +80,11 @@ for (let i = 0; i < 200 && (await inventoryOf('deep-ptc')) === undefined; i++) a
 if (scenario === 'own-row-fails') for (let i = 0; i < 200 && (await inventoryOf('deep-ptc'))?.broken; i++) await sleep(25);
 assert.equal((await inventoryOf('ptc')).broken, undefined, 'the official preset itself must mount');
 assert.equal((await inventoryOf('deep-ptc')).broken, undefined, 'Deep PTC must mount');
+if (scenario === 'live') {
+  const { runBehaviorCases } = await import('./live-behavior.mjs');
+  await runBehaviorCases(ctx, presets, home, await load('@deepseek-ai/dsh-llm'));
+  process.exit(0);
+}
 
 const view = async id => {
   const lease = await presets.acquireScope(id);

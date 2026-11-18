@@ -130,7 +130,8 @@ export function createProjectCards({ React, h, tf, commandError, projectionValue
         h('div', { className: 'dpt-pv-card-titles' },
           h('span', { className: 'dpt-pv-card-title' }, card ? tf(t, 'projectProposalChange', { title }) : tf(t, 'projectProposalNew', { title })),
           proposal.reason ? h('span', { className: 'dpt-pv-meta' }, proposal.reason) : null),
-        h('span', { className: 'dpt-pv-meta' }, proposal.id)),
+        h('span', { className: 'dpt-pv-meta' }, [proposal.id, proposal.source === 'guide' ? t('projectGuide') : t('projectChatSource'), proposal.session].filter(Boolean).join(' · '))),
+      proposal.stale ? h('p', { role: 'status' }, t('projectProposalStale')) : null,
       h('ol', { className: 'dpt-pv-items' },
         ...preview.map(item => {
           const old = before.get(item.id);
@@ -146,6 +147,8 @@ export function createProjectCards({ React, h, tf, commandError, projectionValue
       h('div', { className: 'dpt-cc-actions' },
         h('button', { type: 'button', className: 'dpt-cc-btn', 'data-ghost': '', disabled: busy,
           onClick: () => { void act({ op: 'reject', proposal: proposal.id }, 'projectMsgReject', { id: proposal.id, title }); } }, t('projectReject')),
+        proposal.stale ? h('button', { type: 'button', className: 'dpt-cc-btn', disabled: busy || !card || !proposal.delta,
+          onClick: () => { void act({ op: 'rebase', proposal: proposal.id }); } }, t('projectReviewMerge')) :
         h('button', { type: 'button', className: 'dpt-cc-btn', 'data-primary': '', disabled: busy,
           onClick: () => { void act({ op: 'approve', proposal: proposal.id }, 'projectMsgApprove', { id: proposal.id, title }); } }, t('projectApprove'))));
   }
@@ -157,13 +160,13 @@ export function createProjectCards({ React, h, tf, commandError, projectionValue
     const [busy, setBusy] = React.useState(false);
     const number = typeof turn === 'number' ? turn : turn?.turn;
     const proposals = state?.proposals?.filter(row => row.session === sessionId) ?? [];
-    if (!proposals.length || (latest !== undefined && number !== undefined && number !== latest) || form?.getSnapshot?.()?.value?.projectCards === false) return null;
+    if ((!proposals.length && !message) || (latest !== undefined && number !== undefined && number !== latest) || form?.getSnapshot?.()?.value?.projectCards === false) return null;
     const act = async (payload, key, values) => {
       setBusy(true);
       try {
         const outcome = projectOutcome(await run(payload), t);
         setMessage(outcome.error ?? '');
-        if (!outcome.error && !await reply(tf(t, key, { ...values, change: changeNote(outcome.text) }))) setMessage(t('cardReplyFailed'));
+        if (key && !outcome.error && !await reply(tf(t, key, { ...values, change: changeNote(outcome.text) }))) setMessage(t('cardReplyFailed'));
       } catch (error) { setMessage(String(error?.message ?? error)); } finally { setBusy(false); }
     };
     return h('section', { className: 'dpt-pv-group', 'aria-label': t('projectProposals') },
@@ -232,9 +235,14 @@ export function createProjectCards({ React, h, tf, commandError, projectionValue
           h('button', { type: 'button', className: 'dpt-cc-btn', 'data-ghost': '', disabled: busy, onClick: () => { void run?.({ op: 'refresh' }); } }, t('projectRefresh')),
           h('button', { type: 'button', className: 'dpt-cc-btn', disabled: busy || editing !== undefined, onClick: () => beginEdit() }, t('projectNewCard')))),
       h('p', { className: 'dpt-pv-intro' }, t('projectIntro')),
+      !cards.some(card => card.kind === 'setting') ? h('div', { className: 'dpt-cc-actions' },
+        state?.setupStatus ? h('span', { role: 'status' }, t('projectSetup_' + state.setupStatus)) : null,
+        state?.setupStatus === 'guiding' && state.setupSummary && !state.guide ? h('p', null, state.setupSummary) : null,
+        !state?.guide && state?.setupStatus !== 'deferred' ? h('button', { type: 'button', disabled: busy, onClick: () => { void act({ op: 'setup-defer' }); } }, t('projectDefer')) : null) : null,
       message ? h('p', { className: 'dpt-cc-errors', role: 'alert' }, message) : null,
       state?.guide ? h('section', { className: 'dpt-pv-card', 'aria-label': t('projectGuide') },
         h('h3', null, t('projectGuide')),
+        h('button', { type: 'button', className: 'dpt-cc-btn', disabled: busy, onClick: () => { void act({ op: 'guide-stop' }); } }, t('projectEndGuide')),
         ...state.guide.messages.map((row, index) => h('p', { key: index, style: { whiteSpace: 'pre-wrap' } }, h('strong', null, t(row.role === 'user' ? 'projectYou' : 'projectGuide') + ' · '), row.text)),
         state.guide.pending ? h('p', { role: 'status' }, t('projectGuideWorking')) : null,
         h('form', { onSubmit: async event => { event.preventDefault(); if (answer.trim() && !busy && await act({ op: 'guide-reply', message: answer.trim() })) setAnswer(''); } },
