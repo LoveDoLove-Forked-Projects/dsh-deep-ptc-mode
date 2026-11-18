@@ -60,7 +60,9 @@ test('the prompt carries only the latest version, with editing rights by mode', 
   assert.match(plain, /read-only/u);
   assert.doesNotMatch(plain, /project_cards propose/u);
   assert.equal(promptText(undefined, { deep: false }), '', 'nothing for other modes without cards');
-  assert.match(promptText(undefined, { deep: true }), /offer once/u);
+  assert.match(promptText(undefined, { deep: true }), /first visible reply, even on a small task/u);
+  assert.match(promptText({ cards: doc.cards.filter(card => card.kind === 'features') }, { deep: true }), /Start setup yourself/u);
+  assert.doesNotMatch(deep, /Start setup yourself/u);
 });
 
 function workspace() {

@@ -67,6 +67,25 @@ async function renderView(f, state = project()) {
 }
 const buttons = (view, label) => view.root.findAll(node => node.type === 'button' && JSON.stringify(node.props.children ?? '').includes(label));
 
+test('chat-origin proposals can be approved in chat and panel-origin proposals stay in the panel', async () => {
+  const f = fixture();
+  const tail = f.slots.get('conversation.chat.turnTail#deep-ptc-project-proposals');
+  const state = project();
+  state.proposals[0].session = 'chat';
+  state.proposals.push({ ...state.proposals[0], id: 'P2', session: 'guide-child' });
+  let view;
+  await act(async () => { view = Renderer.create(React.createElement(tail.render, {
+    ...tail.slot.inject('chat'), useProjection: () => state, turn: 2, useChat: select => select({ timeline: { turnOrder: [1, 2] } }),
+  })); });
+  try {
+    assert.equal(buttons(view, 'projectApprove').length, 1);
+    await act(async () => buttons(view, 'projectApprove')[0].props.onClick());
+    assert.equal(f.calls[0][0], 'chat');
+    assert.match(f.calls[0][1], /"proposal":"P1"/u);
+    assert.equal(f.prompts[0].mode, 'steer');
+  } finally { await act(async () => view.unmount()); }
+});
+
 test('the project view joins the conversation tabs for Deep PTC and lists every card kind', async () => {
   const f = fixture();
   const { header, view, entry } = await renderView(f);
@@ -110,9 +129,11 @@ test('approve, submit, polish and question each tell the model what happened', a
     const check = view.root.find(node => node.type === 'input' && node.props.type === 'checkbox');
     await act(async () => check.props.onChange({ target: { checked: true } }));
     await act(async () => view.root.find(node => node.type === 'form').props.onSubmit({ preventDefault() {} }));
-    assert.equal(f.calls.length, calls + 1, 'polishing checks the draft version without writing');
-    assert.equal(JSON.parse(f.calls.at(-1)[1].slice('/deep-ptc-project '.length)).op, 'check');
-    assert.match(f.prompts.at(-1).content[0].text, /^projectMsgPolish\{.*- R1 React 18\\n- R2 Vite/u);
+    assert.equal(f.calls.length, calls + 2);
+    assert.equal(JSON.parse(f.calls.at(-2)[1].slice('/deep-ptc-project '.length)).op, 'check');
+    const polishRequest = JSON.parse(f.calls.at(-1)[1].slice('/deep-ptc-project '.length));
+    assert.equal(polishRequest.op, 'guide-start');
+    assert.match(polishRequest.message, /^projectMsgPolish\{.*- R1 React 18\\n- R2 Vite/u);
 
     const question = buttons(view, 'projectQuestion')[0];
     await act(async () => question.props.onClick());
@@ -137,7 +158,8 @@ test('the project cards switch removes the view; the empty state offers a guided
   try {
     assert.match(JSON.stringify(view.toJSON()), /projectEmptyTitle/u);
     await act(async () => buttons(view, 'projectBootstrap')[0].props.onClick());
-    assert.equal(f.prompts.at(-1).content[0].text, 'projectMsgBootstrap{}');
+    assert.equal(JSON.parse(f.calls.at(-1)[1].slice('/deep-ptc-project '.length)).op, 'guide-start');
+    assert.equal(f.prompts.length, 0, 'panel setup does not prompt the parent conversation');
   } finally {
     await act(async () => view.unmount());
     await act(async () => header.unmount());
