@@ -97,7 +97,7 @@ test('a choice and a reply button send the pick to the command and then to the m
     assert.equal(f.calls.at(-1)[1], '/deep-ptc-card-act {"id":"deploy-plan","action":"act","key":"go","values":{"plan":"k8s"}}');
     assert.equal(f.prompts.length, 1);
     assert.equal(f.prompts[0].sessionId, 'session-A');
-    assert.equal(f.prompts[0].mode, 'queue');
+    assert.equal(f.prompts[0].mode, 'steer');
     assert.equal(JSON.stringify(f.prompts[0].content), JSON.stringify([{ type: 'text', text: '部署方案选 k8s，开始准备' }]));
   } finally { await act(async () => view.unmount()); }
 });

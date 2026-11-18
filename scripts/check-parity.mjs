@@ -6,13 +6,14 @@
 import { registerHooks, createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 
 const modules = process.env.PTC_RUNTIME_MODULES;
 if (!modules) throw new Error('Set PTC_RUNTIME_MODULES to the runtime node_modules directory');
 const stage = path.resolve(import.meta.dirname, '..');
+const accountHome = process.env.DSH_HOME || path.join(homedir(), '.dsh');
 const home = mkdtempSync(path.join(tmpdir(), 'deep-ptc-parity-'));
 process.env.HOME = home;
 process.env.USERPROFILE = home;
@@ -39,7 +40,7 @@ const fixture = name => pathToFileURL(path.join(stage, 'scripts', 'fixtures', na
 const config = path.join(home, 'cordis.yml');
 writeFileSync(config, '[]\n');
 const extra = {
-  plain: [], cards: [], 'cards-wsl': [], 'tool-overrides': [], 'runtime-update': [], 'own-row-fails': [],
+  plain: [], live: [], cards: [], guide: [], 'cards-wsl': [], 'tool-overrides': [], 'runtime-update': [], 'own-row-fails': [],
   misbehaving: [{ id: 'misbehaving', name: fixture('misbehaving-plugin.mjs') }],
   'broken-plugin': [{ id: 'broken', name: fixture('broken-plugin.mjs') }],
 }[scenario];
@@ -57,6 +58,11 @@ const patches = [
   } }] },
   ...extra.length ? [{ insert: extra }] : [],
 ];
+if (scenario === 'live') {
+  // Only the real-model scenario uses the host's credential provider. Sessions and project files remain isolated.
+  const credentials = patches.flatMap(patch => patch.insert ?? []).find(row => row.id === 'credentials');
+  credentials.config = { ...credentials.config, path: path.join(accountHome, '.credentials.yaml') };
+}
 let updateFile, updateSource;
 if(scenario==='runtime-update'){
  updateSource=readFileSync(path.join(modules,'@deepseek-ai/dsh-web-app/presets/ptc.patch.yml'),'utf8');
@@ -74,6 +80,11 @@ for (let i = 0; i < 200 && (await inventoryOf('deep-ptc')) === undefined; i++) a
 if (scenario === 'own-row-fails') for (let i = 0; i < 200 && (await inventoryOf('deep-ptc'))?.broken; i++) await sleep(25);
 assert.equal((await inventoryOf('ptc')).broken, undefined, 'the official preset itself must mount');
 assert.equal((await inventoryOf('deep-ptc')).broken, undefined, 'Deep PTC must mount');
+if (scenario === 'live') {
+  const { runBehaviorCases } = await import('./live-behavior.mjs');
+  await runBehaviorCases(ctx, presets, home, await load('@deepseek-ai/dsh-llm'));
+  process.exit(0);
+}
 
 const view = async id => {
   const lease = await presets.acquireScope(id);
@@ -125,18 +136,72 @@ if (scenario === 'tool-overrides') {
   process.exit(0);
 }
 
-if (scenario === 'cards' || useWsl) {
+if (scenario === 'cards' || scenario === 'guide' || useWsl) {
   const { CARD_COMMAND, CARD_TOOL } = await import('../lib/cards.mjs');
   const { PROJECT_COMMAND, PROJECT_TOOL } = await import('../lib/project-context.mjs');
   const { setSandboxMode } = await load('@deepseek-ai/dsh-sandbox-policy');
+  if (scenario === 'guide') {
+    const { LlmAdapter } = await load('@deepseek-ai/dsh-llm');
+    class GuideAdapter extends LlmAdapter {
+      calls = 0;
+      async *stream() {
+        this.calls++;
+        if (this.calls === 2) {
+          const args = JSON.stringify({ description: 'Propose the runtime setting',
+            code: 'console.log(await tools.project_cards({action:"propose", title:"Runtime", items:[{text:"Use Node 24"}]}))' });
+          const call = { type: 'tool-call', id: 'offline-project-proposal', name: 'run_code', arguments: args };
+          yield { type: 'block-start', index: 0, blockType: 'tool-call' };
+          yield { type: 'tool-call-delta', index: 0, id: call.id, name: call.name, argumentsDelta: args };
+          yield { type: 'block-end', index: 0, block: call };
+          yield { type: 'finish', reason: { kind: 'tool-calls' } };
+          return;
+        }
+        const text = this.calls === 1 ? 'Which runtime does your project support?' : 'Review the proposed setting.';
+        yield { type: 'block-start', index: 0, blockType: 'text' };
+        yield { type: 'text-delta', index: 0, text };
+        yield { type: 'block-end', index: 0, block: { type: 'text', text } };
+        yield { type: 'finish', reason: { kind: 'stop' } };
+      }
+    }
+    ctx.llm.registerAdapter(['guide-test'], new GuideAdapter());
+  }
   const { agent, dispose } = await ctx.agents.create({
     sessionId: 'deep-ptc-card-host-check',
+    ...scenario === 'guide' ? { agentOptions: { provider: 'guide-test', model: 'offline' } } : {},
     meta: { cwd: home, agentPreset: 'deep-ptc' },
     setup: async agentCtx => { await presets.mount(agentCtx, 'deep-ptc'); },
   });
   try {
     const signal = AbortSignal.timeout(30_000);
+    const assembleProject = async () => {
+      const assembled = await ctx.systemPrompt.assemble({ agent, scope: agent, signal });
+      assert.ok(assembled.sections.some(section => section.text.includes('Before each run_code')), 'the mounted persona requires visible progress');
+      assert.match(assembled.sections.find(section => section.name === 'deep-ptc:conversation-cards')?.text ?? '', /Proactively use ui_card/u);
+      return assembled.sections.find(section => section.name === 'deep-ptc:project-cards')?.text ?? '';
+    };
+    assert.match(await assembleProject(), /Start setup yourself/u);
     const run = async (name, payload) => (await ctx.commands.execute(agent, `/${name} ${JSON.stringify(payload)}`, [], signal)).result;
+    if (scenario === 'guide') {
+      const panel = () => ctx.sessionProjections.snapshot(agent.session, ['deepPtcProject']).values.deepPtcProject?.guide;
+      const start = await run(PROJECT_COMMAND, { op: 'guide-start' });
+      assert.equal(start.kind, 'success', start.text);
+      for (let i = 0; i < 150 && !panel()?.messages.some(m => m.role === 'assistant'); i++) await sleep(40);
+      assert.match(JSON.stringify(panel()), /Which runtime/u);
+      const childId = panel().childId;
+      const reply = await run(PROJECT_COMMAND, { op: 'guide-reply', message: 'Node 24' });
+      assert.equal(reply.kind, 'success', reply.text);
+      for (let i = 0; i < 150 && panel().messages.filter(m => m.role === 'assistant').length < 2; i++) await sleep(40);
+      assert.equal(panel().messages.filter(m => m.role === 'assistant').length, 2, JSON.stringify(panel()));
+      assert.equal(panel().childId, childId);
+      const proposals = ctx.sessionProjections.snapshot(agent.session, ['deepPtcProject']).values.deepPtcProject.proposals;
+      assert.equal(proposals.length, 1, JSON.stringify(proposals));
+      assert.equal(proposals[0].session, childId);
+      const approved = await run(PROJECT_COMMAND, { op: 'approve', proposal: proposals[0].id });
+      assert.equal(approved.kind, 'success', approved.text);
+      assert.match(readFileSync(path.join(home, 'PROJECT-CARDS.md'), 'utf8'), /Use Node 24/u);
+      console.log('ok  real child setup, panel messages, child proposal and parent-panel approval using an offline test model');
+      process.exit(0);
+    }
     const tool = ctx.tools.get(CARD_TOOL, agent);
     const expectedShell = useWsl || process.platform !== 'win32' ? 'bash' : 'pwsh';
     const command = useWsl ? 'test -n "$WSL_DISTRO_NAME"' : expectedShell === 'pwsh'
@@ -166,6 +231,8 @@ if (scenario === 'cards' || useWsl) {
     const { proposal } = await project.execute({ action: 'propose', card: 'rules', items: [{ id: 'R1', text: 'Use the isolated test workspace' }] }, { agent });
     assert.equal((await run(PROJECT_COMMAND, { op: 'approve', proposal })).kind, 'success');
     assert.match(readFileSync(cardsFile, 'utf8'), /Use the isolated test workspace/u);
+    assert.match(await assembleProject(), /Use the isolated test workspace/u);
+    assert.doesNotMatch(await assembleProject(), /Start setup yourself/u);
     console.log(`ok  real host card command (${useWsl ? 'WSL' : expectedShell}), host policy denial, and project proposal approval`);
   } finally {
     await dispose();

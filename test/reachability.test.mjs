@@ -5,9 +5,32 @@ import template from '../lib/preset.json' with { type: 'json' };
 import { configuredPreset, normalizeForegroundSeconds } from '../lib/model.mjs';
 import { programPauseIssue, shellPauseSeconds } from '../lib/sleep-lint.mjs';
 import { reachabilityGuard } from '../lib/rules.mjs';
+import { installProgressReminder } from '../lib/progress.mjs';
 import { finishPromoted, steerableJobs, steerableQuestions, steerableTool, steeringWatch } from '../lib/reachable.mjs';
 
 const config = { foregroundSeconds: 30, maxQuestionSeconds: 300, maxPollsPerProgram: 3 };
+
+test('progress reminders count consecutive silent tool steps within a Deep PTC turn', () => {
+  let observe, reminder;
+  const session = { header: { agentPreset: 'deep-ptc' } };
+  const agent = { session };
+  installProgressReminder({
+    on: (_event, fn) => { observe = fn; },
+    systemPrompt: { context: entry => { reminder = () => entry.text({ agent }); } },
+  });
+  const message = content => observe(session, { type: 'assistant/message', data: { message: { content } } });
+  const silent = [{ type: 'reasoning', text: 'internal' }, { type: 'tool-call' }];
+  message(silent);
+  assert.equal(reminder(), '');
+  message(silent);
+  assert.match(reminder(), /visible assistant text/u);
+  message([{ type: 'text', text: 'I found the missing import.' }, ...silent]);
+  assert.equal(reminder(), '');
+  message(silent);
+  message(silent);
+  observe(session, { type: 'turn/end' });
+  assert.equal(reminder(), '');
+});
 
 function fakeAgent(id = 'agent-1') {
   return { id, inbox: { nextStep: [], nextTurn: [] } };

@@ -9,8 +9,60 @@ import { command, install, projectToolDefinition, sectionText, PROJECT_COMMAND, 
 import { apply as applyProjectTool } from '../lib/project-tool.mjs';
 import { deriveDeepPtc } from '../lib/model.mjs';
 import snapshot from '../lib/preset.json' with { type: 'json' };
+import { foldGuide } from '../lib/project-guide.mjs';
 
 const at = '2026-11-17T12:00:00.000Z';
+
+test('guide progress text retains running status until the host ends its turn', () => {
+  const fold = (state, kind, text) => foldGuide(state, { data: { childId: 'guide', kind, text } });
+  let state = fold({}, 'start');
+  assert.equal(fold(state, 'assistant', 'Reading the project').guide.pending, true);
+  state = fold(state, 'idle');
+  assert.equal(fold(state, 'user', 'Continue').guide.pending, false);
+  state = fold(state, 'running');
+  assert.equal(state.guide.pending, true);
+  assert.equal(fold(state, 'reset').guide, undefined);
+});
+
+test('competing proposals stay independent, can rebase and require fresh approval', async () => {
+  const { project, store } = workspace();
+  const host = fakeHost();
+  await install(host.ctx, host.records, { store });
+  const path = store.target(project);
+  const session = { id: 'main', header: { cwd: project } };
+  const run = payload => host.handlers.get(PROJECT_COMMAND)({ agent: { session }, rawInput: JSON.stringify(payload) });
+  await run({ op: 'submit', path, baseVersion: null, title: 'Runtime', items: ['Old A', 'Old B'] });
+  const propose = (id, item, text) => projectToolDefinition().execute({
+    action: 'propose', card: 'runtime', items: [{ id: item, text }],
+  }, { agent: { session: { ...session, id } } });
+  const a = await propose('main', 'R1', 'New A');
+  const b = await propose('assistant', 'R2', 'New B');
+  assert.equal(store.proposals(path).length, 2);
+  assert.equal((await run({ op: 'approve', proposal: a.proposal })).kind, 'success');
+  assert.equal((await run({ op: 'approve', proposal: b.proposal })).kind, 'error');
+  assert.equal((await run({ op: 'rebase', proposal: b.proposal })).kind, 'success');
+  assert.equal((await run({ op: 'approve', proposal: b.proposal })).kind, 'error');
+  assert.equal((await run({ op: 'approve', proposal: store.proposals(path)[0].id })).kind, 'success');
+  assert.deepEqual(store.read(path).doc.cards[0].items.map(item => item.text), ['New A', 'New B']);
+});
+
+test('another conversation sees project setup progress, pending drafts and user deferral', async () => {
+  const { project, store } = workspace();
+  const host = fakeHost();
+  await install(host.ctx, host.records, { store });
+  const first = { session: { id: 'one', header: { cwd: project } } };
+  const second = { session: { id: 'two', header: { cwd: project } } };
+  const tool = projectToolDefinition();
+  const instruction = () => sectionText(host.ctx, store, { agent: second });
+  await tool.execute({ action: 'setup', status: 'guiding', summary: 'Which runtime?' }, { agent: first });
+  assert.match(instruction(), /already underway/u);
+  assert.equal((await tool.execute({ action: 'read' }, { agent: second })).setup.summary, 'Which runtime?');
+  await tool.execute({ action: 'propose', title: 'Runtime', items: ['Node'] }, { agent: first });
+  assert.match(instruction(), /pending setting proposals/u);
+  await tool.execute({ action: 'setup', status: 'deferred' }, { agent: second });
+  assert.match(instruction(), /user deferred/u);
+  assert.equal((await tool.execute({ action: 'read' }, { agent: second })).proposals.length, 1);
+});
 
 function sampleDoc() {
   let doc = blankDoc();
@@ -60,7 +112,9 @@ test('the prompt carries only the latest version, with editing rights by mode', 
   assert.match(plain, /read-only/u);
   assert.doesNotMatch(plain, /project_cards propose/u);
   assert.equal(promptText(undefined, { deep: false }), '', 'nothing for other modes without cards');
-  assert.match(promptText(undefined, { deep: true }), /offer once/u);
+  assert.match(promptText(undefined, { deep: true }), /first visible reply, even on a small task/u);
+  assert.match(promptText({ cards: doc.cards.filter(card => card.kind === 'features') }, { deep: true }), /Start setup yourself/u);
+  assert.doesNotMatch(deep, /Start setup yourself/u);
 });
 
 function workspace() {

@@ -1,6 +1,6 @@
 # Deep PTC mode
 
-[中文](README.zh.md) · MIT · **1.9.9**
+[中文](README.zh.md) · MIT · **2.0.0**
 
 [Changelog](CHANGELOG.md) · [Test report](TEST_REPORT.md) · [Plugin workflows and verification](COMPATIBILITY.md)
 
@@ -8,15 +8,19 @@ Deep PTC is a DeepSeek Harness agent mode with progress reports, clarifying ques
 
 The panel sits beside the conversation and shows the environment, subagents, jobs, output files, SSH connections and tool state. The panel width can be dragged. The capsule expands or collapses it; it sits below the composer by default and can move into the toolbar or be hidden. Deep PTC also has its own settings page. Visual effects are lightweight and start off when an appearance plugin is installed.
 
+## Changes in 2.0.0
+
+Version 2 restores the original 1.9.9 persona and adds proactive cards and progress reminders. Workspace setup remembers guidance, pending proposals and deferral. Independent sources keep separate proposals. Stale proposals require merging and fresh approval. End and restart the panel guide without losing pending proposals. For feature changes the model uses related F records to report new and existing behavior checks together.
+
 ## Five basic problems
 
 | # | Problem | What Deep PTC does |
 | --- | --- | --- |
-| 1 | **Working silently without reporting** | Share short updates before sustained work, at milestones and when blocked. Report the outcome, checks and remaining work. |
-| 2 | **Guessing instead of asking** | Inspect available evidence first. Ask when substantial ambiguity remains or a decision belongs to the user. |
+| 1 | **Working silently without reporting** | Give a brief chat update before each `run_code` call. Two consecutive tool steps without assistant text trigger a reminder at the next step. |
+| 2 | **Guessing instead of asking** | Meaning belongs to the user, facts to the tools: ask one to three questions with options when names, targets, routes, scope or acceptance criteria are unclear; an unfamiliar term is asked about first and researched only when the user does not know it; inspectable facts are looked up. The user's statements outrank the model's prior beliefs: no silent change of approach, every part of a request checked off, nothing unverified reported as verified. |
 | 3 | **Sleeping or becoming unreachable** | Enforced in code: foreground waits move to the background after 30 s; a user message hands the waiting command to the background within about 2 s; foreground sleeps over 5 s are refused; job completion wakes the model. |
-| 4 | **No plan, or an invisible plan** | Work directly on small tasks. For multi-step work, outline the outcome, steps and verification. Ask before an unauthorized irreversible action. Explicit plan mode takes priority. |
-| 5 | **Tool definitions crowding the context** | Derive from the live official PTC composition, keep the catalog compact and load full tool schemas on demand. |
+| 4 | **No plan, or an invisible plan** | Plan by estimated size: act silently under 5 minutes; show the plan and start without approval for 5–20 minutes; show it and wait for approval over 20 minutes. Re-plan when the estimate moves up; the user can redirect at any step. |
+| 5 | **Not using the concise context and unlimited-token prompt** | Derive from the live official PTC composition, keep the tool catalog compact and load full schemas on demand, and state that this mode spends its token budget on reads, searches, commands and checks rather than rationing them. The prompt does not change billing or the real token limit. |
 
 ## Built for “everything is a plugin”
 
@@ -85,7 +89,7 @@ The project's standing rules and records, kept in `PROJECT-CARDS.md` at the work
   - **Implemented features** (F): the model records verified behavior, its entry point and relevant checks. Before changing related code, it reads these entries and retests existing behavior affected by the change. Users can question records for the model to verify and correct.
   - **User requirements** (Q ids) record the lasting requirements you have stated, with their status (active / done / superseded). The model checks new requests against them and asks you first when they conflict.
 - **The Project cards view** sits next to Chat / Trajectory / Stats in Deep PTC sessions. You can browse cards by group, edit and submit them, or tick a box to have the model polish your edit first (it comes back as a proposal for you to approve). You can also browse history and roll back, approve or reject proposals, and question the model's records. Each submit, approval and rollback sends the model a message.
-- **Getting started**: in a workspace without cards, "Set up with the model" has it ask you a few key questions with interactive cards, or draft from AGENTS.md / README, then propose the cards for approval.
+- **Getting started**: when project cards are enabled and a project has no setting cards, the model should initiate setup in its first visible reply with a specific question or grounded draft. Setup started in chat offers approval in that chat. Starting setup in the Project cards panel opens a dedicated subagent there for questions, replies and proposals. A reply steers its current task.
 - **Edit protection**. Submit, delete and rollback check the file version from when the edit began. On a conflict, the editor keeps the draft and offers to merge it with the current content. Writes preserve Markdown outside the managed lines. History and proposals live in `$DSH_HOME/storages/deep-ptc-project-cards.json`.
 - Under **Settings → Deep PTC → Cards** you can switch off conversation cards and project cards separately (both on by default).
 
@@ -253,10 +257,14 @@ Limitation: this wraps the host's `agentPresets.composedPreset` instance and dep
 
 ## Working contract
 
-- Inspect facts. Ask when a material ambiguity remains, the scope expands, or an irreversible action requires authorization.
-- Do small tasks directly. Outline multi-step work and report sustained operations or meaningful changes.
-- Use managed jobs for long shell work. Keep the job IDs, respond to steering first, and collect the results required for completion.
-- Verify through the normal entry point and report what the evidence establishes.
+- Spend the budget on the work: the persona grants an unlimited token budget in this mode, so it does not skip reads, searches, commands or checks to save tokens. Guardrails forbid padding, and compaction, pruning and subagents keep each request inside its finite context window.
+- Stay reachable while work runs: no sleeps, busy-polls or long foreground calls. Long commands run as background jobs while the model continues short steps and checks progress without blocking; with nothing left to do it states what is running and ends the turn. Job completion wakes it, and user messages are handled immediately.
+- Plan by expected size: five minutes or less, plan internally and act; five to twenty minutes, show the plan and start without approval; more than twenty minutes, show the plan and wait for approval. Re-plan when the estimate moves up a band. Explicit plan mode always wins.
+- Ask instead of guessing intent: meaning belongs to the user, facts to the tools. Unfamiliar names, competing targets or routes, authoritative sources, expected process, acceptance criteria and scope are asked about rather than guessed or searched for; inspectable facts are looked up. One to three questions with options, recommended first; the user's answer wins.
+- Work visibly: one sentence before each `run_code`, longer updates at milestones, never more than two or three silent tool calls.
+- Verify changed behavior and stop when criteria are met; delegate only genuinely independent work and collect results through the actual tool's channel.
+
+A prompt changes the model's working tendency, not the real token limit or billing, and compliance is not guaranteed. The setting that actually controls thinking depth is the model's `reasoningEffort`.
 
 ## Install or upgrade
 

@@ -240,6 +240,8 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     projectEmptyTitle: "还没有特点卡片",
     projectEmptyHint: "可以让模型先问你几个问题（技术栈、规范、约束、协作方式），再整理成卡片交给你批准；也可以自己新建。",
     projectBootstrap: "让模型引导建立",
+    projectEndGuide: "结束本次建卡", projectDefer: "暂缓建卡", projectSetup_deferred: "项目已暂缓建卡，可随时重新开始", projectSetup_pending: "项目已有待审批草稿", projectSetup_guiding: "项目已开始引导", projectChatSource: "对话", projectProposalStale: "原卡已更新，请合并后重新审阅；若原卡或条目已删除，请重新提案。", projectReviewMerge: "合并并查看差异",
+    projectGuide: "建卡助手", projectYou: "你", projectAnswer: "回复建卡助手", projectGuideWorking: "助手正在处理…", projectGuideStart: "请在这个面板用中文引导我建立项目设定。",
     projectKindSetting: "项目设定",
     projectKindFeatures: "已实现功能 · 模型维护",
     projectKindRequirements: "用户要求 · 模型维护",
@@ -345,6 +347,8 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     projectEmptyTitle: "No project cards yet",
     projectEmptyHint: "Let the model ask you a few questions (stack, conventions, constraints, how you work) and turn the answers into cards for you to approve, or create one yourself.",
     projectBootstrap: "Set up with the model",
+    projectEndGuide: "End setup", projectDefer: "Defer setup", projectSetup_deferred: "Project setup deferred; restart when ready", projectSetup_pending: "Drafts await review", projectSetup_guiding: "Project setup started", projectChatSource: "Chat", projectProposalStale: "The card changed. Review a merged proposal, or request a new one if the original was deleted.", projectReviewMerge: "Merge and review",
+    projectGuide: "Project card assistant", projectYou: "You", projectAnswer: "Reply to the assistant", projectGuideWorking: "Assistant working…", projectGuideStart: "Help me set up this project's settings here in the panel.",
     projectKindSetting: "Project setting",
     projectKindFeatures: "Implemented features · kept by the model",
     projectKindRequirements: "User requirements · kept by the model",
@@ -913,7 +917,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
       const prompt = REMOTE_SESSION.current?.remote?.session?.prompt;
       if (typeof prompt !== 'function') return false;
       const requestId = globalThis.crypto?.randomUUID?.() ?? `dpt-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      const result = await prompt({ requestId, sessionId, mode: 'queue', content: [{ type: 'text', text }] });
+      const result = await prompt({ requestId, sessionId, mode: 'steer', content: [{ type: 'text', text }] });
       return result?.ok !== false;
     } catch (error) {
       console.warn(`[${PLUGIN}] could not send a message to the model`, error);
@@ -1963,11 +1967,15 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
       // Cards render at the end of the latest turn, in the page flow, never over the composer.
       ctx.inject?.(['remote', 'remote.commands'], child => {
         child.slots.inject('conversation.chat.turnTail', () => child.slots.register({
+          name: 'conversation.chat.turnTail', id: 'deep-ptc-project-proposals', order: 22, locale: 'deep-ptc',
+          inject: sessionId => ({ sessionId, run: payload => runProjectCommand(child, sessionId, payload), reply: text => sendReply(child, sessionId, text) }),
+        }, props => h(LocalizedSlot, { ...props, form, component: ProjectChatProposals })));
+        child.slots.inject('conversation.chat.turnTail', () => child.slots.register({
           name: 'conversation.chat.turnTail', id: 'deep-ptc-cards', order: 21, locale: 'deep-ptc',
           inject: sessionId => ({
             run: (id, action, extra) => runCardCommand(child, sessionId, { id, action, ...extra }),
             // A reply button sends the choice as the user's next message: it starts a turn when the agent
-            // is idle and waits as the next message while it runs.
+            // is idle and steers the current task while it runs.
             reply: text => sendReply(child, sessionId, text),
           }),
         }, props => h(LocalizedSlot, { ...props, form, component: CardTail })));
