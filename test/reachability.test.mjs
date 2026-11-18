@@ -11,23 +11,27 @@ import { finishPromoted, steerableJobs, steerableQuestions, steerableTool, steer
 const config = { foregroundSeconds: 30, maxQuestionSeconds: 300, maxPollsPerProgram: 3 };
 
 test('progress reminders count consecutive silent tool steps within a Deep PTC turn', () => {
-  let observe, reminder;
+  let observe, reminder, section;
   const session = { header: { agentPreset: 'deep-ptc' } };
   const agent = { session };
   installProgressReminder({
     on: (_event, fn) => { observe = fn; },
-    systemPrompt: { context: entry => { reminder = () => entry.text({ agent }); } },
+    systemPrompt: { context: entry => { reminder = () => entry.text({ agent }); }, section: entry => { section = entry; } },
   });
+  assert.equal(section.name, 'deep-ptc:progress');
+  assert.match(section.text({ agent }), /does not need a milestone/u, 'the guidance is a protected section');
+  assert.equal(section.text({ agent: { session: { header: { agentPreset: 'standard' } } } }), '');
   const message = content => observe(session, { type: 'assistant/message', data: { message: { content } } });
   const silent = [{ type: 'reasoning', text: 'internal' }, { type: 'tool-call' }];
-  message(silent);
   assert.equal(reminder(), '');
   message(silent);
-  assert.match(reminder(), /visible assistant text/u);
+  assert.match(reminder(), /started this turn with a tool step and no visible text/u, 'a turn that starts silently is nudged at once');
   message([{ type: 'text', text: 'I found the missing import.' }, ...silent]);
   assert.equal(reminder(), '');
   message(silent);
+  assert.equal(reminder(), '', 'after speaking, one quiet step is fine');
   message(silent);
+  assert.match(reminder(), /last two tool steps had no visible assistant text/u);
   observe(session, { type: 'turn/end' });
   assert.equal(reminder(), '');
 });

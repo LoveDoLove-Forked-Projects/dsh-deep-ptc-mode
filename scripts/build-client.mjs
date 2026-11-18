@@ -4,7 +4,7 @@ const root = new URL('../', import.meta.url);
 const read = path => readFileSync(new URL(path, root), 'utf8').replaceAll('\r\n', '\n');
 const modules = {
   'conversation-cards': 'const { CardTail, commandError } = createConversationCards({ React, h, tf, commandText, useFormValue });',
-  'project-cards': 'const { PROJECT_COMMAND_NAME, runProjectCommand, ProjectView, ProjectChatProposals } = createProjectCards({ React, h, tf, commandError, projectionValue });',
+  'project-cards': 'const { PROJECT_COMMAND_NAME, runProjectCommand, ProjectView, ProjectChatProposals } = createProjectCards({ React, h, tf, commandError, projectionValue, openTab: openConversationTab });',
   styles: '',
 };
 

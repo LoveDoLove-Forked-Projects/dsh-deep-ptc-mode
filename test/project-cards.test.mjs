@@ -283,3 +283,17 @@ test('setting cards group by category, ahead of the model records, in the file a
   assert.ok(text.indexOf('# Settings: Stack and environment') < text.indexOf('# Settings: Constraints'));
   assert.ok(text.indexOf('# Settings: Other') < text.indexOf('# Records kept by Deep PTC'));
 });
+
+test('an oversized prompt leaves out whole cards, settings first, and names the rest', () => {
+  let doc = blankDoc();
+  const long = n => Array.from({ length: 12 }, (_, index) => `${n} rule ${index} ${'x'.repeat(400)}`);
+  for (let index = 0; index < 6; index++) doc = writeCard(doc, { title: `Rules ${index}`, category: 'code', items: long(index) }).doc;
+  doc = writeCard(doc, { kind: 'features', items: ['records come last'] }).doc;
+  const text = promptText(doc, { deep: true });
+  assert.ok(text.length <= 16_000);
+  assert.match(text, /## Rules 0 \(setting/u, 'the first setting card is kept');
+  assert.match(text, /more card\(s\) not shown here: .*\(features\)\. Read them with project_cards read/u);
+  for (const block of text.split('\n## ').slice(1, -1)) {
+    if (block.startsWith('Rules')) assert.equal(block.split('\n').filter(row => /rule \d+/u.test(row)).length, 12, 'no card is cut in half');
+  }
+});

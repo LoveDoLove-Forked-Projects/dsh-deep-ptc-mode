@@ -254,47 +254,71 @@ export function createConversationCards({ React, h, tf, commandText, useFormValu
     return outcome?.kind === 'error' ? commandText(outcome.text, t) : undefined;
   }
 
-  function CardView({ card, run, reply, pending, t }) {
+  // Why a version cannot take clicks, mirroring archivedReason() in lib/card-state.mjs.
+  function archivedReason(state, version, latest) {
+    if (latest.get(version.id)?.rev !== version.rev) return 'superseded';
+    if (version.phase === 'dismissed') return 'dismissed';
+    if (version.turn !== state.turn) return 'earlier-turn';
+    if (version.phase !== 'open') return 'settled';
+    return undefined;
+  }
+  const ARCHIVE_LABEL = { superseded: 'cardSuperseded', 'earlier-turn': 'cardArchived' };
+  const closeButton = (t, disabled, onClick) => h('button', { type: 'button', className: 'dpt-cc-close', disabled, 'aria-label': t('cardDismiss'), title: t('cardDismiss'), onClick },
+    svg(14, [h('path', { key: 1, d: 'm4.5 4.5 7 7m0-7-7 7', ...stroke })]));
+
+  function CardHead({ card, t, badge, onClose, pending }) {
+    return h('header', { className: 'dpt-cc-head' },
+      h('span', { className: 'dpt-cc-icon' }, h(CardIcon, { name: card.icon ?? TONE_ICON[card.tone] ?? 'info' })),
+      h('div', { className: 'dpt-cc-titles' },
+        h('span', { className: 'dpt-cc-title' }, card.title),
+        card.subtitle ? h('span', { className: 'dpt-cc-sub' }, card.subtitle) : null),
+      badge ? h('span', { className: 'dpt-cc-pill', 'data-phase': badge.phase, role: 'status' }, badge.text) : null,
+      onClose ? closeButton(t, pending, onClose) : null);
+  }
+
+  // A closed card collapses to one line in the history and can be read again.
+  function ClosedStub({ card, t }) {
+    const [open, setOpen] = React.useState(false);
+    if (open) return h('div', { className: 'dpt-cc-stub-open' },
+      h('button', { type: 'button', className: 'dpt-cc-stub', 'aria-expanded': true, onClick: () => setOpen(false) }, tf(t, 'cardClosedStub', { title: card.title })),
+      h(CardView, { card, archived: 'dismissed', t }));
+    return h('button', { type: 'button', className: 'dpt-cc-stub', 'aria-expanded': false, onClick: () => setOpen(true) }, tf(t, 'cardClosedStub', { title: card.title }));
+  }
+
+  function CardView({ card, size = card.size, archived, run, reply, pending, t }) {
     const blocks = Array.isArray(card.blocks) ? card.blocks
       : Array.isArray(card.lines) && card.lines.length > 0 ? [{ type: 'rows', items: card.lines }] : [];
-    // 1.9.7/1.9.8 cards stored one `stop` button.
-    const actions = Array.isArray(card.actions) ? card.actions
-      : card.stop ? [{ id: 'stop', label: card.stop.label, style: 'primary', run: card.stop }] : [];
+    const actions = Array.isArray(card.actions) ? card.actions : [];
     const [values, setValues] = React.useState(() => initialValues(card));
     const [message, setMessage] = React.useState();
-    const phase = CARD_PHASES[card.phase];
+    const live = archived === undefined;
     const errors = Array.isArray(card.result?.errors) ? card.result.errors : [];
-    const open = card.phase === 'open';
     const setValue = (name, value) => { setValues(current => ({ ...current, [name]: value })); setMessage(undefined); };
     async function press(action) {
       setMessage(undefined);
-      const error = commandError(await run(card.id, 'act', { key: action.id, values, revision: card.revision }), t);
+      const error = commandError(await run('act', { key: action.id, values }), t);
       if (error !== undefined) { setMessage(error); return; }
       if (action.reply) {
         const sent = await reply(replyText(card, action, values));
         if (sent === false) setMessage(t('cardReplyFailed'));
       }
     }
-    const last = card.result?.label && open && errors.length === 0 ? tf(t, 'cardLast', { action: card.result.label }) : undefined;
+    // Settled or archived: say what happened, quietly, in the corner.
+    const badge = card.phase === 'stopping' ? { phase: 'stopping', text: t('cardStopping') }
+      : card.phase === 'failed' ? { phase: 'failed', text: t('cardFailed') }
+      : card.result?.label && card.phase !== 'open' ? { phase: 'stopped', text: tf(t, 'cardChose', { action: card.result.label }) }
+      : ARCHIVE_LABEL[archived] ? { phase: 'archived', text: t(ARCHIVE_LABEL[archived]) } : undefined;
     return h('section', { className: 'dpt-cc', 'data-tone': card.tone && card.tone !== 'info' ? card.tone : undefined,
-      'data-size': card.size === 'half' || card.size === 'third' ? card.size : undefined, 'aria-label': card.title },
-      h('header', { className: 'dpt-cc-head' },
-        h('span', { className: 'dpt-cc-icon' }, h(CardIcon, { name: card.icon ?? TONE_ICON[card.tone] ?? 'info' })),
-        h('div', { className: 'dpt-cc-titles' },
-          h('span', { className: 'dpt-cc-title' }, card.title),
-          card.subtitle ? h('span', { className: 'dpt-cc-sub' }, card.subtitle) : null),
-        phase ? h('span', { className: 'dpt-cc-pill', 'data-phase': card.phase, role: 'status' }, t(phase)) : null,
-        // Closing is always available but quiet; the footer is kept for a note or real buttons.
-        h('button', { type: 'button', className: 'dpt-cc-close', disabled: pending, 'aria-label': t('cardDismiss'), title: t('cardDismiss'),
-          onClick: () => { void run(card.id, 'dismiss', { revision: card.revision }); } }, svg(14, [h('path', { key: 1, d: 'm4.5 4.5 7 7m0-7-7 7', ...stroke })]))),
+      'data-size': size === 'half' || size === 'third' ? size : undefined, 'data-archived': live ? undefined : archived, 'aria-label': card.title },
+      h(CardHead, { card, t, badge, pending, onClose: live ? () => { void run('dismiss'); } : undefined }),
       blocks.length > 0 ? h('div', { className: 'dpt-cc-body' }, ...blocks.map((block, index) =>
-        h(CardBlock, { key: index, block, t, values, setValue, disabled: pending || !open }))) : null,
+        h(CardBlock, { key: index, block, t, values, setValue, disabled: pending || !live }))) : null,
       errors.length > 0 ? h('ul', { className: 'dpt-cc-errors' }, ...errors.map((error, index) => h('li', { key: index }, error))) : null,
       card.result?.jobId ? h('p', { className: 'dpt-cc-note', role: 'status' }, `${t('jobs')} · ${card.result.jobId}`) : null,
       message ? h('p', { className: 'dpt-cc-errors', role: 'alert' }, message) : null,
-      card.note || last || (open && actions.length > 0) ? h('footer', { className: 'dpt-cc-foot' },
-        card.note || last ? h('p', { className: 'dpt-cc-note' }, [card.note, last].filter(Boolean).join(' · ')) : null,
-        open && actions.length > 0 ? h('div', { className: 'dpt-cc-actions' }, ...actions.map(action => {
+      card.note || (live && actions.length > 0) ? h('footer', { className: 'dpt-cc-foot' },
+        card.note ? h('p', { className: 'dpt-cc-note' }, card.note) : null,
+        live && actions.length > 0 ? h('div', { className: 'dpt-cc-actions' }, ...actions.map(action => {
           const missing = missingFor(action, values);
           return h('button', { key: action.id, type: 'button', className: 'dpt-cc-btn',
             'data-primary': action.style === 'primary' ? '' : undefined, 'data-danger': action.style === 'danger' ? '' : undefined,
@@ -304,26 +328,154 @@ export function createConversationCards({ React, h, tf, commandText, useFormValu
         })) : null) : null);
   }
 
-  // Inputs restart from the card's own values whenever the model sends a new body for it.
-  const cardKey = card => `${card.id}:${JSON.stringify((card.blocks ?? []).filter(block => INTERACTIVE.has(block?.type)))}`;
+  // ---- Question cards ---------------------------------------------------------------------------
+  const QuestionIcon = () => svg(16, [h('circle', { key: 1, cx: 8, cy: 8, r: 6, ...stroke }),
+    h('path', { key: 2, d: 'M6.3 6.4a1.8 1.8 0 1 1 2.5 1.7c-.5.2-.8.6-.8 1.1v.4M8 11.3v.1', ...stroke })]);
 
-  function CardTail({ turn, useChat, useProjection, run, reply, form, t }) {
+  function initialAnswers(card) {
+    if (card.result?.answers) return card.result.answers;
+    const answers = {};
+    for (const question of card.questions ?? []) if (question.recommended !== undefined) answers[question.id] = question.recommended;
+    return answers;
+  }
+
+  // The message an answer sends: every question with the answer, the same shape answerMessage() builds.
+  function answerText(card, answers, t) {
+    const lines = (card.questions ?? []).map((question, index) => {
+      const answer = answers[question.id];
+      const shown = answer === undefined || answer === '' || (Array.isArray(answer) && answer.length === 0) ? t('questionSkipped')
+        : question.type === 'text' ? answer
+          : (Array.isArray(answer) ? answer : [answer]).map(value => question.options.find(option => option.value === value)?.label ?? value).join('、');
+      return `${index + 1}. ${question.prompt}\n   → ${shown}`;
+    });
+    return `${tf(t, 'questionReplyHead', { title: card.title })}\n${lines.join('\n')}`;
+  }
+
+  function QuestionField({ question, value, setValue, disabled, answered }) {
+    if (question.type === 'text') {
+      if (answered) return h('p', { className: 'dpt-cq-answer' }, value || '—');
+      return h('textarea', { className: 'dpt-cq-text', rows: 2, value: value ?? '', placeholder: question.placeholder, disabled,
+        'aria-label': question.prompt, onChange: event => setValue(event.target.value) });
+    }
+    const block = { name: question.id, options: question.options, multiple: question.type === 'multi' };
+    if (answered) {
+      // An answered question shows only what was chosen.
+      const picked = new Set(Array.isArray(value) ? value : value === undefined ? [] : [value]);
+      return h('div', { className: 'dpt-cc-tags' }, ...question.options.filter(option => picked.has(option.value))
+        .map(option => h('span', { key: option.value, className: 'dpt-cc-tag', 'data-tone': 'success' }, option.label)));
+    }
+    return h(ChoiceBlock, { block, value, setValue, disabled });
+  }
+
+  function QuestionCard({ card, archived, run, reply, pending, t }) {
+    const [answers, setAnswers] = React.useState(() => initialAnswers(card));
+    const [message, setMessage] = React.useState();
+    const live = archived === undefined;
+    const answered = card.phase === 'answered';
+    const missing = (card.questions ?? []).filter(question => question.optional !== true && !present(answers[question.id]));
+    async function submit(event) {
+      event?.preventDefault?.();
+      setMessage(undefined);
+      const error = commandError(await run('answer', { answers }), t);
+      if (error !== undefined) { setMessage(error); return; }
+      const sent = await reply(answerText(card, answers, t));
+      if (sent === false) setMessage(t('cardReplyFailed'));
+    }
+    const status = answered ? { phase: 'stopped', text: t('questionAnswered') }
+      : live ? { phase: 'question', text: t('questionWaiting') } : { phase: 'archived', text: t('questionUnanswered') };
+    return h('form', { className: 'dpt-cc dpt-cq', 'data-answered': answered ? '' : undefined, 'data-archived': live ? undefined : archived,
+      'aria-label': card.title, onSubmit: event => { void submit(event); } },
+      h('header', { className: 'dpt-cc-head' },
+        h('span', { className: 'dpt-cc-icon dpt-cq-icon' }, h(QuestionIcon)),
+        h('div', { className: 'dpt-cc-titles' },
+          h('span', { className: 'dpt-cq-kicker' }, t('questionKicker')),
+          h('span', { className: 'dpt-cc-title' }, card.title),
+          card.subtitle ? h('span', { className: 'dpt-cc-sub' }, card.subtitle) : null),
+        h('span', { className: 'dpt-cc-pill', 'data-phase': status.phase, role: 'status' }, status.text)),
+      h('ol', { className: 'dpt-cq-list' }, ...(card.questions ?? []).map((question, index) => h('li', { key: question.id, className: 'dpt-cq-item' },
+        h('p', { className: 'dpt-cq-prompt' }, h('span', { className: 'dpt-cq-num' }, index + 1), question.prompt,
+          question.optional ? h('span', { className: 'dpt-cq-optional' }, t('questionOptional')) : null),
+        h(QuestionField, { question, value: answers[question.id], answered: answered || (!live && card.result?.answers !== undefined),
+          disabled: pending || !live, setValue: value => { setAnswers(current => ({ ...current, [question.id]: value })); setMessage(undefined); } })))),
+      message ? h('p', { className: 'dpt-cc-errors', role: 'alert' }, message) : null,
+      live ? h('footer', { className: 'dpt-cc-foot' },
+        h('p', { className: 'dpt-cc-note' }, missing.length > 0 ? tf(t, 'questionRemaining', { count: missing.length }) : t('questionReady')),
+        h('div', { className: 'dpt-cc-actions' },
+          h('button', { type: 'submit', className: 'dpt-cc-btn', 'data-primary': '', disabled: pending || missing.length > 0, 'aria-busy': pending }, t('questionSubmit')))) : null);
+  }
+
+  // Inputs restart from the card's own values whenever the model posts a new version.
+  const versionKey = version => `${version.id}:${version.rev}`;
+
+  // ---- Layout -----------------------------------------------------------------------------------
+  // How much room a card's content needs: 'wide' content keeps the full width, 'compact' content
+  // can share a row with one neighbour, 'tiny' content with two.
+  function cardFootprint(card) {
+    if (card.kind === 'question') return 'wide';
+    const blocks = Array.isArray(card.blocks) ? card.blocks : [];
+    const count = block => Array.isArray(block.items) ? block.items.length : 0;
+    const wide = blocks.some(block => block.type === 'table' || (block.type === 'line' && (block.points?.length ?? 0) > 12)
+      || (block.type === 'choice' && (block.options?.length ?? 0) > 3) || (block.type === 'bars' && count(block) > 5)
+      || (block.type === 'steps' && count(block) > 5) || (block.type === 'stats' && count(block) > 2) || (block.type === 'rows' && count(block) > 4)
+      || ((block.type === 'text' || block.type === 'callout') && (block.text?.length ?? 0) > 160));
+    if (wide || blocks.length > 3 || (card.actions?.length ?? 0) > 2) return 'wide';
+    const tiny = blocks.length <= 1 && (card.actions?.length ?? 0) <= 1
+      && blocks.every(block => (block.type === 'stats' && count(block) <= 2) || (block.type === 'progress' && count(block) <= 1)
+        || (block.type === 'rows' && count(block) <= 2) || block.type === 'tags');
+    return tiny ? 'tiny' : 'compact';
+  }
+
+  /**
+   * Widths for the cards of one turn, in order. Consecutive narrow cards share rows (two halves, or
+   * three thirds when all three are tiny); a narrow card with no partner takes the full width rather
+   * than leaving a gap. An explicit size is kept unless it would stand alone.
+   */
+  function layoutSizes(cards) {
+    const sizes = new Map();
+    let run = [];
+    const flush = () => {
+      if (run.length === 1) sizes.set(run[0], 'full');
+      else if (run.length === 3 && run.every(card => (card.size ?? (cardFootprint(card) === 'tiny' ? 'third' : 'half')) === 'third')) {
+        for (const card of run) sizes.set(card, 'third');
+      } else {
+        run.forEach((card, index) => sizes.set(card, index === run.length - 1 && run.length % 2 === 1 ? 'full' : 'half'));
+      }
+      run = [];
+    };
+    for (const card of cards) {
+      const narrow = card.size === 'half' || card.size === 'third' || (card.size === undefined && cardFootprint(card) !== 'wide');
+      if (!narrow) { flush(); sizes.set(card, 'full'); continue; }
+      run.push(card);
+      if (run.length === 3) flush();
+    }
+    flush();
+    return sizes;
+  }
+
+  // Each turn draws the card versions posted in it; only the newest version in the latest turn is live.
+  function CardTail({ turn, useProjection, run, reply, form, t }) {
     const state = useProjection('deepPtcCards');
     const enabled = useFormValue(form, 'conversationCards') !== false;
     const [busy, setBusy] = React.useState();
-    // Cards belong to the conversation, not to a turn: draw them once, after the latest turn.
-    const lastTurn = typeof useChat === 'function' ? useChat(snapshot => snapshot?.timeline?.turnOrder?.at?.(-1)) : undefined;
     const turnNumber = typeof turn === 'number' ? turn : turn?.turn;
-    const cards = Array.isArray(state?.cards) ? state.cards : [];
-    if (!enabled || cards.length === 0 || (lastTurn !== undefined && turnNumber !== undefined && lastTurn !== turnNumber)) return null;
-    const guarded = (id, task) => async (...args) => {
-      setBusy(id);
-      try { return await task(...args); } catch (error) { return { ok: false, error }; } finally { setBusy(undefined); }
+    const versions = Array.isArray(state?.versions) ? state.versions : [];
+    const mine = versions.filter(version => turnNumber === undefined ? version.turn === state.turn : version.turn === turnNumber);
+    if (!enabled || mine.length === 0) return null;
+    const latest = new Map();
+    for (const version of versions) if ((latest.get(version.id)?.rev ?? 0) < version.rev) latest.set(version.id, version);
+    const guarded = version => async (action, extra) => {
+      setBusy(versionKey(version));
+      try { return await run(version.id, action, { rev: version.rev, ...extra }); } catch (error) { return { ok: false, error }; } finally { setBusy(undefined); }
     };
+    const send = async text => typeof reply === 'function' ? reply(text) : false;
+    const sizes = layoutSizes(mine.filter(version => version.phase !== 'dismissed'));
     return h('section', { className: 'dpt-cards', 'aria-label': t('cardLabel') },
-      ...cards.map(card => h(CardView, { key: cardKey(card), card, pending: busy === card.id, t,
-        run: guarded(card.id, (id, action, extra) => run(id, action, extra)),
-        reply: async text => typeof reply === 'function' ? reply(text) : false })));
+      ...mine.map(version => {
+        const archived = archivedReason(state, version, latest);
+        if (version.phase === 'dismissed') return h(ClosedStub, { key: versionKey(version), card: version, t });
+        const props = { key: versionKey(version), card: version, size: sizes.get(version), archived, pending: busy === versionKey(version), t, run: guarded(version), reply: send };
+        return h(version.kind === 'question' ? QuestionCard : CardView, props);
+      }));
   }
-  return { CardTail, commandError };
+  return { CardTail, commandError, layoutSizes };
 }

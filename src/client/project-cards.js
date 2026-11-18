@@ -1,4 +1,4 @@
-export function createProjectCards({ React, h, tf, commandError, projectionValue }) {
+export function createProjectCards({ React, h, tf, commandError, projectionValue, openTab = () => false }) {
   const PROJECT_COMMAND_NAME = 'deep-ptc-project';
   async function runProjectCommand(child, sessionId, payload) {
     const execute = child.remote?.commands?.execute;
@@ -39,11 +39,58 @@ export function createProjectCards({ React, h, tf, commandError, projectionValue
       onQuestion ? h('button', { type: 'button', className: 'dpt-pv-link', onClick: () => { setAsking(item.id); setText(''); } }, t('projectQuestion')) : null)));
   }
 
-  function CardEditor({ initial, latest, file, busy, t, onSubmit, onCancel, onDelete }) {
+  // A polish suggestion next to the draft: each entry shows the draft text struck through and the
+  // suggested text below; the user takes or keeps each one, then applies the result to the draft.
+  function PolishReview({ suggestion, draft, t, onApply, onDismiss }) {
+    const byId = new Map(draft.items.filter(item => item.id).map(item => [item.id, item.text]));
+    const rows = [
+      ...suggestion.items.map(item => ({ kind: item.id === undefined ? 'added' : byId.get(item.id) === item.text ? 'same' : 'changed', item, before: item.id ? byId.get(item.id) : undefined })),
+      ...draft.items.filter(item => item.id && !suggestion.items.some(row => row.id === item.id)).map(item => ({ kind: 'dropped', item, before: item.text })),
+    ];
+    const [take, setTake] = React.useState(() => rows.map(row => row.kind !== 'same'));
+    const changes = rows.filter(row => row.kind !== 'same').length;
+    function apply() {
+      const items = [];
+      rows.forEach((row, index) => {
+        if (row.kind === 'dropped') { if (!take[index]) items.push({ id: row.item.id, text: row.before }); return; }
+        if (row.kind === 'added') { if (take[index]) items.push({ text: row.item.text }); return; }
+        items.push({ id: row.item.id, text: take[index] || row.kind === 'same' ? row.item.text : row.before });
+      });
+      // Draft entries the polisher never saw (typed while it worked) stay at the end.
+      for (const item of draft.items) if (!item.id && !rows.some(row => row.item === item)) items.push(item);
+      onApply(items);
+    }
+    return h('section', { className: 'dpt-pv-review', 'aria-label': t('polishReview') },
+      h('header', { className: 'dpt-pv-review-head' },
+        h('span', { className: 'dpt-pv-review-title' }, t('polishReview')),
+        h('span', { className: 'dpt-pv-meta' }, changes === 0 ? t('polishNoChange') : tf(t, 'polishChanges', { count: changes }))),
+      h('ol', { className: 'dpt-pv-items' }, ...rows.map((row, index) => row.kind === 'same' ? null : h('li', { key: index, className: 'dpt-pv-item', 'data-diff': row.kind === 'dropped' ? 'removed' : row.kind },
+        h('span', { className: 'dpt-pv-id', 'data-new': row.kind === 'added' ? '' : undefined }, row.item.id ?? t('projectNew')),
+        h('div', { className: 'dpt-pv-item-main' },
+          row.before !== undefined && row.kind !== 'dropped' ? h('del', { className: 'dpt-pv-old' }, row.before) : null,
+          row.kind === 'dropped' ? h('del', { className: 'dpt-pv-item-text' }, row.before) : h('span', { className: 'dpt-pv-item-text' }, row.item.text),
+          row.item.note ? h('span', { className: 'dpt-pv-note' }, row.item.note) : null),
+        h('div', { className: 'dpt-seg dpt-pv-take', role: 'radiogroup', 'aria-label': row.item.id ?? t('projectNew') },
+          h('button', { type: 'button', role: 'radio', className: 'dpt-seg-btn', 'aria-checked': take[index], onClick: () => setTake(value => value.map((on, at) => at === index ? true : on)) },
+            t(row.kind === 'dropped' ? 'polishTakeDelete' : 'polishTake')),
+          h('button', { type: 'button', role: 'radio', className: 'dpt-seg-btn', 'aria-checked': !take[index], onClick: () => setTake(value => value.map((on, at) => at === index ? false : on)) },
+            t('polishKeep')))))),
+      h('div', { className: 'dpt-cc-actions' },
+        h('button', { type: 'button', className: 'dpt-cc-btn', 'data-ghost': '', onClick: onDismiss }, t('polishDiscard')),
+        changes > 0 ? h('button', { type: 'button', className: 'dpt-cc-btn', onClick: () => setTake(rows.map(() => true)) }, t('polishTakeAll')) : null,
+        h('button', { type: 'button', className: 'dpt-cc-btn', 'data-primary': '', onClick: apply }, t('polishApply'))));
+  }
+
+  const newDraftId = () => `d-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+
+  function CardEditor({ initial, latest, file, busy, suggestions = [], t, onSubmit, onCancel, onDelete, onPolish, onDismissPolish }) {
     const [base, setBase] = React.useState(initial);
     const card = base.card;
     const [draft, setDraft] = React.useState(() => card ? draftOf(card) : { ...draftOf(card), items: [{ text: '' }] });
-    const [polish, setPolish] = React.useState(false);
+    const draftId = React.useRef(newDraftId()).current;
+    const [polishBy, setPolishBy] = React.useState('subagent');
+    const suggestion = suggestions.find(row => row.id === draftId);
+    const polishing = suggestion?.state === 'working';
     const setItem = (index, text) => setDraft(current => ({ ...current, items: current.items.map((item, at) => at === index ? { ...item, text } : item) }));
     const changed = file.baseVersion !== base.baseVersion || file.path !== base.path;
     const usable = !changed && draft.title.trim() !== '' && draft.items.some(item => item.text.trim() !== '');
@@ -66,7 +113,10 @@ export function createProjectCards({ React, h, tf, commandError, projectionValue
       }
       setBase({ ...file, card: latest });
     }
-    return h('form', { className: 'dpt-pv-editor', onSubmit: event => { event.preventDefault(); if (usable && !busy) onSubmit(base, draft, polish); } },
+    const polishable = draft.title.trim() !== '' && draft.items.some(item => item.text.trim() !== '');
+    const applySuggestion = items => { setDraft(current => ({ ...current, items })); onDismissPolish(draftId); };
+    return h('form', { className: 'dpt-pv-editor', 'data-polishing': polishing ? '' : undefined,
+      onSubmit: event => { event.preventDefault(); if (usable && !busy && !polishing) onSubmit(base, draft); } },
       changed ? h('div', { className: 'dpt-pv-warn', role: 'status' },
         h('p', null, t('projectDraftConflict')),
         latest ? h('details', { open: true }, h('summary', null, t('projectLatestVersion')), h(ItemRows, { card: latest, t })) : null,
@@ -80,16 +130,27 @@ export function createProjectCards({ React, h, tf, commandError, projectionValue
       h('ol', { className: 'dpt-pv-items' }, ...draft.items.map((item, index) => h('li', { key: item.id ?? `new-${index}`, className: 'dpt-pv-item' },
         h('span', { className: 'dpt-pv-id', 'data-new': item.id ? undefined : '' }, item.id ?? t('projectNew')),
         h('textarea', { className: 'dpt-pv-textarea', rows: Math.min(4, Math.max(1, Math.ceil(item.text.length / 48))), value: item.text,
-          placeholder: t('projectItemPlaceholder'), onChange: event => setItem(index, event.target.value) }),
+          placeholder: t('projectItemPlaceholder'), disabled: polishing, onChange: event => setItem(index, event.target.value) }),
         h('button', { type: 'button', className: 'dpt-pv-link', 'aria-label': t('projectRemoveItem'), title: t('projectRemoveItem'),
           onClick: () => setDraft(current => ({ ...current, items: current.items.filter((_, at) => at !== index) })) }, '×')))),
-      h('button', { type: 'button', className: 'dpt-pv-add', onClick: () => setDraft(current => ({ ...current, items: [...current.items, { text: '' }] })) }, t('projectAddItem')),
+      h('button', { type: 'button', className: 'dpt-pv-add', disabled: polishing, onClick: () => setDraft(current => ({ ...current, items: [...current.items, { text: '' }] })) }, t('projectAddItem')),
+      polishing ? h('p', { className: 'dpt-pv-polishing', role: 'status' }, h('span', { className: 'dpt-pv-spinner', 'aria-hidden': 'true' }),
+        t(suggestion.by === 'chat' ? 'polishWorkingChat' : 'polishWorkingSubagent'),
+        h('button', { type: 'button', className: 'dpt-pv-link', onClick: () => onDismissPolish(draftId) }, t('projectCancel'))) : null,
+      suggestion?.state === 'failed' ? h('p', { className: 'dpt-pv-warn', role: 'alert' }, suggestion.error ?? t('polishFailed'), ' ',
+        h('button', { type: 'button', className: 'dpt-pv-link', onClick: () => onDismissPolish(draftId) }, t('projectClose'))) : null,
+      suggestion?.state === 'ready' ? h(PolishReview, { key: suggestion.at, suggestion, draft, t, onApply: applySuggestion, onDismiss: () => onDismissPolish(draftId) }) : null,
       h('div', { className: 'dpt-pv-editor-foot' },
-        h('label', { className: 'dpt-pv-check' }, h('input', { type: 'checkbox', checked: polish, onChange: event => setPolish(event.target.checked) }), t('projectPolish')),
+        h('div', { className: 'dpt-pv-polish' },
+          h('button', { type: 'button', className: 'dpt-cc-btn', disabled: busy || polishing || !polishable || suggestion?.state === 'ready',
+            onClick: () => { void onPolish(base, draft, polishBy, draftId); } }, t('projectPolishNow')),
+          h('div', { className: 'dpt-seg', role: 'radiogroup', 'aria-label': t('polishBy') }, ...['subagent', 'chat'].map(by =>
+            h('button', { key: by, type: 'button', role: 'radio', className: 'dpt-seg-btn', 'aria-checked': polishBy === by, disabled: polishing,
+              title: t(by === 'chat' ? 'polishByChatHint' : 'polishBySubagentHint'), onClick: () => setPolishBy(by) }, t(by === 'chat' ? 'polishByChat' : 'polishBySubagent'))))),
         h('div', { className: 'dpt-cc-actions' },
           card ? h('button', { type: 'button', className: 'dpt-cc-btn', 'data-danger': '', disabled: busy || changed, onClick: () => onDelete(base) }, t('projectDelete')) : null,
           h('button', { type: 'button', className: 'dpt-cc-btn', 'data-ghost': '', disabled: busy, onClick: onCancel }, t('projectCancel')),
-          h('button', { type: 'submit', className: 'dpt-cc-btn', 'data-primary': '', disabled: busy || !usable }, t(polish ? 'projectSendPolish' : 'projectSubmit')))));
+          h('button', { type: 'submit', className: 'dpt-cc-btn', 'data-primary': '', disabled: busy || !usable || polishing }, t('projectSubmit')))));
   }
 
   function HistoryPanel({ card, versions, busy, t, onRollback, onClose }) {
@@ -174,7 +235,7 @@ export function createProjectCards({ React, h, tf, commandError, projectionValue
       message ? h('p', { role: 'alert' }, message) : null);
   }
 
-  function ProjectView({ useProjection, run, reply, t }) {
+  function ProjectView({ sessionId, useProjection, run, reply, t }) {
     const state = projectionValue(useProjection, 'deepPtcProject');
     const [busy, setBusy] = React.useState(false);
     const [message, setMessage] = React.useState();
@@ -201,29 +262,45 @@ export function createProjectCards({ React, h, tf, commandError, projectionValue
         if (messageKey) {
           const details = { ...values, change: changeNote(outcome.text) };
           const owner = proposals.find(row => row.id === payload.proposal)?.session;
+          // Every change reaches the main conversation at once (a steering message, even mid-task);
+          // a proposal written by the setup guide tells the guide as well.
+          await say(messageKey, details);
           if (state?.guide && owner === state.guide.childId) {
             const receipt = projectOutcome(await run({ op: 'guide-reply', message: tf(t, messageKey, details) }), t);
             if (receipt.error) setMessage(receipt.error);
-          } else await say(messageKey, details);
+          }
         }
         return true;
       } catch (error) { setMessage(String(error?.message ?? error)); return false; } finally { setBusy(false); }
     };
     act.say = (key, values) => { void say(key, values); };
-    const submit = async ({ card, ...basis }, draft, polish) => {
-      const items = draft.items.map(item => ({ ...item, text: item.text.trim() })).filter(item => item.text !== '');
-      if (polish) {
-        if (!await act({ ...basis, op: 'check' })) return false;
-        const lines = items.map(item => `- ${item.id ?? t('projectNew')} ${item.text}`).join('\n');
-        // The draft is the full edited list, so entries the user deleted are named for the model's remove.
-        const deleted = (card?.items ?? []).filter(old => !items.some(item => item.id === old.id)).map(old => old.id);
-        return act({ op: state?.guide ? 'guide-reply' : 'guide-start', message: tf(t, card ? 'projectMsgPolish' : 'projectMsgPolishNew', { title: draft.title.trim(), id: card?.id ?? '', items: lines,
-          version: JSON.stringify(basis.baseVersion ?? null), category: draft.category,
-          removed: deleted.length > 0 ? tf(t, 'projectRemoved', { ids: deleted.join(', ') }) : '' }) });
-      }
-      return act({ ...basis, op: 'submit', card: card?.id, title: draft.title.trim(), category: draft.category, items, baseRev: card?.rev },
-        card ? 'projectMsgSubmit' : 'projectMsgCreate', { title: draft.title.trim() });
+    // Guided setup happens in the main conversation: the model asks with question cards there, and
+    // the request reaches it at once even mid-task. The editor here never involves the model.
+    const guideInChat = async () => {
+      setMessage(undefined);
+      const sent = await reply?.(t(cards.length === 0 ? 'projectMsgGuideFirst' : 'projectMsgGuideMore'));
+      if (sent === false) { setMessage(t('cardReplyFailed')); return; }
+      openTab(sessionId, (_tab, index) => index === 0);
     };
+    const cleanItems = draft => draft.items.map(item => ({ ...item, text: item.text.trim() })).filter(item => item.text !== '');
+    const submit = async ({ card, ...basis }, draft) => act({ ...basis, op: 'submit', card: card?.id, title: draft.title.trim(), category: draft.category,
+      items: cleanItems(draft), baseRev: card?.rev }, card ? 'projectMsgSubmit' : 'projectMsgCreate', { title: draft.title.trim() });
+    // Start a polish and return: a subagent works on its own; the conversation gets the request as a
+    // steering message, so it arrives even mid-task. The result comes back as a suggestion.
+    const polish = async ({ card }, draft, by, draftId) => {
+      setMessage(undefined);
+      const items = cleanItems(draft);
+      const removed = (card?.items ?? []).filter(old => !items.some(item => item.id === old.id)).map(old => old.id);
+      const outcome = projectOutcome(await run({ op: 'polish', by, draftId, card: card?.id, title: draft.title.trim(), category: draft.category, items, removed }), t);
+      if (outcome.error) { setMessage(outcome.error); return; }
+      let started = {};
+      try { started = JSON.parse(outcome.text); } catch { /* an older server answered plainly */ }
+      if (by === 'chat' && started.instruction) {
+        const sent = await reply?.(started.instruction);
+        if (sent === false) setMessage(t('cardReplyFailed'));
+      }
+    };
+    const dismissPolish = draftId => { void run({ op: 'polish-dismiss', draftId }); };
     const file = state?.path ? state.path.split(/[\\/]/u).slice(-2).join('/') : '';
     return h('div', { className: 'dpt-pv' },
       h('header', { className: 'dpt-pv-head' },
@@ -231,7 +308,7 @@ export function createProjectCards({ React, h, tf, commandError, projectionValue
           h('h2', { className: 'dpt-pv-title' }, t('projectTab')),
           h('p', { className: 'dpt-pv-sub', title: state?.path }, state?.exists ? file : t('projectNoFile'))),
         h('div', { className: 'dpt-cc-actions' },
-          cards.length > 0 && !state?.guide ? h('button', { type: 'button', className: 'dpt-cc-btn', disabled: busy, onClick: () => { void act({ op: 'guide-start', message: t('projectGuideStart') }); } }, t('projectBootstrap')) : null,
+          cards.length > 0 && !state?.guide ? h('button', { type: 'button', className: 'dpt-cc-btn', disabled: busy, onClick: () => { void guideInChat(); } }, t(cards.length === 0 ? 'projectPanelGuideFirst' : 'projectPanelGuideMore')) : null,
           h('button', { type: 'button', className: 'dpt-cc-btn', 'data-ghost': '', disabled: busy, onClick: () => { void run?.({ op: 'refresh' }); } }, t('projectRefresh')),
           h('button', { type: 'button', className: 'dpt-cc-btn', disabled: busy || editing !== undefined, onClick: () => beginEdit() }, t('projectNewCard')))),
       h('p', { className: 'dpt-pv-intro' }, t('projectIntro')),
@@ -254,15 +331,16 @@ export function createProjectCards({ React, h, tf, commandError, projectionValue
         ...proposals.map(proposal => h(ProposalRow, { key: proposal.id, proposal, card: cards.find(card => card.id === proposal.card), busy, act, t }))) : null,
       editing ? h('section', { className: 'dpt-pv-card', 'data-kind': 'setting' },
         h(CardEditor, { initial: editing, latest: cards.find(card => card.id === editing.card?.id), file: fileBasis, busy, t,
+          suggestions: Array.isArray(state?.suggestions) ? state.suggestions : [], onPolish: polish, onDismissPolish: dismissPolish,
           onCancel: () => setEditing(undefined),
           onDelete: ({ card, ...basis }) => { void act({ ...basis, op: 'delete', card: card.id, baseRev: card.rev }, 'projectMsgDelete', { title: card.title }).then(closeEdit); },
-          onSubmit: (base, draft, polish) => { void submit(base, draft, polish).then(closeEdit); } })) : null,
+          onSubmit: (base, draft) => { void submit(base, draft).then(closeEdit); } })) : null,
       cards.length === 0 && !editing ? h('section', { className: 'dpt-pv-empty' },
         h('p', { className: 'dpt-pv-empty-title' }, t('projectEmptyTitle')),
         h('p', { className: 'dpt-pv-intro' }, t('projectEmptyHint')),
         h('div', { className: 'dpt-cc-actions' },
           h('button', { type: 'button', className: 'dpt-cc-btn', onClick: () => beginEdit() }, t('projectNewCard')),
-          !state?.guide ? h('button', { type: 'button', className: 'dpt-cc-btn', 'data-primary': '', disabled: busy, onClick: () => { void act({ op: 'guide-start', message: t('projectGuideStart') }); } }, t('projectBootstrap')) : null)) : null,
+          !state?.guide ? h('button', { type: 'button', className: 'dpt-cc-btn', 'data-primary': '', disabled: busy, onClick: () => { void guideInChat(); } }, t(cards.length === 0 ? 'projectPanelGuideFirst' : 'projectPanelGuideMore')) : null)) : null,
       // Setting cards by topic, then the records the model keeps, each group with its own heading.
       ...[...PROJECT_CATEGORIES.map(category => ({ key: category, label: t(`projectCat_${category}`),
         cards: cards.filter(card => card.kind === 'setting' && (card.category ?? 'other') === category) })),

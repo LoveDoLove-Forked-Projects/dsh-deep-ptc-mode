@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { CARDS_EVENT, CARD_COMMAND, CARD_TOOL, blankCards, addCard, foldCardsState, parseCardsState, readCardInput, withCard, DISMISSED, OPEN, STOPPED } from '../lib/cards.mjs';
+import { CARD_COMMAND, CARD_TOOL, readCardInput } from '../lib/cards.mjs';
+import { blankCards } from '../lib/card-state.mjs';
 import { BLOCK_TYPES, MAX_BLOCKS, blockSchema, fillPlaceholders, readValues } from '../lib/card-blocks.mjs';
 import { CARD_EXAMPLES_REGISTRATION, CARD_SKILL_REGISTRATION } from '../lib/card-skill.mjs';
 
@@ -13,7 +14,7 @@ const card = body => {
 test('the command and tool names stay stable', () => {
   assert.equal(CARD_COMMAND, 'deep-ptc-card-act');
   assert.equal(CARD_TOOL, 'ui_card');
-  assert.deepEqual(blankCards(), { v: 1, seq: 0, cards: [] });
+  assert.deepEqual(blankCards(), { v: 2, seq: 0, turn: 0, versions: [] });
 });
 
 test('legacy lines become a leading rows block, everything trimmed', () => {
@@ -104,63 +105,6 @@ test('a stop action needs a command or schedule ids', () => {
   const parsed = readCardInput({ action: 'show', title: 'x', subtitle: 'y', stop: { label: '关门' } });
   assert.equal(parsed.card, undefined);
   assert.match(parsed.issues.join(' '), /stop/u);
-});
-
-test('a new card is open and updating it keeps its id', () => {
-  const first = addCard(blankCards(), { title: 'A', subtitle: 's' });
-  assert.equal(first.card.phase, OPEN);
-  assert.equal(first.card.id, 'card-1');
-  const again = addCard(first.state, { title: 'B', subtitle: 's' }, 'card-1');
-  assert.equal(again.state.cards.length, 1);
-  assert.equal(again.state.cards[0].title, 'B');
-  assert.equal(again.state.cards[0].phase, OPEN);
-});
-
-test('updating a card replaces its body and leaves a JSON-clean state without a stale result', () => {
-  const noUndefined = value => {
-    if (value === undefined) return false;
-    if (value === null || typeof value !== 'object') return true;
-    return Object.values(value).every(noUndefined);
-  };
-  const first = addCard(blankCards(), { title: 'A', subtitle: 's', note: 'old' });
-  const stopped = withCard(first.state, first.card.id, { phase: STOPPED, result: { command: 'ok' } });
-  const again = addCard(stopped, { title: 'A2', subtitle: 's2' }, first.card.id);
-  assert.equal(again.state.cards.length, 1);
-  assert.equal(again.state.cards[0].title, 'A2');
-  assert.equal('result' in again.state.cards[0], false);
-  assert.equal('note' in again.state.cards[0], false, 'an update replaces the whole body');
-  assert.ok(noUndefined(again.state));
-  assert.deepEqual(parseCardsState(again.state), again.state);
-});
-
-test('a closed card is kept and marked', () => {
-  const { state, card: created } = addCard(blankCards(), { title: 'A', subtitle: 's' });
-  const stopped = withCard(state, created.id, { phase: STOPPED, result: { schedules: ['s1'], command: 'ok' } });
-  assert.equal(stopped.cards[0].phase, STOPPED);
-  assert.deepEqual(stopped.cards[0].result, { schedules: ['s1'], command: 'ok' });
-  assert.deepEqual(parseCardsState(stopped).cards[0].result, { schedules: ['s1'], command: 'ok' });
-  assert.equal(withCard(state, created.id, { phase: DISMISSED }).cards[0].phase, DISMISSED);
-});
-
-test('state parsing re-reads cards, upgrades legacy lines and rejects duplicates', () => {
-  const { state } = addCard(blankCards(), { title: 'A', subtitle: 's' });
-  const view = parseCardsState(state);
-  assert.equal(view.cards[0].title, 'A');
-  assert.equal(view.cards[0].phase, OPEN);
-  // A card stored by 1.9.7/1.9.8 still loads.
-  const legacy = parseCardsState({ v: 1, seq: 1, cards: [{ id: 'old', title: 'T', phase: OPEN, lines: [{ label: 'a', value: 'b' }] }] });
-  assert.deepEqual(legacy.cards[0].blocks, [{ type: 'rows', items: [{ label: 'a', value: 'b' }] }]);
-  assert.throws(() => parseCardsState({ v: 1, seq: 1, cards: [
-    { id: 'a', title: 'A', subtitle: 's', phase: OPEN }, { id: 'a', title: 'B', subtitle: 's', phase: OPEN }] }), /Duplicate/u);
-  assert.throws(() => parseCardsState({ v: 1, seq: 0, cards: [{ id: 'a', title: 'A', subtitle: 's', phase: 'weird' }] }), /Invalid/u);
-});
-
-test('folding applies only card records', () => {
-  const { state } = addCard(blankCards(), { title: 'A', subtitle: 's' });
-  assert.deepEqual(foldCardsState(blankCards(), { type: 'turn/start', data: {}, seq: 1 }), blankCards());
-  const folded = foldCardsState(blankCards(), { type: CARDS_EVENT, data: state, seq: 2 });
-  assert.equal(folded.cards[0].title, 'A');
-  assert.equal(foldCardsState(blankCards(), { type: CARDS_EVENT, data: { v: 2 }, seq: 3 }).cards.length, 0);
 });
 
 test('interactive inputs and buttons: values are validated before they reach a command', () => {
