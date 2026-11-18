@@ -289,6 +289,55 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     projectCat_other: "其他",
     panelMove: "移动「{name}」",
     panelMoveHint: "拖动调整顺序，或聚焦后按 ↑ ↓",
+    cardArchived: "已存档",
+    cardSuperseded: "已更新",
+    cardClosedStub: "已关闭 · {title}",
+    cardChose: "已选：{action}",
+    questionKicker: "需要你决定",
+    questionWaiting: "等你回答",
+    questionAnswered: "已回答",
+    questionUnanswered: "未回答",
+    questionOptional: "可选",
+    questionSubmit: "提交回答",
+    questionRemaining: "还有 {count} 题未答",
+    questionReady: "提交后模型会立刻收到，正在工作也一样。",
+    questionSkipped: "（未回答）",
+    questionReplyHead: "【回答 · {title}】",
+    projectPolishNow: "润色",
+    polishBy: "由谁润色",
+    polishBySubagent: "子代理",
+    polishByChat: "当前对话",
+    polishBySubagentHint: "单独润色，不打断当前对话",
+    polishByChatHint: "交给当前对话的模型，它了解刚才聊的内容",
+    polishWorkingSubagent: "子代理正在润色…",
+    polishWorkingChat: "已交给当前对话润色，模型下一步就会处理…",
+    polishFailed: "润色没有完成。",
+    polishReview: "润色建议",
+    polishChanges: "{count} 处改动",
+    polishNoChange: "没有需要改的地方",
+    polishTake: "采用",
+    polishTakeDelete: "删除",
+    polishKeep: "保留原文",
+    polishTakeAll: "全部采用",
+    polishApply: "应用到草稿",
+    polishDiscard: "放弃建议",
+    projectPanelNone: "这个工作区还没有特点卡片。",
+    projectPanelCount: "{count} 张设定卡片 · {records} 张模型记录",
+    projectPanelPending: "{count} 个待批准",
+    projectPanelEdit: "编辑特点卡片",
+    projectPanelEditHint: "打开特点卡片页，不打扰模型",
+    projectPanelGuideFirst: "让模型引导设置",
+    projectPanelGuideMore: "让模型帮我完善",
+    projectPanelGuideHint: "在主对话里由模型提问，引导你建立或完善特点卡片；模型正在工作时也会立刻收到",
+    projectPanelGuideSent: "已发到主对话，模型会在那里引导你。",
+    projectPanelNoTab: "找不到特点卡片页，请先打开这个对话。",
+    projectMsgGuideFirst: "请在这个对话里引导我为项目建立特点卡片：先用 project_cards read 和工作区里的 AGENTS.md / README 了解现状，再用 ask_user 一次问我几个关键问题（技术栈、代码规范、约束、协作方式）。根据回答用 project_cards propose 提交卡片，我在特点卡片页批准。",
+    projectMsgGuideMore: "请在这个对话里引导我完善现有的特点卡片：先用 project_cards read 看看哪些地方缺失、含糊或过时，再用 ask_user 问我需要补充的内容。根据回答用 project_cards propose 提交修改，我在特点卡片页批准。",
+    panelLocation: "面板位置",
+    locationBeside: "对话区侧边",
+    locationSidebar: "侧边栏",
+    locationHint: "「侧边栏」把整个深度 PTC 面板放进右侧栏的页签，点胶囊即打开；「对话区侧边」保持面板贴在对话旁边。",
+    locationBetter: "已检测到 dsh-better-sidebar：面板作为它的页面打开，也可以放进它的底部工作台。",
     cardTotal: '合计', cardStep_done: '已完成', cardStep_active: '进行中', cardStep_todo: '待办', cardStep_failed: '失败',
     agentsTitle: '子代理',
     agentRunning: '运行中', agentCompleted: '已完成', agentIdle: '空闲', agentExternal: '外部',
@@ -396,6 +445,55 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     projectCat_other: "Other",
     panelMove: "Move “{name}”",
     panelMoveHint: "Drag to reorder, or focus and press ↑ ↓",
+    cardArchived: "Archived",
+    cardSuperseded: "Updated",
+    cardClosedStub: "Closed · {title}",
+    cardChose: "Chose: {action}",
+    questionKicker: "Your decision",
+    questionWaiting: "Waiting for you",
+    questionAnswered: "Answered",
+    questionUnanswered: "Not answered",
+    questionOptional: "optional",
+    questionSubmit: "Submit answers",
+    questionRemaining: "{count} left to answer",
+    questionReady: "The model receives your answers at once, even mid-task.",
+    questionSkipped: "(no answer)",
+    questionReplyHead: "[Answers · {title}]",
+    projectPolishNow: "Polish",
+    polishBy: "Polished by",
+    polishBySubagent: "Subagent",
+    polishByChat: "This chat",
+    polishBySubagentHint: "Polish on its own, without interrupting the conversation",
+    polishByChatHint: "Ask the model in this conversation, which knows what was discussed",
+    polishWorkingSubagent: "A subagent is polishing…",
+    polishWorkingChat: "Sent to this conversation; the model picks it up at its next step…",
+    polishFailed: "Polishing did not finish.",
+    polishReview: "Suggested wording",
+    polishChanges: "{count} changes",
+    polishNoChange: "Nothing to change",
+    polishTake: "Take",
+    polishTakeDelete: "Delete",
+    polishKeep: "Keep mine",
+    polishTakeAll: "Take all",
+    polishApply: "Apply to draft",
+    polishDiscard: "Discard",
+    projectPanelNone: "No project cards in this workspace yet.",
+    projectPanelCount: "{count} setting cards · {records} model records",
+    projectPanelPending: "{count} waiting for approval",
+    projectPanelEdit: "Edit project cards",
+    projectPanelEditHint: "Open the Project cards view without involving the model",
+    projectPanelGuideFirst: "Set up with the model",
+    projectPanelGuideMore: "Refine with the model",
+    projectPanelGuideHint: "The model asks you questions in the main conversation to set up or refine the cards; it receives this at once, even mid-task",
+    projectPanelGuideSent: "Sent to the main conversation; the model guides you there.",
+    projectPanelNoTab: "The Project cards view is not available; open this conversation first.",
+    projectMsgGuideFirst: "Please guide me through setting up project cards here: read the current state with project_cards read and the workspace AGENTS.md / README, then ask me a few key questions at once with ask_user (stack, conventions, constraints, how I work). Propose the cards with project_cards propose; I approve them in the Project cards view.",
+    projectMsgGuideMore: "Please guide me through refining the existing project cards here: check with project_cards read what is missing, vague or outdated, then ask me what to add with ask_user. Propose the changes with project_cards propose; I approve them in the Project cards view.",
+    panelLocation: "Panel location",
+    locationBeside: "Beside conversation",
+    locationSidebar: "Sidebar",
+    locationHint: "Sidebar puts the whole Deep PTC panel in a right-sidebar tab that the capsule opens; Beside conversation keeps it next to the chat.",
+    locationBetter: " dsh-better-sidebar is loaded: the panel opens as one of its pages and can also go in its bottom workbench.",
     cardTotal: 'Total', cardStep_done: 'Done', cardStep_active: 'In progress', cardStep_todo: 'To do', cardStep_failed: 'Failed',
     agentsTitle: 'Subagents',
     agentRunning: 'Running', agentCompleted: 'Done', agentIdle: 'Idle', agentExternal: 'External',
@@ -1373,8 +1471,66 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     try { return typeof useProjection === 'function' ? useProjection(key) : undefined; } catch { return undefined; }
   }
 
+  // Switch this conversation to one of its view tabs (对话 / 轨迹 / 统计 / 特点卡片) by its label.
+  // The host renders the tabs as role="tab" buttons; clicking one goes through its own selection.
+  // Plugin views can instead sit in the host's "more views" menu beside the tab row (a portaled
+  // role="menu" of role="menuitem" buttons): open it, pick the item, and close it again on a miss.
+  // Resolves whether a view was selected.
+  async function openConversationTab(sessionId, matches) {
+    if (typeof document === 'undefined') return false;
+    const root = SESSIONS.map.get(sessionId)?.el?.closest?.('[data-slot="main.conversation"]') ?? document;
+    const tabs = [...root.querySelectorAll('[data-conversation-tabs] [role="tab"]')];
+    const tab = tabs.find(matches);
+    if (tab) { tab.click(); return true; }
+    const more = root.querySelector('[data-conversation-tabs]')?.parentElement?.querySelector?.('button[aria-haspopup="menu"]');
+    if (!more) return false;
+    if (more.getAttribute('aria-expanded') !== 'true') more.click();
+    for (let attempt = 0; attempt < 10; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, 30));
+      const item = [...document.querySelectorAll('[role="menu"] [role="menuitem"]')].find(node => matches(node, -1));
+      if (item) { item.click(); return true; }
+    }
+    if (more.getAttribute('aria-expanded') === 'true') more.click();
+    return false;
+  }
+
+  // Project cards from the panel: open the editor (the model is not involved), or ask the model to
+  // guide setup in the main conversation (first setup or further setup; it asks with question cards).
+  function ProjectSection({ sessionId, useProjection, reply, form, t }) {
+    const enabled = useFormValue(form, 'projectCards') !== false;
+    const project = projectionValue(useProjection, 'deepPtcProject');
+    const [note, setNote] = React.useState();
+    if (!enabled) return null;
+    const cards = Array.isArray(project?.cards) ? project.cards : [];
+    const settings = cards.filter(card => card.kind === 'setting').length;
+    const pending = Array.isArray(project?.proposals) ? project.proposals.length : 0;
+    const status = cards.length === 0 ? t('projectPanelNone') : tf(t, 'projectPanelCount', { count: settings, records: cards.length - settings });
+    const openEditor = () => {
+      setNote(undefined);
+      void openConversationTab(sessionId, tab => tab.textContent.trim() === t('projectTab'))
+        .then(opened => { if (!opened) setNote(t('projectPanelNoTab')); });
+    };
+    const guide = async () => {
+      setNote(undefined);
+      const sent = typeof reply === 'function' ? await reply(t(cards.length === 0 ? 'projectMsgGuideFirst' : 'projectMsgGuideMore')) : false;
+      if (sent === false) { setNote(t('cardReplyFailed')); return; }
+      // The guidance happens in the main conversation: show it there.
+      openConversationTab(sessionId, (tab, index) => index === 0);
+      setNote(t('projectPanelGuideSent'));
+    };
+    return h('section', { className: 'dpt-side-section dpt-side-project', 'aria-label': t('projectTab') },
+      h('div', { className: 'dpt-side-label' }, h('span', null, t('projectTab')),
+        pending > 0 ? h('span', { className: 'dpt-side-hint' }, tf(t, 'projectPanelPending', { count: pending })) : null),
+      h('p', { className: 'dpt-side-note' }, status),
+      h('div', { className: 'dpt-side-buttons' },
+        h('button', { type: 'button', className: 'dpt-btn', title: t('projectPanelEditHint'), onClick: openEditor }, t('projectPanelEdit')),
+        h('button', { type: 'button', className: 'dpt-btn', title: t('projectPanelGuideHint'), onClick: () => { void guide(); } },
+          t(cards.length === 0 ? 'projectPanelGuideFirst' : 'projectPanelGuideMore'))),
+      note ? h('p', { className: 'dpt-side-note', role: 'status' }, note) : null);
+  }
+
   // One conversation's environment, subagents, jobs, outputs, SSH and tool state.
-  function DeepPtcPanel({ sessionId, useSessions, useProjection, useJobs, watchJobs, reset, form, inline, t }) {
+  function DeepPtcPanel({ sessionId, useSessions, useProjection, useJobs, watchJobs, reset, reply, form, inline, t }) {
     const sessions = typeof useSessions === 'function' ? useSessions(state => state) : undefined;
     const preset = projectionValue(useProjection, 'agentPreset');
     const activity = projectionValue(useProjection, 'deepPtcActivity');
@@ -1393,6 +1549,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
         !deep ? h('section', { className: 'dpt-side-section' }, h('p', { className: 'dpt-side-note' }, t('sideOtherMode'))) : null,
         h(SortableSections, { t, sections: [
         { key: 'environment', label: t('environment'), node: form ? h(EnvironmentSection, { form, t }) : null },
+        { key: 'project', label: t('projectTab'), node: deep && formValue(form, 'projectCards') !== false ? h(ProjectSection, { sessionId, useProjection, reply, form, t }) : null },
         { key: 'agents', label: t('agentsTitle'), node: deep && rows.length ? h('section', { className: 'dpt-side-section dpt-side-agents', 'aria-label': t('agentsTitle') },
           h('div', { className: 'dpt-side-label' }, h('span', null, t('agentsTitle'))),
           h('ol', { className: 'dpt-agents-list' }, ...rows.map(row =>
@@ -1421,12 +1578,19 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
   const PANEL_WIDTH_KEY = `${PLUGIN}:side-panel-width`;
   const CAPSULE_KEY = `${PLUGIN}:capsule-placement`;
   const PLACEMENTS = ['auto', 'dock', 'toolbar', 'hidden'];
+  // Where the panel itself opens: beside the conversation, or as a right-sidebar page (the host's own
+  // sidebar, or dsh-better-sidebar's when that plugin is installed).
+  const LOCATION_KEY = `${PLUGIN}:panel-location`;
+  const LOCATIONS = ['beside', 'sidebar'];
+  const BETTER_TAB = 'deep-ptc:panel';
+  // dsh-better-sidebar's service, while that plugin is loaded.
+  const BETTER = { service: undefined };
   const readStored = key => { try { return localStorage.getItem(key); } catch { return null; } };
   const writeStored = (key, value) => { try { localStorage.setItem(key, value); } catch { /* kept in memory */ } };
 
   // The order of the side panel's sections, chosen by dragging their handles; kept per browser.
   const SECTION_ORDER_KEY = `${PLUGIN}:panel-order`;
-  const SECTION_KEYS = ['environment', 'agents', 'jobs', 'outputs', 'ssh', 'tools'];
+  const SECTION_KEYS = ['environment', 'project', 'agents', 'jobs', 'outputs', 'ssh', 'tools'];
   function normalizeOrder(value) {
     const known = Array.isArray(value) ? value.filter((key, index) => SECTION_KEYS.includes(key) && value.indexOf(key) === index) : [];
     return [...known, ...SECTION_KEYS.filter(key => !known.includes(key))];
@@ -1510,6 +1674,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     return Number.isFinite(value) && value > 0 ? Math.round(value) : PANEL_WIDTH;
   };
   const readPlacement = () => { const value = readStored(CAPSULE_KEY); return PLACEMENTS.includes(value) ? value : 'auto'; };
+  const readLocation = () => { const value = readStored(LOCATION_KEY); return LOCATIONS.includes(value) ? value : 'beside'; };
 
   // Viewer preferences (collapsed, width, capsule placement) and each conversation's open state, shared
   // by the panel host in the composer dock, the capsule wherever it sits, and the right-sidebar tab.
@@ -1517,6 +1682,9 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     collapsed: readStored(PANEL_COLLAPSED_KEY) === '1',
     width: readPanelWidth(),
     placement: readPlacement(),
+    location: readLocation(),
+    // Each mounted conversation's panel props (a ref), so a sidebar page can draw the same panel.
+    hosts: new Map(),
     peek: new Map(), wide: new Map(), version: 0, subs: new Set(),
     subscribe(listener) { this.subs.add(listener); return () => this.subs.delete(listener); },
     emit() { this.version++; for (const listener of [...this.subs]) { try { listener(); } catch (error) { console.warn(`[${PLUGIN}]`, error); } } },
@@ -1550,15 +1718,41 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
       writeStored(CAPSULE_KEY, value);
       this.emit();
     },
+    setLocation(value) {
+      if (!LOCATIONS.includes(value) || value === this.location) return;
+      this.location = value;
+      writeStored(LOCATION_KEY, value);
+      this.emit();
+    },
+    // The capsule: in the sidebar location it opens the sidebar page; beside the conversation (or when
+    // no sidebar can open) it shows or hides the panel there.
+    activate(id) {
+      if (this.location === 'sidebar' && openInSidebar(id)) return;
+      this.toggle(id);
+    },
     // Another window changed a preference.
     sync(event) {
-      if (event.key !== null && ![PANEL_COLLAPSED_KEY, PANEL_WIDTH_KEY, CAPSULE_KEY].includes(event.key)) return;
+      if (event.key !== null && ![PANEL_COLLAPSED_KEY, PANEL_WIDTH_KEY, CAPSULE_KEY, LOCATION_KEY].includes(event.key)) return;
       this.collapsed = readStored(PANEL_COLLAPSED_KEY) === '1';
       this.width = readPanelWidth();
       this.placement = readPlacement();
+      this.location = readLocation();
       this.emit();
     },
   };
+  // Open the Deep PTC page in the right sidebar: dsh-better-sidebar's page when it is loaded, the
+  // host's own tab otherwise. False when neither can open, so the caller falls back to the panel.
+  function openInSidebar(sessionId) {
+    try {
+      if (typeof BETTER.service?.openTab === 'function') {
+        BETTER.service.openTab({ type: BETTER_TAB }, sessionId === undefined ? undefined : { sessionId });
+        return true;
+      }
+      const sidebar = hostCtx?.get?.('sidebarRight');
+      if (typeof sidebar?.openTab === 'function') { sidebar.openTab(TAB_KIND, { revealIfOpened: true }); return true; }
+    } catch (error) { console.warn(`[${PLUGIN}] sidebar page did not open:`, error); }
+    return false;
+  }
   const getPanelVersion = () => PANEL.version;
   const subscribePanel = listener => PANEL.subscribe(listener);
   function usePanel() {
@@ -1684,8 +1878,8 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     usePanel();
     const { label, running } = useCapsuleSummary(props);
     return h('button', { type: 'button', className: 'dpt-capsule', 'data-compact': compact ? '' : undefined,
-      'data-state': running ? 'running' : 'idle', 'aria-expanded': props.open ?? PANEL.isOpen(sessionId),
-      title: compact ? `${t('capsuleOpen')} · ${label}` : t('capsuleOpen'), onClick: () => PANEL.toggle(sessionId) },
+      'data-state': running ? 'running' : 'idle', 'aria-expanded': PANEL.location === 'sidebar' ? undefined : props.open ?? PANEL.isOpen(sessionId),
+      title: compact ? `${t('capsuleOpen')} · ${label}` : t('capsuleOpen'), onClick: () => PANEL.activate(sessionId) },
       h('span', { className: 'dpt-agent-dot', 'aria-hidden': 'true' }), h('span', null, label));
   }
 
@@ -1746,7 +1940,15 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     const wide = layout ? layout.wide : undefined;
     React.useEffect(() => PANEL.setWide(sessionId, wide), [sessionId, wide]);
     React.useEffect(() => () => PANEL.setWide(sessionId, undefined), [sessionId]);
-    const docked = !!layout?.wide && !PANEL.collapsed;
+    const latest = React.useRef(props);
+    latest.current = props;
+    React.useEffect(() => {
+      PANEL.hosts.set(sessionId, latest);
+      PANEL.emit();
+      return () => { if (PANEL.hosts.get(sessionId) === latest) { PANEL.hosts.delete(sessionId); PANEL.emit(); } };
+    }, [sessionId]);
+    // In the sidebar location the panel never docks here; a peek remains the fallback when no sidebar opens.
+    const docked = PANEL.location !== 'sidebar' && !!layout?.wide && !PANEL.collapsed;
     const open = docked || PANEL.peek.get(sessionId) === true;
     React.useEffect(() => {
       const region = layout?.region;
@@ -1810,9 +2012,21 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     return h(Boundary, null, h(CapsuleButton, { ...props, compact: true }));
   }
 
-  const PLACEMENT_NOTES = { dock: 'panelMoved', toolbar: 'panelMovedToolbar', hidden: 'panelMovedHidden' };
-  function TabHost({ sessionId, t }) {
+  // The whole panel as a sidebar page. It reuses the props of the conversation's own panel host (its
+  // live hooks), and without one (another mode, or not mounted) shows what applies to new sessions.
+  function SidebarPanel({ sessionId, form, t, ...rest }) {
     usePanel();
+    const id = sessionId ?? SESSIONS.current()?.id;
+    const host = id === undefined ? undefined : PANEL.hosts.get(id)?.current;
+    return h('div', { className: 'dpt-sidebar-panel' },
+      h(DeepPtcPanel, { ...rest, ...host, sessionId: id, form: host?.form ?? form, t }));
+  }
+
+  const PLACEMENT_NOTES = { dock: 'panelMoved', toolbar: 'panelMovedToolbar', hidden: 'panelMovedHidden' };
+  function TabHost(props) {
+    const { sessionId, t } = props;
+    usePanel();
+    if (PANEL.location === 'sidebar') return h(SidebarPanel, props);
     const placement = resolvePlacement(useCompactComposer());
     const id = sessionId ?? SESSIONS.current()?.id;
     return h('div', { className: 'dpt-side-section' },
@@ -1834,6 +2048,18 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
         ...PLACEMENTS.map(option => h('button', { key: option, type: 'button', role: 'radio', className: 'dpt-seg-btn',
           'aria-checked': option === PANEL.placement, onClick: () => PANEL.setPlacement(option) }, t(PLACEMENT_LABELS[option])))),
       h('p', { className: 'dpt-side-note' }, note));
+  }
+
+  const LOCATION_LABELS = { beside: 'locationBeside', sidebar: 'locationSidebar' };
+  function PanelLocationSection({ t }) {
+    usePanel();
+    const label = t('panelLocation');
+    return h('section', { className: 'dpt-side-section', 'aria-label': label },
+      h('div', { className: 'dpt-side-label' }, h('span', null, label)),
+      h('div', { className: 'dpt-seg', role: 'radiogroup', 'aria-label': label },
+        ...LOCATIONS.map(option => h('button', { key: option, type: 'button', role: 'radio', className: 'dpt-seg-btn',
+          'aria-checked': option === PANEL.location, onClick: () => PANEL.setLocation(option) }, t(LOCATION_LABELS[option])))),
+      h('p', { className: 'dpt-side-note' }, `${t('locationHint')}${BETTER.service ? t('locationBetter') : ''}`));
   }
 
   function TabTitle({ t }) {
@@ -1863,7 +2089,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
         form ? h(Card, { form, t }) : h('p', { className: 'dpt-side-note' }, t('readOnly'))),
       h('section', { 'aria-label': t('cardsSection') }, h('h3', null, t('cardsSection')), h(CardsSettingsSection, { form, t })),
       h('section', { 'aria-label': t('appearance') }, h('h3', null, t('appearance')),
-        h(VisualEffectsSection, { t }), h(CapsulePlacementSection, { t })),
+        h(VisualEffectsSection, { t }), h(PanelLocationSection, { t }), h(CapsulePlacementSection, { t })),
       h(DiagnosticsSection, { t }));
   }
 
@@ -1892,6 +2118,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     return sessionId => {
       const jobs = child.get?.('jobs');
       const props = {
+        reply: text => sendReply(child, sessionId, text),
         reset: () => {
           const execute = child.remote?.commands?.execute;
           if (typeof execute !== 'function') return Promise.resolve({ ok: true, value: undefined });
@@ -1999,7 +2226,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
             if (wanted && dispose === undefined) {
               dispose = child.slots.inject('conversation.view', () => child.slots.register({
                 name: 'conversation.view', id: 'deep-ptc-project', order: 50, locale: 'deep-ptc', label: () => t('projectTab'),
-                inject: sessionId => ({ run: payload => runProjectCommand(child, sessionId, payload), reply: text => sendReply(child, sessionId, text) }),
+                inject: sessionId => ({ sessionId, run: payload => runProjectCommand(child, sessionId, payload), reply: text => sendReply(child, sessionId, text) }),
               }, props => h(LocalizedSlot, { ...props, component: ProjectView })));
             } else if (!wanted && dispose !== undefined) { const stop = dispose; dispose = undefined; stop?.(); }
           };
@@ -2050,7 +2277,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
           let hidden;
           let dispose;
           const register = () => {
-            const next = PANEL.placement === 'hidden';
+            const next = !BETTER.service && (PANEL.placement === 'hidden' || PANEL.location === 'sidebar');
             if (next === hidden) return;
             hidden = next;
             dispose?.();
@@ -2071,6 +2298,25 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
         }, props => h(LocalizedSlot, { ...props, component: TabTitle })));
       });
     } catch { /* without a right sidebar the capsule opens the panel in place */ }
+    try {
+      // With dsh-better-sidebar the panel is one of its pages (right sidebar or bottom workbench).
+      ctx.inject?.(['betterSidebar'], child => {
+        child.effect(() => {
+          const service = child.betterSidebar ?? child.get?.('betterSidebar');
+          if (typeof service?.registerTab !== 'function') return () => {};
+          const dispose = service.registerTab({
+            id: BETTER_TAB, title: () => t('sideTitle'), description: () => t('sideGuide'), order: 60, single: true,
+            component: ({ scope }) => h(Boundary, null, h(LocalizedSlot, { component: SidebarPanel, sessionId: scope?.sessionId, form })),
+          });
+          BETTER.service = service;
+          PANEL.emit();
+          return () => {
+            if (BETTER.service === service) { BETTER.service = undefined; PANEL.emit(); }
+            dispose?.();
+          };
+        }, `${PLUGIN}: better sidebar tab type`);
+      });
+    } catch { /* the host's own sidebar tab stays */ }
   }
   return { apply, inject };
 } });

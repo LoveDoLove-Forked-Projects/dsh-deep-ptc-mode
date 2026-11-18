@@ -123,17 +123,15 @@ test('approve, submit, polish and question each tell the model what happened', a
     assert.deepEqual(sent, { op: 'submit', path: project().path, baseVersion: 'alpha', card: 'stack', title: '技术栈', category: 'stack', items: [{ id: 'R1', text: 'React 19' }, { id: 'R2', text: 'Vite' }], baseRev: 1 });
     assert.match(f.prompts.at(-1).content[0].text, /^projectMsgSubmit/u);
 
-    // Polishing never writes: it asks the model to propose a cleaner version for approval.
+    // Polishing never writes and never waits: it starts a polish job for this draft and returns.
     await act(async () => buttons(view, 'projectEdit')[0].props.onClick());
-    const calls = f.calls.length;
-    const check = view.root.find(node => node.type === 'input' && node.props.type === 'checkbox');
-    await act(async () => check.props.onChange({ target: { checked: true } }));
-    await act(async () => view.root.find(node => node.type === 'form').props.onSubmit({ preventDefault() {} }));
-    assert.equal(f.calls.length, calls + 2);
-    assert.equal(JSON.parse(f.calls.at(-2)[1].slice('/deep-ptc-project '.length)).op, 'check');
+    await act(async () => buttons(view, 'projectPolishNow')[0].props.onClick());
     const polishRequest = JSON.parse(f.calls.at(-1)[1].slice('/deep-ptc-project '.length));
-    assert.equal(polishRequest.op, 'guide-start');
-    assert.match(polishRequest.message, /^projectMsgPolish\{.*- R1 React 18\\n- R2 Vite/u);
+    assert.equal(polishRequest.op, 'polish');
+    assert.equal(polishRequest.by, 'subagent', 'a subagent polishes by default, so the conversation is not interrupted');
+    assert.match(polishRequest.draftId, /^d-[a-z0-9]+$/u);
+    assert.deepEqual(polishRequest.items, [{ id: 'R1', text: 'React 18' }, { id: 'R2', text: 'Vite' }]);
+    await act(async () => buttons(view, 'projectCancel')[0].props.onClick());
 
     const question = buttons(view, 'projectQuestion')[0];
     await act(async () => question.props.onClick());
@@ -157,9 +155,11 @@ test('the project cards switch removes the view; the empty state offers a guided
   const { header, view } = await renderView(f, { v: 1, hash: '', path: 'D:\\repo\\PROJECT-CARDS.md', exists: false, cards: [], warnings: [], proposals: [], history: {} });
   try {
     assert.match(JSON.stringify(view.toJSON()), /projectEmptyTitle/u);
-    await act(async () => buttons(view, 'projectBootstrap')[0].props.onClick());
-    assert.equal(JSON.parse(f.calls.at(-1)[1].slice('/deep-ptc-project '.length)).op, 'guide-start');
-    assert.equal(f.prompts.length, 0, 'panel setup does not prompt the parent conversation');
+    const commands = f.calls.length;
+    await act(async () => buttons(view, 'projectPanelGuideFirst')[0].props.onClick());
+    assert.equal(f.calls.length, commands, 'guided setup is a message, not a hidden panel conversation');
+    assert.equal(f.prompts.at(-1).mode, 'steer', 'it reaches the model at once, even mid-task');
+    assert.equal(f.prompts.at(-1).content[0].text, 'projectMsgGuideFirst', 'the guidance happens in the main conversation');
   } finally {
     await act(async () => view.unmount());
     await act(async () => header.unmount());
@@ -202,7 +202,7 @@ test('cards take their grid width, and the conversation cards switch hides them'
   ];
   let view;
   await act(async () => { view = Renderer.create(React.createElement(tail.render, { ...tail.slot.inject('s'),
-    useProjection: key => key === 'deepPtcCards' ? { v: 1, seq: 3, cards } : undefined })); });
+    turn: { turn: 1 }, useProjection: key => key === 'deepPtcCards' ? { v: 2, seq: 3, turn: 1, versions: cards.map((card, index) => ({ rev: index + 1, turn: 1, ...card })) } : undefined })); });
   assert.deepEqual(view.root.findAll(node => node.props?.className === 'dpt-cc').map(node => node.props['data-size']), ['half', 'half', undefined]);
   await act(async () => { await f.form.mutate([{ op: 'set', path: ['conversationCards'], value: false }]); });
   assert.equal(view.toJSON(), null);

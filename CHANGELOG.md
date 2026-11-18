@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.0.1 — 2026-11-18
+
+- 对话卡片按版本留在历史中，只有最新一轮可以点，旧版本只读存档，关闭的卡片收成一行。
+- 新增不阻塞的 `ask_user` 提问卡片，开启对话卡片时取代官方提问工具，回答作为下一条消息送达。
+- 卡片未指定 `size` 时自动并排排版。
+- 特点卡片作为受保护提示词中的独立模块注入，增删改和润色立即以 steer 消息送达模型；超长时整张略去并列名。润色支持子代理或当前对话，由用户决定是否采用。
+- 侧边面板加入特点卡片入口：编辑（不打扰模型）或让模型在主对话引导设置；兼容「更多会话视图」菜单。
+- 新增「面板位置」设置，可把整个面板放进右侧栏，并适配 dsh-better-sidebar（#25）。
+- shell 沙箱提权改为立即返回 `approval-N` 审批任务，`job_output` 查询状态，不再卡住。
+- 新增受保护的进度汇报指引，开局静默即提醒。
+- Cards stay in history by version (latest turn clickable, older ones archived); non-blocking `ask_user` question cards replace the official question tool; automatic side-by-side card layout.
+- Project cards become modular protected prompt constraints; every change reaches the model at once; whole-card truncation; user-reviewed polishing via subagent or chat; project card entry in the side panel.
+- Panel location setting with sidebar and dsh-better-sidebar support (#25); sandbox escalations become queryable approval jobs; protected progress-reporting guidance.
+
 ## 2.0.0 — 2026-11-18
 
 - 恢复原版 1.9.9 主提示词。深度 PTC 会话主动汇报、展示实测结果并提供可交互选项。

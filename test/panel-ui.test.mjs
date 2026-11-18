@@ -26,7 +26,7 @@ function fakeDocument() {
 }
 
 function fixture({ snapshot, mutate = async () => true, outcome = { ok: true, value: { commandId: 'c', result: { kind: 'success' } } },
-  storage = new Map(), browser = {}, activeEffects = false, jobsService, localeId, sidebar } = {}) {
+  storage = new Map(), browser = {}, activeEffects = false, jobsService, localeId, sidebar, betterSidebar } = {}) {
   let plugin;
   const document = browser.document ?? fakeDocument();
   const slots = new Map();
@@ -80,6 +80,7 @@ function fixture({ snapshot, mutate = async () => true, outcome = { ok: true, va
     slots: { inject: (name, callback) => callback(),
       register: (slot, render) => { slots.set(`${slot.name}#${slot.id ?? slot.key}`, { slot, render }); return () => {}; } },
   };
+  if (betterSidebar) ctx.betterSidebar = betterSidebar;
   ctx.inject = (deps, callback) => callback(ctx);
   plugin.apply(ctx);
   return { slots, tabTypes, document, legacy: slots.get('sidebar.right.pane.tab#dsh-deep-ptc-mode'), dock: slots.get('conversation.composer.dock#deep-ptc-side'),
@@ -145,7 +146,7 @@ test('the panel holds the environment switch, outputs, SSH and tool state', asyn
     assert.equal(checked(view), 'PowerShell');
     assert.match(text(view), /envForNew/u, 'the switch applies to new sessions');
     assert.ok(view.root.findAllByType('button').some(node => node.props.children === 'toolReset'));
-    assert.deepEqual(sections(view), ['environment', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
+    assert.deepEqual(sections(view), ['environment', 'projectTab', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
     assert.equal(view.root.findAllByProps({ role: 'switch', 'aria-label': 'visualEffects' }).length, 0, 'the effects switch lives in settings');
     assert.match(text(view), /outputsEmpty/u);
     assert.match(text(view), /sshEmpty/u);
@@ -216,7 +217,7 @@ test('subagents keep live state indicators and show only their names and same-ro
     assert.deepEqual(rows.map(visibleText), [' Research', ' Report 1m 15s', ' Live']);
     assert.equal(rows[1].children.at(-1).props.className, 'dpt-agent-duration');
     assert.equal(rows[1].props['aria-label'], 'Report · Done', 'the state remains accessible without visible status text');
-    assert.deepEqual(sections(view).slice(0, 2), ['Execution environment', 'Subagents']);
+    assert.deepEqual(sections(view).slice(0, 3), ['Execution environment', 'Project cards', 'Subagents']);
   });
 });
 
@@ -802,22 +803,104 @@ test('panel sections reorder by drag or keyboard, and the order is remembered', 
       assert.equal(view.root.findAll(node => node.props?.className === 'dpt-sortable' && node.props['data-drop']).length, 1, 'a drop line shows');
       await act(async () => gripOf(key).props.onPointerUp({ clientX: 0, clientY }));
     };
-    assert.deepEqual(order(), ['environment', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
+    assert.deepEqual(order(), ['environment', 'projectTab', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
     // Drag SSH onto the upper half of the environment section: it moves to the top.
     await drag('ssh', 10);
-    assert.deepEqual(order(), ['sshTitle', 'environment', 'jobsTitle', 'outputsTitle', 'toolsSection']);
+    assert.deepEqual(order(), ['sshTitle', 'environment', 'projectTab', 'jobsTitle', 'outputsTitle', 'toolsSection']);
     // Drag SSH onto the lower half of output files: it lands after them.
     under = { key: 'outputs', top: 0 };
     await drag('ssh', 90);
-    assert.deepEqual(order(), ['environment', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
+    assert.deepEqual(order(), ['environment', 'projectTab', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
     under = { key: 'environment', top: 0 };
     await drag('ssh', 10);
-    assert.deepEqual(order(), ['sshTitle', 'environment', 'jobsTitle', 'outputsTitle', 'toolsSection']);
+    assert.deepEqual(order(), ['sshTitle', 'environment', 'projectTab', 'jobsTitle', 'outputsTitle', 'toolsSection']);
     // Keyboard: the tool state section moves up one place.
-    await act(async () => grips()[4].props.onKeyDown({ key: 'ArrowUp', preventDefault() {} }));
-    assert.deepEqual(order(), ['sshTitle', 'environment', 'jobsTitle', 'toolsSection', 'outputsTitle']);
+    await act(async () => grips()[5].props.onKeyDown({ key: 'ArrowUp', preventDefault() {} }));
+    assert.deepEqual(order(), ['sshTitle', 'environment', 'projectTab', 'jobsTitle', 'toolsSection', 'outputsTitle']);
     await act(async () => grips()[0].props.onKeyDown({ key: 'ArrowDown', preventDefault() {} }));
-    assert.deepEqual(order(), ['environment', 'sshTitle', 'jobsTitle', 'toolsSection', 'outputsTitle']);
+    assert.deepEqual(order(), ['environment', 'sshTitle', 'projectTab', 'jobsTitle', 'toolsSection', 'outputsTitle']);
   });
-  assert.deepEqual(JSON.parse(storage.get('dsh-deep-ptc-mode:panel-order')), ['environment', 'agents', 'ssh', 'jobs', 'tools', 'outputs'], 'hidden sections keep a place too');
+  assert.deepEqual(JSON.parse(storage.get('dsh-deep-ptc-mode:panel-order')), ['environment', 'ssh', 'project', 'agents', 'jobs', 'tools', 'outputs'], 'hidden sections keep a place too');
+});
+
+test('the panel location setting moves the whole panel into the right sidebar tab', async () => {
+  const storage = new Map();
+  const opened = [];
+  const f = fixture({ snapshot: windows(), storage, sidebar: { openTab: (kind, options) => opened.push({ kind, options }) } });
+  await withSettings(f, async settings => {
+    const group = settings.root.findByProps({ role: 'radiogroup', 'aria-label': 'panelLocation' });
+    const option = label => group.findAll(node => node.props.role === 'radio' && node.props.children === label)[0];
+    assert.equal(option('locationBeside').props['aria-checked'], true, 'beside the conversation by default');
+    await act(async () => option('locationSidebar').props.onClick());
+    assert.equal(storage.get('dsh-deep-ptc-mode:panel-location'), 'sidebar');
+  });
+  assert.deepEqual(plain(f.tabTypes.at(-1).guide.map(entry => entry.id)), ['deep-ptc'], 'the sidebar page is offered on the new-tab guide');
+  await withComposer(f, {}, async (view, within) => {
+    assert.equal(view.root.findAllByProps({ className: 'dpt-sidecar' }).length, 0, 'nothing docks beside the conversation');
+    await act(async () => capsules(within('dock'))[0].props.onClick());
+    assert.deepEqual(plain(opened), [{ kind: 'deep-ptc', options: { revealIfOpened: true } }], 'the capsule opens the sidebar page');
+    assert.equal(view.root.findAllByProps({ className: 'dpt-sidecar' }).length, 0);
+    let tab;
+    await act(async () => { tab = Renderer.create(React.createElement(f.legacy.render, { sessionId: 'deep' })); });
+    try {
+      assert.equal(tab.root.findAllByProps({ className: 'dpt-sidebar-panel' }).length, 1, 'the tab draws the whole panel');
+      assert.ok(sections(tab).includes('toolsSection'), 'with the conversation’s own live state');
+      assert.doesNotMatch(text(tab), /sideOtherMode/u);
+    } finally { await act(async () => tab.unmount()); }
+  });
+});
+
+test('with dsh-better-sidebar the panel is one of its pages and the capsule opens it there', async () => {
+  const registered = [];
+  const opened = [];
+  const betterSidebar = {
+    registerTab(descriptor) { registered.push(descriptor); return () => {}; },
+    openTab: (seed, scope) => opened.push({ seed, scope }),
+  };
+  const nativeOpens = [];
+  const f = fixture({ snapshot: windows(), betterSidebar, storage: new Map([['dsh-deep-ptc-mode:panel-location', 'sidebar']]),
+    sidebar: { openTab: kind => nativeOpens.push(kind) } });
+  assert.equal(registered.length, 1);
+  assert.equal(registered[0].id, 'deep-ptc:panel');
+  assert.equal(registered[0].single, true);
+  assert.equal(registered[0].title(), 'sideTitle');
+  assert.deepEqual(plain(f.tabTypes.at(-1).guide), [], 'no second Deep PTC entry beside better-sidebar’s own');
+  await withComposer(f, {}, async (view, within) => {
+    await act(async () => capsules(within('dock'))[0].props.onClick());
+    assert.deepEqual(plain(opened), [{ seed: { type: 'deep-ptc:panel' }, scope: { sessionId: 'deep' } }]);
+    assert.deepEqual(nativeOpens, []);
+    let page;
+    await act(async () => { page = Renderer.create(registered[0].component({ scope: { sessionId: 'deep' } })); });
+    try { assert.ok(sections(page).includes('toolsSection'), 'the page draws this conversation’s panel'); }
+    finally { await act(async () => page.unmount()); }
+  });
+  let other;
+  await act(async () => { other = Renderer.create(registered[0].component({ scope: { sessionId: 'elsewhere' } })); });
+  try { assert.match(text(other), /sideOtherMode/u, 'a conversation without a Deep PTC panel shows what applies to new sessions'); }
+  finally { await act(async () => other.unmount()); }
+});
+
+test('the project editor button finds the Project cards view in the host’s more-views menu', async () => {
+  const document = fakeDocument();
+  const clicks = [];
+  let expanded = false;
+  const item = { textContent: ' projectTab ', click: () => clicks.push('item') };
+  const more = { getAttribute: name => name === 'aria-expanded' ? String(expanded) : null, click: () => { expanded = !expanded; clicks.push('more'); } };
+  const tabRow = { parentElement: { querySelector: selector => selector === 'button[aria-haspopup="menu"]' ? more : null } };
+  const base = document.querySelectorAll;
+  document.querySelectorAll = selector => selector === '[role="menu"] [role="menuitem"]' ? (expanded ? [item] : []) : base(selector);
+  document.querySelector = selector => selector === '[data-conversation-tabs]' ? tabRow : null;
+  const f = fixture({ snapshot: windows(), browser: { document } });
+  await withPanel(f, {}, async view => {
+    const button = view.root.findAll(node => node.type === 'button' && node.props.children === 'projectPanelEdit')[0];
+    await act(async () => { button.props.onClick(); await new Promise(resolve => setTimeout(resolve, 80)); });
+    assert.deepEqual(clicks, ['more', 'item'], 'the menu opens and the Project cards item is chosen');
+    assert.doesNotMatch(text(view), /projectPanelNoTab/u);
+    item.textContent = 'other';
+    clicks.length = 0;
+    expanded = false;
+    await act(async () => { button.props.onClick(); await new Promise(resolve => setTimeout(resolve, 450)); });
+    assert.deepEqual(clicks, ['more', 'more'], 'a miss closes the menu again');
+    assert.match(text(view), /projectPanelNoTab/u);
+  });
 });

@@ -8,6 +8,21 @@ Deep PTC is a DeepSeek Harness agent mode with progress reports, clarifying ques
 
 The panel sits beside the conversation and shows the environment, subagents, jobs, output files, SSH connections and tool state. The panel width can be dragged. The capsule expands or collapses it; it sits below the composer by default and can move into the toolbar or be hidden. Deep PTC also has its own settings page. Visual effects are lightweight and start off when an appearance plugin is installed.
 
+## Changes in 2.0.1
+
+2.0.1 focuses on stability and fills in cards, questions and the panel from user feedback.
+
+- **Conversation cards stay in the history**: each version draws at the turn it appeared in; only cards in the latest turn are clickable, older versions and earlier turns are read-only archives, and closed cards fold into one line.
+- **Question cards replace the official question tool**: with conversation cards on, the model asks with `ask_user` (single choice, multiple choice, text, optional recommended answers). Asking never blocks; your answer arrives as your next message and the card keeps the answered result.
+- **Automatic card layout**: without an explicit `size`, narrow cards pair up or sit three in a row and wide cards take the full row.
+- **Project cards are modular prompt constraints**: each card is one self-contained module of a protected system prompt section, with its title, revision and item IDs. Every create, edit, delete and polish reaches the model at once as a steer message, even mid-task. Over the size limit whole later cards are left out and named instead of cutting a card in half.
+- **You decide on polishing**: polish with a subagent or the current conversation, review the result side by side, and adopt or discard it.
+- **Project cards in the side panel**: Edit project cards opens the editor without involving the model; Set up with the model guides you with questions in the main conversation. The editor is found even when the host moves plugin views into its More views menu.
+- **Panel location (#25)**: Settings → Deep PTC → Appearance → Panel location offers Beside conversation or Sidebar. In the sidebar the whole panel is a Deep PTC tab of the right sidebar that the capsule opens; with dsh-better-sidebar it opens as one of its pages and can also go in its bottom workbench.
+- **Sandbox escalations never hang**: a shell escalation returns an `approval-N` handle at once, the approval prompt appears as usual and the command runs once approved; `job_output` reports waiting, running, finished, rejected or withdrawn.
+- **More active progress updates**: a protected prompt section asks the model to say what it will do before its first tool call and then report findings, thoughts and next steps every one or two steps, hypotheses and dead ends included; a silent first step gets a reminder.
+- **Built-in prompts and card constraints are never compacted**: they are system prompt sections read on every request and never enter the history.
+
 ## Changes in 2.0.0
 
 Version 2 restores the original 1.9.9 persona and adds proactive cards and progress reminders. Workspace setup remembers guidance, pending proposals and deferral. Independent sources keep separate proposals. Stale proposals require merging and fresh approval. End and restart the panel guide without losing pending proposals. For feature changes the model uses related F records to report new and existing behavior checks together.
@@ -107,6 +122,7 @@ The Deep PTC mode label, settings, and conversation UI switch between Chinese an
   - **SSH connections**: hosts this conversation reached, with their outcome, and the host aliases in `~/.ssh/config`.
   - **Tool state**: the "Reload all tool states" button and, when present, the failed external tools.
 - **The capsule** shows the environment, subagent count and tool notices, and toggles the independent side panel. Its position is a setting (Settings → Deep PTC → Appearance): auto, below the composer, in the composer toolbar, or hidden. Auto uses the toolbar beside dsh-claude-style so a one-row composer stays one row. When hidden, open the panel from the Deep PTC tab on the right sidebar.
+- **Panel location**: choose Beside conversation or Sidebar under Settings → Deep PTC → Appearance. In Sidebar mode the whole panel lives in the Deep PTC tab of the right sidebar and the capsule opens it; with dsh-better-sidebar installed it opens as one of its pages and can also go in its bottom workbench.
 - **Panel width**: drag the panel's left edge, or focus it and use the arrow keys (Shift for larger steps) or Home/End; a double click restores 280px. The width is remembered, from 240 to 640px, and a docked panel leaves at least 540px for the conversation.
 
 Visual effects apply **only while the conversation on screen is a Deep PTC session**, and only on the composer, send button, message bubbles, reply typography and session rows. They never rewrite the host's colour tokens or fonts, so switching conversations does not restyle the whole page: a hairline on the focused composer, a blue gradient send button, soft blue user bubbles, pointer spotlight, click ripple, a magnetic send button; while running, a glowing composer, a send-button ring and sparks rising above the composer.
@@ -159,7 +175,7 @@ From 1.5.0, "don't sleep or wait" is enforced by plugin code, not just requested
 | `job_output` waits on a job | Capped at 30 s, ends early when you send a message, and waiting again while your message is unread is refused |
 | The model writes `sleep 60`, `Start-Sleep 30` or `timeout /t 20` | Foreground pauses over 5 s are refused (`run_in_background` commands are exempt); short readiness loops such as `sleep 1` still work |
 | `setTimeout`, `setInterval` or `time.sleep` in a `run_code` program | Known waits over 5 s are refused; unresolved durations pass through; polling one running job more than 3 times in one program is refused |
-| `ask_user_question` | Runs in timed mode: 120 s by default, at most 300 s, `-1` refused. An unanswered question becomes pending and your later answer arrives as a message; typing a reply instead of using the card ends the wait at once |
+| `ask_user_question` | Replaced by non-blocking `ask_user` question cards while conversation cards are on (the answer arrives as your next message); with cards off it runs in timed mode: 120 s by default, at most 300 s, `-1` refused. An unanswered question becomes pending and your later answer arrives as a message; typing a reply instead of using the card ends the wait at once |
 
 These rules apply only to Deep PTC sessions. They rely on the desktop "busy Enter" setting being **steer**; with **queue**, messages wait for the whole turn to end.
 
