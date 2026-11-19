@@ -35,12 +35,15 @@ function fakeHost() {
   const records = async () => (session, type, value) => { serializable(value); emit(session, type, value); };
   const turn = (session, n) => emit(session, 'turn/start', { turn: n });
   const state = session => states.get(session) ?? projection.init();
-  const run = (session, request) => {
+  // The agent records what the server delivers to the model; `steer: false` plays an agent without it.
+  const delivered = [];
+  const run = (session, request, { steer = true } = {}) => {
     const rev = request.rev ?? latestOf(state(session), request.id)?.rev;
-    return handlers.get(CARD_COMMAND)({ agent: { session }, commandId: 'test-command', signal: AbortSignal.timeout(1000),
+    const agent = steer ? { session, steer: message => delivered.push(message) } : { session };
+    return handlers.get(CARD_COMMAND)({ agent, commandId: 'test-command', signal: AbortSignal.timeout(1000),
       rawInput: JSON.stringify({ ...request, rev }) });
   };
-  return { ctx, records, handlers, registered, schedule, state, run, turn };
+  return { ctx, records, handlers, registered, schedule, state, run, turn, delivered };
 }
 
 const settle = async (host, session, id, done) => {
@@ -59,7 +62,7 @@ test('the tool posts a card and its button really runs', async () => {
     blocks: [{ type: 'rows', items: [{ label: '响铃', value: ':15' }] }],
     actions: [{ id: 'stop', label: '停止提醒', style: 'danger', run: { schedules: ['schedule-a', 'schedule-b'] } }] }, { agent: { session } });
   assert.deepEqual([created.id, created.rev, created.turn, created.phase], ['loop', 1, 1, OPEN]);
-  assert.deepEqual(created.cards[0], { id: 'loop', rev: 1, turn: 1, kind: 'card', title: '每小时提醒', size: 'full', tone: 'info', phase: OPEN, interactive: true });
+  assert.deepEqual(created.cards[0], { id: 'loop', rev: 1, turn: 1, kind: 'card', title: '每小时提醒', phase: OPEN, interactive: true });
 
   await host.run(session, { id: 'loop', action: 'act', key: 'stop' });
   const card = await settle(host, session, 'loop', version => version.phase === STOPPED);
@@ -84,9 +87,13 @@ test('cards stay in the history: a new version archives the old one, a new turn 
   assert.match(host.run(session, { id: 'decision', action: 'act', key: 'pick' }).text, /earlier turn/u);
   // Showing it again in the new turn makes it usable again.
   await show('Again');
-  assert.equal(host.run(session, { id: 'decision', action: 'act', key: 'pick' }).kind, 'success');
+  assert.equal((await host.run(session, { id: 'decision', action: 'act', key: 'pick' })).kind, 'success');
   assert.equal(latestOf(host.state(session), 'decision').phase, STOPPED);
-  assert.deepEqual(host.state(session).versions.map(version => version.turn), [1, 1, 2]);
+  assert.equal(host.delivered.at(-1).content[0].text, `[Card button: decision rev ${latestOf(host.state(session), 'decision').rev} «Decision» → pick «Again»]`);
+  // Without a steerable agent the server only records the choice, and the client sends its reply.
+  await show('Fallback');
+  assert.equal((await host.run(session, { id: 'decision', action: 'act', key: 'pick' }, { steer: false })).text, 'Choice recorded. / 已记录选择。');
+  assert.deepEqual(host.state(session).versions.map(version => version.turn), [1, 1, 2, 2]);
 });
 
 test('closing, invalid input and kept buttons', async () => {
@@ -140,7 +147,17 @@ test('ask_user posts a question card that returns at once and takes one valid an
   assert.match(posted.next, /do not ask again/u);
   assert.equal(latestOf(host.state(session), 'deploy').kind, 'question');
   assert.match(host.run(session, { id: 'deploy', action: 'answer', answers: { plan: 'gcp' } }).text, /not one of the options/u);
-  assert.equal(host.run(session, { id: 'deploy', action: 'answer', answers: { plan: 'k8s', note: '尽快' } }).kind, 'success');
+  const sent = await host.run(session, { id: 'deploy', action: 'answer', answers: { plan: 'k8s', note: '尽快' } });
+  assert.equal(sent.kind, 'success');
+  assert.match(sent.text, /sent to the model/u, 'the server delivered the answer, so the client sends no text');
+  // The model's view: ids, values with the words the user saw, and no presentation.
+  const message = host.delivered.at(-1);
+  assert.deepEqual(message.source, { kind: 'deep-ptc-card', form: 'notice', summary: '回答 · 选择部署方案' });
+  assert.equal(message.content[0].text, [
+    '[Card answer: deploy «选择部署方案»]',
+    'plan = k8s «K8s»    # 用哪种方案？',
+    'note = «尽快»    # 补充说明',
+    'These answers settle the card. Continue the work that waited on them; do not ask them again.'].join('\n'));
   const answered = latestOf(host.state(session), 'deploy');
   assert.equal(answered.phase, ANSWERED);
   assert.deepEqual(answered.result.answers, { plan: 'k8s', note: '尽快' });

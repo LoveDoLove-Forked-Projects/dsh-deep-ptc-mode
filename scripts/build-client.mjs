@@ -5,6 +5,7 @@ const read = path => readFileSync(new URL(path, root), 'utf8').replaceAll('\r\n'
 const modules = {
   'conversation-cards': 'const { CardTail, commandError } = createConversationCards({ React, h, tf, commandText, useFormValue });',
   'project-cards': 'const { PROJECT_COMMAND_NAME, runProjectCommand, ProjectView, ProjectChatProposals } = createProjectCards({ React, h, tf, commandError, projectionValue, openTab: openConversationTab });',
+  'task-brief': 'const { BRIEF_COMMAND_NAME, runBriefCommand, BriefTail, BriefPanelSection } = createTaskBrief({ React, h, tf, commandError, projectionValue, useFormValue });',
   styles: '',
 };
 

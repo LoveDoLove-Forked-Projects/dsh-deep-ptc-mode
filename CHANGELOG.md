@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.1.0 — 2026-11-19
+
+- 新增任务卡「本次任务」：模型把用户消息整理成目标、约束、验收、背景和待确认条目，复述用户的条目附经过核对的原话引文，隐含需求标为推断；逐段覆盖检查，未归档原文原样列出。
+- 确认后可精简上下文：原话在模型上下文里换成替身，原事件保留在聊天和会话记录中，可读回、可恢复。用户确认的条目模型不能改写或删除。
+- 任务卡内容走运行时上下文快照，不改动系统提示；实测每次更新的未缓存输入从约 18,500 token 降到 600–2,600。
+- 内容较多的消息未整理时提醒模型；收尾前核对验收项。
+- 提问卡回答和按钮选择由服务端以结构化格式送达模型（卡片 id、问题 id、选项值和用户看到的文字），旧客户端回退到文字回复；卡片回答可作为任务卡引文。
+- 修复 `ask_user`、`ui_card`、`project_cards` 参数在 PTC SDK 中显示为 `unknown` 的问题，新增 schema 回归测试。`ui_card` 返回值去掉展示字段。
+- 设置新增「任务卡」开关，侧边面板新增「本次任务」。
+- Task brief: the model files goals, constraints, acceptance criteria, context and open questions from the user's messages, with checked verbatim quotes, inferred items marked, and clause-level coverage showing unfiled text.
+- Confirm and condense replaces filed messages in the model's context with stubs; originals stay in the chat and the log and can be read back or restored. Confirmed items are the user's.
+- The brief travels as a runtime-context snapshot instead of the system prompt: 600–2,600 uncached tokens per update instead of about 18,500 in a live rerun.
+- Reminders for unfiled substantive messages; acceptance items are checked before the final answer.
+- Question-card answers and button choices reach the model in a structured form delivered by the server; older clients fall back to text; card answers can be quoted in the brief.
+- Fix the `ask_user`, `ui_card` and `project_cards` parameters showing as `unknown` in the PTC SDK, with a schema regression test; `ui_card` results drop presentation fields.
+- Task brief switch in settings and a Task brief section in the side panel.
+
 ## 2.0.1 — 2026-11-18
 
 - 对话卡片按版本留在历史中，只有最新一轮可以点，旧版本只读存档，关闭的卡片收成一行。
