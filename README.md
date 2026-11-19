@@ -1,12 +1,25 @@
 # Deep PTC mode
 
-[中文](README.zh.md) · MIT · **2.0.0**
+[中文](README.zh.md) · MIT · **2.1.0**
 
 [Changelog](CHANGELOG.md) · [Test report](TEST_REPORT.md) · [Plugin workflows and verification](COMPATIBILITY.md)
 
-Deep PTC is a DeepSeek Harness agent mode with progress reports, clarifying questions, task-size planning, and interruptible background work. It builds on the installed official PTC preset with selectable shells, on-demand tools and skills, and a two-layer preset identity adapter for third-party plugins.
+Deep PTC is a DeepSeek Harness agent mode with progress reports, clarifying questions, task-size planning, and interruptible background work. It builds on the installed official PTC preset with selectable shells, on-demand tools and skills, and a two-layer preset identity adapter for third-party plugins. Cards face both you and the model: you see a clear card, the model reads precise context with ids, sources and states; the task brief files the goals, constraints and acceptance criteria in your messages and, once you confirm, can take the raw messages out of the model's context.
 
 The panel sits beside the conversation and shows the environment, subagents, jobs, output files, SSH connections and tool state. The panel width can be dragged. The capsule expands or collapses it; it sits below the composer by default and can move into the toolbar or be hidden. Deep PTC also has its own settings page. Visual effects are lightweight and start off when an appearance plugin is installed.
+
+## Changes in 2.1.0
+
+2.1.0 gives cards a model view: besides what you see, a card reaches the model's context in a precise, token-lean form.
+
+- **Task brief**: the model files the goals, constraints, acceptance criteria, context and open questions in your messages into numbered items (G / C / A / K / O). An item that restates you carries a verbatim quote that the plugin checks against your message; implicit needs are marked inferred. Every clause of a filed message is either filed or marked as carrying no task content, and whatever is left is shown verbatim as unfiled text.
+- **Condense after you confirm**: once the brief is right, Confirm and condense replaces your messages in the model's context with a stub that points to the brief and keeps unfiled text verbatim, before the next request. Your messages stay in the chat and the log; the model reads them back with `task_brief source`, and you can restore them in one click. Only you can change items you confirmed.
+- **The brief stays out of the system prompt**: the fixed guidance lives in the system prompt and the brief itself travels as a runtime-context snapshot, appended only when it changes and re-sent by the host after compaction. In a live rerun, each update cost 600–2,600 uncached input tokens instead of about 18,500.
+- **Filing on its own**: an unfiled substantive message earns a reminder (at most two per message); acceptance items are checked one by one before the final answer.
+- **Structured card answers**: answers to question cards and button choices go straight to the model with the card id, question ids, option values and the words you saw. The chat shows one line and the answers stay on the card. Older clients fall back to the plain text reply. Card answers can be quoted in the task brief.
+- **Fix: the model could not see the card tools' arguments**: the parameter schemas of `ask_user`, `ui_card` and `project_cards` used constructs outside the PTC SDK subset, so `run_code` showed them as `unknown` and the model had to probe. They are typed now, with a regression test.
+- `ui_card` results drop presentation fields such as size and tone.
+- Settings → Deep PTC → Cards gains a Task brief switch (on by default); the side panel gains Task brief.
 
 ## Changes in 2.0.1
 
@@ -90,6 +103,7 @@ The model leaves cards at the end of the conversation with the `ui_card` tool. C
 - **Layout**: each card can set `size` (full / half / third); several cards form a grid, two side by side or three in a row, stacking in narrow windows.
 - **Buttons**: `run` really runs on the host (deletes scheduled tasks, or runs one command in **your selected execution environment**); `reply` sends the user's choice to the model as their next message; a button can do both. `keep` leaves the card usable after a press (restart, snooze, rerun).
 - **Safety**: `{name}` placeholders in a command are filled only from times, dates, numbers and option values the card declared, so free text never reaches a shell; the server validates them again. Destructive buttons use the `danger` style.
+- **Model view**: answers and button choices reach the model as `[Card answer: id «title»]` followed by `question id = value «the words you saw»`; tool results carry no presentation fields such as size or tone.
 - **Design**: one type scale, spacing and colour system that follows the host's light and dark themes; the chart palette is validated for colour-vision deficiency and every value is printed, so colour never carries meaning alone. Cards draw once, after the latest turn.
 
 Three built-in skills load on demand. `deep-ptc-cards` explains the conversation card interface and layout. `deep-ptc-card-examples` provides 20 validated templates covering development scenarios and multi-card layouts. `deep-ptc-project-cards` covers settings, proposals and project records.
@@ -108,14 +122,36 @@ The project's standing rules and records, kept in `PROJECT-CARDS.md` at the work
 - **Edit protection**. Submit, delete and rollback check the file version from when the edit began. On a conflict, the editor keeps the draft and offers to merge it with the current content. Writes preserve Markdown outside the managed lines. History and proposals live in `$DSH_HOME/storages/deep-ptc-project-cards.json`.
 - Under **Settings → Deep PTC → Cards** you can switch off conversation cards and project cards separately (both on by default).
 
+## Task brief (2.1.0)
+
+People write the way they talk: goals, limits, background and pleasantries in one message, spread over several turns. The task brief files them into one conversation card: you see a clear card, the model reads clean, numbered context.
+
+- **Five sections**: goals G, constraints C, acceptance A, context K, open questions O. One fact per item, in your language, each fact once.
+- **Sources**: an item that restates you carries your words as a quote, checked against your message or card answer; a made-up quote is refused. Implicit needs the model infers are marked inferred and checked with you before it relies on them.
+- **Coverage**: each message is checked clause by clause. Text neither quoted by an item nor marked as carrying no task content shows on the card as unfiled text and goes back to the model to file.
+- **On the card**: confirm, edit, finish or reopen, and remove each item; keep a goal or constraint for the project, which writes it to the project cards' user requirements (Q); add your own items. The model cannot reword or drop items you confirmed.
+- **Condensing**: Confirm and condense replaces filed messages in the model's context with a stub listing their items and repeating unfiled text verbatim. The original event is kept and the chat is unchanged; Restore original undoes it. Condensing recomputes the prefix cache after that message once, so it pays most for long messages condensed early.
+- **What the model reads** (a context snapshot appended when it changes):
+
+  ```
+  # Task brief (rev 4) — this conversation's current brief; it replaces earlier task brief snapshots
+  Constraints
+  - C2 [user m8] 周日晚上必须回到上海
+  - C3 [inferred] 1500 按两人合计
+  Acceptance — check each before your final answer; mark finished ones done
+  - A1 [confirmed] 给一张按时间排好的表格
+  ```
+
+- The card shows at the end of the turn that last changed it, and Task brief in the side panel is always there. Switch it off under Settings → Deep PTC → Cards.
+
 ## Panel, settings page and visual effects
 
 The Deep PTC mode label, settings, and conversation UI switch between Chinese and English with DSH **Settings → General → Language**. Every entry point uses an official DSH extension point; the plugin changes no host layout and registers no keyboard shortcuts.
 
-- **Settings → Deep PTC**: execution environment and shell; under Cards, the conversation cards and project cards switches; under Appearance, the visual effects switch and the capsule position (the effects switch lives only here, not in the side panel); copyable diagnostics to attach to interface bug reports.
+- **Settings → Deep PTC**: execution environment and shell; under Cards, the conversation cards, project cards and task brief switches; under Appearance, the visual effects switch and the capsule position (the effects switch lives only here, not in the side panel); copyable diagnostics to attach to interface bug reports.
 - **The Deep PTC panel beside the conversation** is open by default when there is room. It follows the conversation width and hides under a fullscreen native sidebar. On narrow screens the bottom capsule expands it.
   - **Execution environment**: WSL, PowerShell, native Bash or Zsh, for newly created Deep PTC sessions.
-  - **Order**: hover a section and drag the handle at its top left to reorder the environment, subagents, jobs, output files, SSH and tool state (or focus the handle and press ↑ ↓); the order is kept per browser.
+  - **Order**: hover a section and drag the handle at its top left to reorder the environment, project cards, task brief, subagents, jobs, output files, SSH and tool state (or focus the handle and press ↑ ↓); the order is kept per browser.
   - **Subagents**: the state indicator and name on the left, with duration at the right of the same row; a row opens that subagent's chat in the official right sidebar.
   - **Background jobs**: six positions, up to five active jobs first and up to three finished jobs; overflow folds into one expandable row.
   - **Output files**: files this conversation wrote or delivered, newest first; click to open the file in DSH's native preview. Three positions are available, with overflow folded into one of them. The rule matches DSH's own deliverables card and also counts files written from `run_code`.

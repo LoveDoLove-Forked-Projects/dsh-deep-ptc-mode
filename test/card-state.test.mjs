@@ -49,7 +49,7 @@ test('the digest a program reads is complete and lossless JSON', () => {
   state = show(state, 'a', body('A'));
   state = show(state, 'q', readQuestionInput({ title: 'Plan', questions: [{ prompt: 'Which?', options: ['x', 'y'] }] }).card);
   const digest = cardsDigest(state);
-  assert.deepEqual(digest[0], { id: 'a', rev: 1, turn: 1, kind: 'card', title: 'A', size: 'full', tone: 'info', phase: OPEN, interactive: true });
+  assert.deepEqual(digest[0], { id: 'a', rev: 1, turn: 1, kind: 'card', title: 'A', phase: OPEN, interactive: true });
   assert.equal(digest[1].kind, 'question');
   const deepDefined = value => value !== undefined && (value === null || typeof value !== 'object' || Object.values(value).every(deepDefined));
   assert.ok(deepDefined(digest), 'no undefined anywhere, so run_code can return it');

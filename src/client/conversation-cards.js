@@ -247,6 +247,15 @@ export function createConversationCards({ React, h, tf, commandText, useFormValu
     return `【${card.title}】${action.label ?? ''}${parts.length > 0 ? `（${parts.join('；')}）` : ''}`;
   }
 
+  // Servers from 2.1.0 deliver the model's view of an answer or reply themselves (lib/model-view.mjs)
+  // and say so in the success text; older servers leave the text reply to the client.
+  const SERVER_DELIVERED = new Set(['Answer sent to the model. / 已把回答发给模型。', 'Choice sent to the model. / 已把选择发给模型。',
+    'Card action completed and reported to the model. / 卡片操作已完成并告知模型。']);
+  function deliveredByServer(result) {
+    const outcome = result?.value?.result ?? result?.value;
+    return outcome?.kind === 'success' && SERVER_DELIVERED.has(outcome.text);
+  }
+
   // The host command's outcome, reduced to an error text or nothing.
   function commandError(result, t) {
     if (result?.ok === false) return result.error?.message ?? 'failed';
@@ -296,9 +305,10 @@ export function createConversationCards({ React, h, tf, commandText, useFormValu
     const setValue = (name, value) => { setValues(current => ({ ...current, [name]: value })); setMessage(undefined); };
     async function press(action) {
       setMessage(undefined);
-      const error = commandError(await run('act', { key: action.id, values }), t);
+      const result = await run('act', { key: action.id, values });
+      const error = commandError(result, t);
       if (error !== undefined) { setMessage(error); return; }
-      if (action.reply) {
+      if (action.reply && !deliveredByServer(result)) {
         const sent = await reply(replyText(card, action, values));
         if (sent === false) setMessage(t('cardReplyFailed'));
       }
@@ -376,8 +386,10 @@ export function createConversationCards({ React, h, tf, commandText, useFormValu
     async function submit(event) {
       event?.preventDefault?.();
       setMessage(undefined);
-      const error = commandError(await run('answer', { answers }), t);
+      const result = await run('answer', { answers });
+      const error = commandError(result, t);
       if (error !== undefined) { setMessage(error); return; }
+      if (deliveredByServer(result)) return;
       const sent = await reply(answerText(card, answers, t));
       if (sent === false) setMessage(t('cardReplyFailed'));
     }

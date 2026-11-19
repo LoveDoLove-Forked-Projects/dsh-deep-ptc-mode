@@ -1,5 +1,23 @@
 # Deep PTC 测试报告 / Test report
 
+## 2.1.0 · 2026-11-19
+
+Windows、Node 24 与 DSH 桌面版 0.2.2-rc.5（deepseek-flash），285 项自动化测试通过，`npm run check` 通过。
+
+| 场景 | 观察 |
+| --- | --- |
+| 杂乱的出行请求（目标、约束、验收与客套话混在一条） | 模型在作答前主动整理出 9 条，覆盖 10/10 段；对「1500 是否两人合计」记为推断，并在回答里说明这个假设。 |
+| 确认并精简后追问 | 会话日志中原话节点被 `replace` 为替身，原事件保留；后续回答仍遵守预算和饮食约束。 |
+| 防偷懒提醒 | 模型首次调用出错、尚未整理时触发一次提醒。 |
+| 提问卡回答 | 模型收到 `[Card answer: …]` 加 `city = philadelphia «费城»` 的结构化消息；聊天显示为一行。 |
+| 工具参数 | 修复前 `ask_user` 等工具在 SDK 中为 `unknown`，一次提问卡花 2 分 31 秒试参数；修复后首次调用成功。 |
+| 缓存 | 任务卡改走上下文快照前后，同一对话每次更新的未缓存输入：18,769 / 18,389 / 18,477 → 2,635 / 647 / 597；第 1 轮结束时上下文 69.4k → 32.7k。精简原话会让其后的前缀重算一次（本例 12,490）。 |
+
+以上为单次实测个例，不代表模型稳定的成功率。
+
+- Windows, Node 24, DSH desktop 0.2.2-rc.5 (deepseek-flash): 285 automated tests and `npm run check` pass.
+- Live: the model filed a scattered request before answering (10/10 clauses covered), condensing replaced the message node while keeping the original event, card answers arrived in the structured form, the card tools' arguments are typed again, and moving the brief into the context snapshot cut uncached input per update from about 18,500 to 600–2,600 tokens. Single observed runs, not a success-rate evaluation.
+
 ## 2.0.0 · 2026-11-18
 
 Windows、Node 24 与 DSH 0.2.2-rc.1，263 项自动化测试通过。隔离宿主验证了面板子代理提问、接收回答、提交提案及面板审批，也验证了 PowerShell、WSL、受限调用拒绝、第三方工具替换和预设降级。

@@ -218,6 +218,22 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     skillShowAll: '显示全部 {count} 个', skillShowLess: '收起',
     cardLabel: '对话卡片', cardStopDefault: '停止', cardDismiss: '关闭',
     cardStopping: '正在处理…', cardStopped: '已执行', cardFailed: '执行失败', cardDismissed: '已关闭',
+    briefTitle: '本次任务', briefGoal: '目标', briefConstraint: '约束', briefAcceptance: '验收', briefContext: '背景', briefQuestion: '待确认',
+    briefBasisUser: '原话', briefBasisInferred: '推断', briefBasisConfirmed: '已确认', briefDone: '已完成',
+    briefConfirmOne: '确认', briefEdit: '改', briefRemove: '删', briefMarkDone: '完成', briefReopen: '重开', briefSave: '保存',
+    briefPromote: '设为长期要求', briefPromoteHint: '写入项目特点卡片的「用户要求」，之后的对话也会遵守', briefPromoted: '已写入特点卡片的用户要求。',
+    briefAdd: '+ 添加一条', briefAddPlaceholder: '一条目标、约束或验收标准', briefSection: '分区', briefFrom: '出自消息 {ref}',
+    briefMessage: '第 {turn} 轮的消息', briefCovered: '已整理 {covered}/{total} 段', briefUnfiled: '未归档原文',
+    briefCondensed: '已移出上下文', briefCondensedHint: '模型上下文里这条消息已换成任务卡替身；原话仍在聊天和会话记录中，模型需要时可以读回。',
+    briefCondensing: '下一步移出上下文', briefRestoring: '下一步恢复原文', briefRestore: '恢复原文',
+    briefCount: '{count} 条', briefInferredCount: '{count} 条推断待确认', briefUnfiledCount: '{count} 段未归档', briefCondensedCount: '{count} 条消息已精简',
+    briefAllConfirmed: '已全部确认', briefConfirmAll: '全部确认', briefCondense: '确认并精简上下文',
+    briefConfirmedNote: '已确认。确认过的条目只有你能修改或删除。',
+    briefCondenseNote: '已确认。模型下一次请求前，这些原话会换成任务卡替身，聊天里的原话不变。',
+    briefCondenseHint: '核对无误后可精简上下文：原话移出模型上下文但不删除，未归档的原文会逐字保留。',
+    briefFootHint: '模型按这张卡工作，并在结束前逐条核对验收。',
+    briefPanelNone: '模型还没有整理本次任务。', briefShow: '查看', briefHide: '收起', briefSources: '来源消息',
+    briefSwitch: '任务卡', briefSwitchHint: '模型把你消息里的目标、约束和验收标准整理成「本次任务」卡，附上原话出处并标出推断的部分。核对后可把原话移出模型上下文，原话不会删除。',
     cardLast: '上次：{action}', cardNeeds: '先填写：{names}', cardReplyFailed: '未能把选择发送给模型，请直接在对话里告诉它。',
     cardsSection: "卡片",
     cardsSwitch: "对话卡片",
@@ -374,6 +390,22 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     skillShowAll: 'Show all {count}', skillShowLess: 'Show less',
     cardLabel: 'Conversation cards', cardStopDefault: 'Stop', cardDismiss: 'Dismiss',
     cardStopping: 'Working…', cardStopped: 'Done', cardFailed: 'Failed', cardDismissed: 'Dismissed',
+    briefTitle: 'Task brief', briefGoal: 'Goals', briefConstraint: 'Constraints', briefAcceptance: 'Acceptance', briefContext: 'Context', briefQuestion: 'Open questions',
+    briefBasisUser: 'Your words', briefBasisInferred: 'Inferred', briefBasisConfirmed: 'Confirmed', briefDone: 'Done',
+    briefConfirmOne: 'Confirm', briefEdit: 'Edit', briefRemove: 'Remove', briefMarkDone: 'Done', briefReopen: 'Reopen', briefSave: 'Save',
+    briefPromote: 'Keep for the project', briefPromoteHint: "Add to the project cards' user requirements, so later conversations follow it too", briefPromoted: "Added to the project's user requirements.",
+    briefAdd: '+ Add an item', briefAddPlaceholder: 'A goal, constraint or acceptance criterion', briefSection: 'Section', briefFrom: 'From message {ref}',
+    briefMessage: 'Message in turn {turn}', briefCovered: '{covered}/{total} clauses filed', briefUnfiled: 'Unfiled text',
+    briefCondensed: 'Out of context', briefCondensedHint: "In the model's context this message is replaced by a stub pointing to the brief; the original stays in the chat and the log, and the model can read it back.",
+    briefCondensing: 'Leaves context next step', briefRestoring: 'Restored next step', briefRestore: 'Restore original',
+    briefCount: '{count} items', briefInferredCount: '{count} inferred to check', briefUnfiledCount: '{count} unfiled', briefCondensedCount: '{count} messages condensed',
+    briefAllConfirmed: 'All confirmed', briefConfirmAll: 'Confirm all', briefCondense: 'Confirm and condense',
+    briefConfirmedNote: 'Confirmed. Only you can change or remove confirmed items.',
+    briefCondenseNote: "Confirmed. Before the model's next request these messages are replaced by stubs; the chat keeps your words.",
+    briefCondenseHint: "Once it is right, condense: your messages leave the model's context without being deleted, and unfiled text is kept verbatim.",
+    briefFootHint: 'The model works from this card and checks each acceptance item before it finishes.',
+    briefPanelNone: 'The model has not filed this task yet.', briefShow: 'Show', briefHide: 'Hide', briefSources: 'Source messages',
+    briefSwitch: 'Task brief', briefSwitchHint: "The model files the goals, constraints and acceptance criteria in your messages into a Task brief card, quoting your words and marking what it inferred. Once checked, your messages can leave the model's context; they are never deleted.",
     cardLast: 'Last: {action}', cardNeeds: 'Fill in first: {names}', cardReplyFailed: 'Could not send the choice to the model; tell it in the conversation instead.',
     cardsSection: "Cards",
     cardsSwitch: "Conversation cards",
@@ -1046,6 +1078,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
   function CardsSettingsSection({ form, t }) {
     const conversation = useFormValue(form, 'conversationCards') !== false;
     const project = useFormValue(form, 'projectCards') !== false;
+    const brief = useFormValue(form, 'taskBrief') !== false;
     const [failed, setFailed] = React.useState(false);
     const writable = form?.getSnapshot?.()?.writable !== false && form !== undefined;
     async function set(key, value) {
@@ -1062,10 +1095,13 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     return h(React.Fragment, null,
       row('conversationCards', conversation, t('cardsSwitch'), t('cardsSwitchHint')),
       row('projectCards', project, t('projectSwitch'), t('projectSwitchHint')),
+      row('taskBrief', brief, t('briefSwitch'), t('briefSwitchHint')),
       failed ? h('p', { className: 'dpt-side-note', role: 'alert' }, t('failed')) : null);
   }
 
   // @client project-cards
+
+  // @client task-brief
 
   // ---------------------------------------------------------------------------------------------
   // The Deep PTC panel. Subagent rows follow the official subagent catalog and timing projections;
@@ -1530,7 +1566,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
   }
 
   // One conversation's environment, subagents, jobs, outputs, SSH and tool state.
-  function DeepPtcPanel({ sessionId, useSessions, useProjection, useJobs, watchJobs, reset, reply, form, inline, t }) {
+  function DeepPtcPanel({ sessionId, useSessions, useProjection, useJobs, watchJobs, reset, reply, runBrief, form, inline, t }) {
     const sessions = typeof useSessions === 'function' ? useSessions(state => state) : undefined;
     const preset = projectionValue(useProjection, 'agentPreset');
     const activity = projectionValue(useProjection, 'deepPtcActivity');
@@ -1549,6 +1585,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
         !deep ? h('section', { className: 'dpt-side-section' }, h('p', { className: 'dpt-side-note' }, t('sideOtherMode'))) : null,
         h(SortableSections, { t, sections: [
         { key: 'environment', label: t('environment'), node: form ? h(EnvironmentSection, { form, t }) : null },
+        { key: 'brief', label: t('briefTitle'), node: deep && runBrief && formValue(form, 'taskBrief') !== false ? h(BriefPanelSection, { useProjection, run: runBrief, form, t }) : null },
         { key: 'project', label: t('projectTab'), node: deep && formValue(form, 'projectCards') !== false ? h(ProjectSection, { sessionId, useProjection, reply, form, t }) : null },
         { key: 'agents', label: t('agentsTitle'), node: deep && rows.length ? h('section', { className: 'dpt-side-section dpt-side-agents', 'aria-label': t('agentsTitle') },
           h('div', { className: 'dpt-side-label' }, h('span', null, t('agentsTitle'))),
@@ -1590,7 +1627,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
 
   // The order of the side panel's sections, chosen by dragging their handles; kept per browser.
   const SECTION_ORDER_KEY = `${PLUGIN}:panel-order`;
-  const SECTION_KEYS = ['environment', 'project', 'agents', 'jobs', 'outputs', 'ssh', 'tools'];
+  const SECTION_KEYS = ['environment', 'project', 'brief', 'agents', 'jobs', 'outputs', 'ssh', 'tools'];
   function normalizeOrder(value) {
     const known = Array.isArray(value) ? value.filter((key, index) => SECTION_KEYS.includes(key) && value.indexOf(key) === index) : [];
     return [...known, ...SECTION_KEYS.filter(key => !known.includes(key))];
@@ -2119,6 +2156,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
       const jobs = child.get?.('jobs');
       const props = {
         reply: text => sendReply(child, sessionId, text),
+        runBrief: payload => runBriefCommand(child, sessionId, payload),
         reset: () => {
           const execute = child.remote?.commands?.execute;
           if (typeof execute !== 'function') return Promise.resolve({ ok: true, value: undefined });
@@ -2198,6 +2236,10 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
           inject: sessionId => ({ sessionId, run: payload => runProjectCommand(child, sessionId, payload), reply: text => sendReply(child, sessionId, text) }),
         }, props => h(LocalizedSlot, { ...props, form, component: ProjectChatProposals })));
         child.slots.inject('conversation.chat.turnTail', () => child.slots.register({
+          name: 'conversation.chat.turnTail', id: 'deep-ptc-task-brief', order: 20, locale: 'deep-ptc',
+          inject: sessionId => ({ sessionId, run: payload => runBriefCommand(child, sessionId, payload) }),
+        }, props => h(LocalizedSlot, { ...props, form, component: BriefTail })));
+        child.slots.inject('conversation.chat.turnTail', () => child.slots.register({
           name: 'conversation.chat.turnTail', id: 'deep-ptc-cards', order: 21, locale: 'deep-ptc',
           inject: sessionId => ({
             run: (id, action, extra) => runCardCommand(child, sessionId, { id, action, ...extra }),
@@ -2208,6 +2250,13 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
         }, props => h(LocalizedSlot, { ...props, form, component: CardTail })));
       });
     } catch { /* the conversation keeps working without the card */ }
+    try {
+      ctx.slots.inject('conversation.chat.commandview', () => ctx.slots.register({
+        name: 'conversation.chat.commandview', key: BRIEF_COMMAND_NAME, locale: 'deep-ptc',
+      }, props => h(LocalizedSlot, { ...props, component: ({ node, t: tt }) => node?.outcome?.kind === 'error'
+        ? h('div', { className: 'dpt-command-error', role: 'status' }, commandText(node.outcome.text, tt))
+        : h('span', { hidden: true, 'data-dpt-hidden-command': BRIEF_COMMAND_NAME }) })));
+    } catch { /* the host shows its generic command row */ }
     try {
       ctx.slots.inject('conversation.chat.commandview', () => ctx.slots.register({
         name: 'conversation.chat.commandview', key: PROJECT_COMMAND_NAME, locale: 'deep-ptc',
