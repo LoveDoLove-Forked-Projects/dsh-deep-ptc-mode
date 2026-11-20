@@ -136,10 +136,11 @@ export function createTaskBrief({ React, h, tf, commandError, projectionValue, u
     const condensed = (state?.messages ?? []).filter(row => row.condensed).length;
     const status = items.length === 0 ? t('briefPanelNone')
       : [tf(t, 'briefCount', { count: items.length }), condensed ? tf(t, 'briefCondensedCount', { count: condensed }) : ''].filter(Boolean).join(' · ');
-    return h('section', { className: 'dpt-side-section dpt-side-brief', 'aria-label': t('briefTitle') },
+    return h('section', { className: 'dpt-side-section dpt-side-brief', 'aria-label': t('briefTitle'), 'data-compact': open && items.length > 0 ? undefined : '' },
       h('div', { className: 'dpt-side-label' }, h('span', null, t('briefTitle')),
-        items.length > 0 ? h('button', { type: 'button', className: 'dpt-pv-link', 'aria-expanded': open, onClick: () => setOpen(!open) }, t(open ? 'briefHide' : 'briefShow')) : null),
-      h('p', { className: 'dpt-side-note' }, status),
+        h('span', { className: 'dpt-side-tail' },
+          h('span', { className: 'dpt-side-hint', title: status }, items.length === 0 ? t('sideNone') : status),
+          items.length > 0 ? h('button', { type: 'button', className: 'dpt-pv-link', 'aria-expanded': open, onClick: () => setOpen(!open) }, t(open ? 'briefHide' : 'briefShow')) : null)),
       open && items.length > 0 ? h(BriefCard, { state, run, t, compact: true }) : null);
   }
 

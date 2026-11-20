@@ -19,7 +19,7 @@
 
 ### 实际生成图、表与卡片
 
-附带的 [绘图与卡片生成器](examples/figure_from_csv.py) 使用 Python 与 Matplotlib。输入 UTF-8 CSV，列为 `group,value`。运行 `python figure_from_csv.py measurements.csv out "Latency (ms)"`，输出目录应是新路径。为中文组名选择含相应字形的 Matplotlib 字体并检查导出图。
+附带的 [绘图与卡片生成器](examples/figure_from_csv.py) 使用 Python 与 Matplotlib。DSH 自带的 Python 不含 Matplotlib（已有 numpy、pandas、openpyxl、XlsxWriter、python-docx/pptx、Pillow）：先用 `python -c "import matplotlib"` 检查，缺少时征得用户同意再安装，或改用已有的环境。输入 UTF-8 CSV，列为 `group,value`。运行 `python figure_from_csv.py measurements.csv out "Latency (ms)"`，输出目录应是新路径。为中文组名选择含相应字形的 Matplotlib 字体并检查导出图。
 
 它写出完整 summary.csv、显示每个观测值及「均值 ± 样本标准差」的 figure.svg，以及可直接作为 ui_card 参数的 card.json。空值不计入 n；n=1 时不绘误差条，结果表和卡片均保留缺测标记；超过八组时卡片明确标出展示比例，完整文件保留全部组。用自己的读取工具解析 card.json，卡片启用时调用 ui_card；把 SVG 和 CSV 路径一并交给用户。
 

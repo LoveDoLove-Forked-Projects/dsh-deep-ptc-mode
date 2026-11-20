@@ -9,7 +9,7 @@
 
 ### 从主张追到可复核段落
 
-用附带的 [HTML 段落定位器](examples/source_evidence.py) 记录最终网址、抓取时间、页面哈希、邻近标题和实际段落。需要 Python 与 beautifulsoup4。例：`python source_evidence.py "https://www.loc.gov/programs/teachers/getting-started-with-primary-sources/" "primary sources"`。未匹配返回退出码 1，检查同义词、页面版本、是否由 JS 渲染或应当读原始 PDF。哈希能比较两次抓取是否相同，可信度仍需阅读原文判断。
+用附带的 [HTML 段落定位器](examples/source_evidence.py) 记录最终网址、抓取时间、页面哈希、邻近标题和实际段落。需要 Python 与 beautifulsoup4（DSH 自带的 Python 不含它，先检查，缺少时征得用户同意再安装）。例：`python source_evidence.py "https://www.loc.gov/programs/teachers/getting-started-with-primary-sources/" "primary sources"`。未匹配返回退出码 1，检查同义词、页面版本、是否由 JS 渲染或应当读原始 PDF。哈希能比较两次抓取是否相同，可信度仍需阅读原文判断。
 
 把结论写成「主张｜原始出处与段落｜支持程度｜仍缺什么」。例如公告只写“支持热重载”，不能直接推断“替换任意已安装包无需重启”；继续查版本对应的插件生命周期文档或做两种安装方式的对照。
 

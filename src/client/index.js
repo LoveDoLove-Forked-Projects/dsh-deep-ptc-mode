@@ -180,22 +180,23 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
       }
       finally { if (current === generation.current) setBusy(false); }
     }
-    return h('section', { className: 'dpt-side-section dpt-side-tools', 'aria-label': t('toolsSection') },
+    return h('section', { className: 'dpt-side-section dpt-side-tools', 'aria-label': t('toolsSection'), 'data-compact': failed.length || message ? undefined : '' },
       h('div', { className: 'dpt-side-label' }, h('span', null, t('toolsSection')),
-        failed.length ? h('span', { className: 'dpt-side-hint', 'data-tone': 'warn' }, `${t('toolFailures')} ${failed.length}`) : null),
+        h('span', { className: 'dpt-side-tail' },
+          h('span', { className: 'dpt-side-hint', 'data-tone': failed.length ? 'warn' : 'ok' }, failed.length ? `${t('toolFailures')} ${failed.length}` : t('toolsOk')),
+          h('button', { type: 'button', className: 'dpt-link', onClick: reload, disabled: busy, title: t('toolResetHint'), 'aria-label': t('toolReset'), 'aria-busy': busy },
+            busy ? t('toolResetBusy') : t('toolResetShort')))),
       failed.length ? h('div', { className: 'dpt-tool-failures', role: 'status' },
         h('p', null, t('toolFailureHint')),
         h('ul', null, ...failed.map(row => h('li', { key: row.name }, h('code', null, row.name), ` — ${row.provider}`)))) : null,
-      h('button', { type: 'button', className: 'dpt-btn dpt-btn-block', onClick: reload, disabled: busy, title: t('toolResetHint'), 'aria-busy': busy },
-        busy ? t('toolResetBusy') : t('toolReset')),
-      h('p', { className: 'dpt-side-note', role: 'status', 'data-tone': message ? (message.key === 'toolResetDone' ? 'ok' : 'error') : undefined },
-        message ? [t(message.key), message.reason ? t(message.reason) : commandText(message.detail, t)].filter(Boolean).join(' ') : t('toolResetHint')));
+      message ? h('p', { className: 'dpt-side-note', role: 'status', 'data-tone': message.key === 'toolResetDone' ? 'ok' : 'error' },
+        [t(message.key), message.reason ? t(message.reason) : commandText(message.detail, t)].filter(Boolean).join(' ')) : null);
   }
   Object.assign(dictionaries.zh, {
     visualEffects: '界面特效', visualEffectsHint: '使用外部主题或 UI 插件时，建议关闭此开关。',
     jobsTitle: '后台任务', jobsEmpty: '本会话暂无后台任务。', jobsMore: '另有 {count} 个任务',
     jobRunning: '运行中', jobStopping: '正在停止', jobCompleted: '已完成', jobKilled: '已取消', jobFailed: '已失败',
-    toolReset: '重载所有工具状态', toolResetBusy: '正在重载…', toolResetDone: '本对话工具状态已重载。',
+    toolReset: '重载所有工具状态', toolResetShort: '重载', toolsOk: '正常', sideNone: '无', sshNone: '未配置', toolResetBusy: '正在重载…', toolResetDone: '本对话工具状态已重载。',
     toolResetFailed: '未能重载工具状态。', toolResetUnavailable: '当前会话无法调用工具重载命令。',
     commandNoSession: '当前没有活动对话。', commandWrongMode: '该功能仅在深度 PTC 会话中可用。', commandInvalidSkill: '无效的 Skill 卡片操作。',
     toolResetHint: '清除本对话的故障标记和按需加载选择；正在运行的任务继续执行。',
@@ -205,7 +206,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     visualEffects: 'Visual effects', visualEffectsHint: 'Keep this off when using an external theme or UI plugin.',
     jobsTitle: 'Background jobs', jobsEmpty: 'No background jobs in this conversation.', jobsMore: '{count} more jobs',
     jobRunning: 'Running', jobStopping: 'Stopping', jobCompleted: 'Completed', jobKilled: 'Canceled', jobFailed: 'Failed',
-    toolReset: 'Reload all tool states', toolResetBusy: 'Reloading…', toolResetDone: 'Tool states reloaded for this conversation.',
+    toolReset: 'Reload all tool states', toolResetShort: 'Reload', toolsOk: 'OK', sideNone: 'None', sshNone: 'None configured', toolResetBusy: 'Reloading…', toolResetDone: 'Tool states reloaded for this conversation.',
     toolResetFailed: 'Could not reload tool states.', toolResetUnavailable: 'The reload command is unavailable in this conversation.',
     commandNoSession: 'No active conversation.', commandWrongMode: 'This command is available in Deep PTC sessions only.', commandInvalidSkill: 'Invalid skill card command.',
     toolResetHint: 'Clear quarantine and on-demand selections in this conversation. Running jobs continue.',
@@ -215,8 +216,28 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     skillTitle: '当前上下文中的 Skill', skillLoaded: '{count} 个已加载', skillClosing: '{count} 个将在下一条消息后移除',
     skillHint: '关闭的 Skill 会在你发送下一条消息时移出上下文，历史记录不受影响。',
     skillKeepAll: '全部保留', skillCloseAll: '全部关闭', skillNoDescription: '无描述', skillThisTurn: '本轮',
+    // Summaries of Deep PTC's own skills for the skill card, in the display language.
+    'skillDesc:deep-ptc-cards': '用对话卡片展示结果、图表和进度，或请你做决定；说明各种块、排版和按钮。',
+    'skillDesc:deep-ptc-card-examples': '开发场景的卡片样板：任务、测试、CI、评审、部署、提醒和多卡片排版。',
+    'skillDesc:deep-ptc-project-cards': '维护 PROJECT-CARDS.md：提案与审批、润色、需求与功能记录。',
+    'skillDesc:deep-ptc-dsh-operations': 'DSH 与深度 PTC 操作导航：选工具、Skill、卡片和任务状态，哪些卡片要等你回答，审批与失效工具。',
+    'skillDesc:deep-ptc-local-web-testing': '在真实浏览器里验证本地网页交互：定位控件、触发操作、核对可见结果和请求次数。',
+    'skillDesc:deep-ptc-frontend-design': '实现前端页面和可靠的交互状态：排版、响应式、表单和过期请求，附可运行示例。',
+    'skillDesc:deep-ptc-primary-source-research': '用原始资料核验主张、数据、版本和出处，附网页段落定位器。',
+    'skillDesc:deep-ptc-office-delivery': '交付可编辑的办公文件并跨文件对账，附 CSV 转 Excel 和 Word 月报生成器。',
+    'skillDesc:deep-ptc-scientific-figures': '把实验数据做成科学图、统计表和结果卡片，处理单位、误差和缺失值。',
+    'skillDesc:deep-ptc-windows-wsl': 'Windows 与 WSL 双环境：路径映射与中文路径、互操作、PowerShell 5.1 的坑、编码与换行、两侧 localhost、文件占用。',
+    'skillDesc:deep-ptc-dsh-plugin-dev': 'DSH 插件开发：提示词段与快照的缓存代价、SDK schema 子集、会话投影、插槽渲染时机、历史替换、测试开发版本。',
+    'skillDesc:deep-ptc-virtual-dsh-testing': '在虚拟 DSH 里测试插件、预设、Skill 或配置的改动：带测试包启动、确认加载、在浏览器或请你实际操作验证、迭代、汇报并清理。',
+    'skillDesc:deep-ptc-tool-evaluation': '评测模型能否选对工具、填对参数并完成任务：固定用例、可机器核对的结果、新旧版本对照。',
     skillShowAll: '显示全部 {count} 个', skillShowLess: '收起',
     cardLabel: '对话卡片', cardStopDefault: '停止', cardDismiss: '关闭',
+    virtualTitle: '虚拟 DSH 环境', virtualStart: '启动虚拟 DSH', virtualOpen: '在侧栏打开', virtualStop: '停止',
+    virtualHint: '一个全新的 DSH：宿主版本、插件、Skill 和设置与当前一致，不含会话、工作区和记忆。在右侧栏里操作，停止后自动清理。',
+    virtualState_stopped: '未运行', virtualState_preparing: '正在复制环境…', virtualState_installing: '正在安装插件…', 'virtualState_adding package': '正在安装测试包…',
+    virtualState_starting: '正在启动…', virtualState_running: '运行中', virtualState_stopping: '正在停止…', virtualState_failed: '启动失败', virtualState_unknown: '读取状态…',
+    virtualTesting: '含测试包：{name}', virtualAdded: '额外插件：{names}', virtualState_restarting: '正在重启…',
+    virtualStep_preparing: '复制环境', virtualStep_installing: '安装插件', 'virtualStep_adding package': '安装测试包', virtualStep_starting: '启动', virtualStep_running: '运行中',
     creativeSwitch: '深度创造模式', creativeHint: '新建深度 PTC 会话时生效，可在独立 DSH 中测试插件。',
     cardLiveLabel: '等待你操作的卡片', cardLiveNote: '模型在等你回答，同时继续做不依赖答案的部分；回答会立刻送到它手上。',
     cardStopping: '正在处理…', cardStopped: '已执行', cardFailed: '执行失败', cardDismissed: '已关闭',
@@ -389,8 +410,28 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     skillTitle: 'Skills in context', skillLoaded: '{count} loaded', skillClosing: '{count} leave after your next message',
     skillHint: 'A closed skill leaves the model context when you send your next message. The history stays complete.',
     skillKeepAll: 'Keep all', skillCloseAll: 'Close all', skillNoDescription: 'No description', skillThisTurn: 'this turn',
+    // Summaries of Deep PTC's own skills for the skill card, in the display language.
+    'skillDesc:deep-ptc-cards': 'Show results, charts and progress with conversation cards, or ask you to decide; blocks, layout and buttons.',
+    'skillDesc:deep-ptc-card-examples': 'Card templates for development: jobs, tests, CI, review, deployment, reminders and multi-card layouts.',
+    'skillDesc:deep-ptc-project-cards': 'Maintain PROJECT-CARDS.md: proposals and approval, polishing, requirement and feature records.',
+    'skillDesc:deep-ptc-dsh-operations': 'Navigate DSH and Deep PTC: tools, skills, cards and task state; which cards wait for you; approvals and quarantined tools.',
+    'skillDesc:deep-ptc-local-web-testing': 'Verify a local web interaction in a real browser: find controls, act, check what you see and how many requests ran.',
+    'skillDesc:deep-ptc-frontend-design': 'Build frontend pages with reliable interaction states: layout, responsive design, forms and stale requests, with a runnable example.',
+    'skillDesc:deep-ptc-primary-source-research': 'Check claims, numbers, versions and citations against primary sources, with a web passage locator.',
+    'skillDesc:deep-ptc-office-delivery': 'Deliver editable Office files with cross-file reconciliation, with a CSV to Excel and Word report generator.',
+    'skillDesc:deep-ptc-scientific-figures': 'Turn experimental data into scientific figures, statistics tables and result cards, with units, error bars and missing values.',
+    'skillDesc:deep-ptc-windows-wsl': 'Windows and WSL: path mapping and non-ASCII paths, interop, PowerShell 5.1 pitfalls, encodings and line endings, localhost, file locks.',
+    'skillDesc:deep-ptc-dsh-plugin-dev': 'DSH plugin development: prompt section vs snapshot cache cost, SDK schema subset, projections, slot timing, history replacement, testing a build.',
+    'skillDesc:deep-ptc-virtual-dsh-testing': 'Test plugin, preset, skill or configuration changes in a virtual DSH: start with a package, check it loaded, verify in the browser or with you, iterate, report and clean up.',
+    'skillDesc:deep-ptc-tool-evaluation': 'Evaluate whether a model picks the right tool, fills its arguments and finishes the task: fixed cases, checkable results, version comparison.',
     skillShowAll: 'Show all {count}', skillShowLess: 'Show less',
     cardLabel: 'Conversation cards', cardStopDefault: 'Stop', cardDismiss: 'Dismiss',
+    virtualTitle: 'Virtual DSH', virtualStart: 'Start virtual DSH', virtualOpen: 'Open in sidebar', virtualStop: 'Stop',
+    virtualHint: 'A fresh DSH with the same host version, plugins, skills and settings as this one, without sessions, workspaces or memory. Use it in the right sidebar; it is cleaned up when stopped.',
+    virtualState_stopped: 'Not running', virtualState_preparing: 'Copying the environment…', virtualState_installing: 'Installing plugins…', 'virtualState_adding package': 'Installing the test package…',
+    virtualState_starting: 'Starting…', virtualState_running: 'Running', virtualState_stopping: 'Stopping…', virtualState_failed: 'Failed to start', virtualState_unknown: 'Reading status…',
+    virtualTesting: 'With test package: {name}', virtualAdded: 'Extra plugins: {names}', virtualState_restarting: 'Restarting…',
+    virtualStep_preparing: 'Copy environment', virtualStep_installing: 'Install plugins', 'virtualStep_adding package': 'Install test package', virtualStep_starting: 'Start', virtualStep_running: 'Running',
     creativeSwitch: 'Deep creative mode', creativeHint: 'Applies to new Deep PTC chats. Test plugins in a separate DSH instance.',
     cardLiveLabel: 'Cards waiting for you', cardLiveNote: 'The model is waiting for your answer and keeps working on what does not depend on it; your answer reaches it at once.',
     cardStopping: 'Working…', cardStopped: 'Done', cardFailed: 'Failed', cardDismissed: 'Dismissed',
@@ -991,6 +1032,13 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
       h('p', { className: 'dpt-side-note' }, appearance ? tf(t, 'visualEffectsAuto', { name: appearance }) : t('visualEffectsHint')));
   }
 
+  // Deep PTC's own skills carry a summary in the display language; other skills show the catalog text.
+  function skillSummary(row, t) {
+    const key = 'skillDesc:' + row.name;
+    const localized = t(key);
+    return typeof localized === 'string' && localized !== '' && localized !== key ? localized : row.description;
+  }
+
   function SkillCard({ turn, useProjection, useChat, setSkill, setAll, t }) {
     const [busy, setBusy] = React.useState(false);
     const [expanded, setExpanded] = React.useState(false);
@@ -1022,7 +1070,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
         h('div', { className: 'dpt-skill-text' },
           h('span', { className: 'dpt-skill-name' }, h('span', null, row.name),
             row.loadedTurn === state.turn ? h('span', { className: 'dpt-tag' }, t('skillThisTurn')) : null),
-          h('span', { className: 'dpt-skill-desc', title: row.description || t('skillNoDescription') }, row.description || t('skillNoDescription'))),
+          h('span', { className: 'dpt-skill-desc', title: skillSummary(row, t) || t('skillNoDescription') }, skillSummary(row, t) || t('skillNoDescription'))),
         h(SkillSwitch, { on: row.enabled, disabled: busy, label: row.name, onChange: value => { void run(() => setSkill(row.name, value)); } })))),
       h('footer', { className: 'dpt-card-foot' }, h('span', null, t('skillHint')),
         state.skills.length > SKILL_ROWS ? h('button', { type: 'button', className: 'dpt-link', onClick: () => setExpanded(!expanded) },
@@ -1063,6 +1111,12 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
       console.warn(`[${PLUGIN}] could not send a message to the model`, error);
       return false;
     }
+  }
+
+  function runVirtualCommand(child, sessionId, payload) {
+    const execute = child.remote?.commands?.execute;
+    if (typeof execute !== 'function') return Promise.resolve({ ok: false, error: { message: 'unavailable' } });
+    return execute(sessionId, '/deep-ptc-virtual-dsh ' + JSON.stringify(payload), []);
   }
 
   function runCardCommand(child, sessionId, payload) {
@@ -1339,7 +1393,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
         { op: 'set', path: ['shellExecutable'], value: next }], 'Bash')) setBashPath(undefined);
     }
     const familyChoices = choices.filter(item => item.family === effective);
-    let note = t('envThisSession');
+    let note;
     if (message?.tone === 'error') note = t('envFailed');
     else if (message) {
       const label = message.label;
@@ -1348,11 +1402,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     } else if (!state.writable) note = t('readOnly');
     else if (environment === 'auto') note = tf(t, 'envAutoNow', { env: envLabel(effective, t) });
     return h('section', { className: 'dpt-side-section', 'aria-label': t('environment') },
-      h('div', { className: 'dpt-side-label' }, h('span', null, t('environment')), h('span', { className: 'dpt-side-hint' }, t('envForNew'))),
-      h('div', { className: 'dpt-side-label' }, h('span', null, t('creativeSwitch')),
-        h(SkillSwitch, { on: value.pluginLab === true, label: t('creativeSwitch'), disabled,
-          onChange: next => { void save([{ op: 'set', path: ['pluginLab'], value: next }], t('creativeSwitch')); } })),
-      h('p', { className: 'dpt-side-note' }, t('creativeHint')),
+      h('div', { className: 'dpt-side-label' }, h('span', null, t('environment')), h('span', { className: 'dpt-side-hint', title: t('envThisSession') }, t('envForNew'))),
       h('div', { className: 'dpt-seg', role: 'radiogroup', 'aria-label': t('environment') },
         ...allowedEnvironments(platform).map(option => h('button', { key: option, type: 'button', role: 'radio', className: 'dpt-seg-btn',
           'aria-checked': option === (editingBash ? 'bash' : environment), disabled,
@@ -1374,7 +1424,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
           onChange: event => { const item = familyChoices.find(choice => choice.id === event.target.value);
             void save([{ op: 'set', path: ['shellExecutable'], value: event.target.value }], item ? { shell: item.label } : { key: 'shellAuto' }); } },
         h('option', { value: '' }, t('shellAuto')), ...familyChoices.map(item => h('option', { key: item.id, value: item.id }, shellLabel(item.label, t))))) : null,
-      h('p', { className: 'dpt-side-note', role: 'status', 'data-tone': message?.tone }, note));
+      note ? h('p', { className: 'dpt-side-note', role: 'status', 'data-tone': message?.tone }, note) : null);
   }
 
   const JOB_STATUS = new Map([
@@ -1412,13 +1462,13 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
           h('span', { className: 'dpt-agent-meta' }, t(JOB_STATUS.get(job.status)))));
     };
     const title = t('jobsTitle');
-    return h('section', { className: 'dpt-side-section', 'aria-label': title },
-      h('div', { className: 'dpt-side-label' }, h('span', null, title)),
+    return h('section', { className: 'dpt-side-section', 'aria-label': title, 'data-compact': total ? undefined : '' },
+      h('div', { className: 'dpt-side-label' }, h('span', null, title),
+        h('span', { className: 'dpt-side-hint', title: total ? undefined : t('jobsEmpty') }, total ? String(total) : t('sideNone'))),
       total ? h('ul', { className: 'dpt-jobs-list' }, ...visible.map(row),
         hidden.length ? h('li', { className: 'dpt-jobs-more' },
           h('details', null, h('summary', null, tf(t, 'jobsMore', { count: hidden.length })),
-            h('ul', { className: 'dpt-jobs-list' }, ...hidden.map(row)))) : null)
-        : h('p', { className: 'dpt-side-note' }, t('jobsEmpty')));
+            h('ul', { className: 'dpt-jobs-list' }, ...hidden.map(row)))) : null) : null);
   }
 
   // Desktop RCs expose the jobs roster through a dedicated service. Other hosts include it in sessions.
@@ -1459,13 +1509,13 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
       h('span', { className: 'dpt-file-name' }, fileName(item.path)),
       h('span', { className: 'dpt-file-meta' }, item.kind === 'presented' ? t('outputPresented') : tf(t, 'outputTurn', { turn: item.turn }))));
     const title = t('outputsTitle');
-    return h('section', { className: 'dpt-side-section dpt-side-files', 'aria-label': title },
-      h('div', { className: 'dpt-side-label' }, h('span', null, title), rows.length ? h('span', { className: 'dpt-side-hint' }, String(rows.length)) : null),
+    return h('section', { className: 'dpt-side-section dpt-side-files', 'aria-label': title, 'data-compact': rows.length || failed ? undefined : '' },
+      h('div', { className: 'dpt-side-label' }, h('span', null, title),
+        h('span', { className: 'dpt-side-hint', title: rows.length ? undefined : t('outputsEmpty') }, rows.length ? String(rows.length) : t('sideNone'))),
       rows.length ? h('ul', { className: 'dpt-files' }, ...visible.map(row),
         hidden.length ? h('li', { className: 'dpt-files-more' },
           h('details', null, h('summary', null, tf(t, 'outputsMore', { count: hidden.length })),
-            h('ul', { className: 'dpt-files' }, ...hidden.map(row)))) : null)
-        : h('p', { className: 'dpt-side-note' }, t('outputsEmpty')),
+            h('ul', { className: 'dpt-files' }, ...hidden.map(row)))) : null) : null,
       failed ? h('p', { className: 'dpt-side-note', role: 'status' }, t('outputOpenFailed')) : null);
   }
 
@@ -1499,9 +1549,10 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
       } catch { setCopyStatus('sshCopyFailed'); }
     }
     const title = t('sshTitle');
-    return h('section', { className: 'dpt-side-section dpt-side-ssh', 'aria-label': title },
+    return h('section', { className: 'dpt-side-section dpt-side-ssh', 'aria-label': title, 'data-compact': rows.length || copyStatus ? undefined : '' },
       h('div', { className: 'dpt-side-label' }, h('span', null, title),
-        h('span', { className: 'dpt-side-hint', 'data-tone': client === '' ? 'warn' : undefined }, client === '' ? t('sshNoClient') : t('sshHint'))),
+        h('span', { className: 'dpt-side-hint', 'data-tone': client === '' ? 'warn' : undefined, title: client === '' ? undefined : rows.length ? t('sshHint') : t('sshEmpty') },
+          client === '' ? t('sshNoClient') : rows.length ? t('sshHint') : t('sshNone'))),
       rows.length ? h('ul', { className: 'dpt-files' }, ...rows.slice(0, 8).map(item => h('li', { key: item.host },
         h('div', { className: 'dpt-file dpt-host',
         'data-state': item.used ? (item.used.ok ? 'ok' : 'failed') : 'idle', title: endpoint(item.config) || item.host },
@@ -1512,8 +1563,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
           : endpoint(item.config) || t('sshConfigured'))),
         h('div', { className: 'dpt-ssh-actions' },
           h('button', { type: 'button', className: 'dpt-link', onClick: () => { void copyHost(item, false); } }, t('sshCopy')),
-          h('button', { type: 'button', className: 'dpt-link', onClick: () => { void copyHost(item, true); } }, t('sshGoCopy'))))))
-        : h('p', { className: 'dpt-side-note' }, t('sshEmpty')),
+          h('button', { type: 'button', className: 'dpt-link', onClick: () => { void copyHost(item, true); } }, t('sshGoCopy')))))) : null,
       copyStatus ? h('p', { className: 'dpt-side-note', role: 'status' }, t(copyStatus)) : null);
   }
 
@@ -1542,6 +1592,77 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     }
     if (more.getAttribute('aria-expanded') === 'true') more.click();
     return false;
+  }
+
+  // Deep creative mode in one place: the switch, and the virtual DSH with a status card the panel
+  // keeps current by itself (lib/virtual-dsh.mjs). Nothing here reaches the chat or the model.
+  function CreativeSection({ form, runVirtual, useProjection, t }) {
+    const state = useSettingsForm(form);
+    const [message, setMessage] = React.useState(null);
+    if (!form || state.status === 'unavailable') return null;
+    const on = state.value?.pluginLab === true;
+    const disabled = !state.writable || state.status !== 'ready';
+    async function toggle(next) {
+      setMessage(null);
+      try { if (!await form.mutate([{ op: 'set', path: ['pluginLab'], value: next }], form.getSnapshot().revision)) throw new Error('rejected'); }
+      catch { setMessage(t('envFailed')); }
+    }
+    return h('section', { className: 'dpt-side-section dpt-side-creative', 'aria-label': t('creativeSwitch') },
+      h('div', { className: 'dpt-side-label' }, h('span', { title: t('creativeHint') }, t('creativeSwitch')),
+        h(SkillSwitch, { on, label: t('creativeSwitch'), disabled, onChange: next => { void toggle(next); } })),
+      message ? h('p', { className: 'dpt-side-note', role: 'alert' }, message) : null,
+      on && typeof runVirtual === 'function' ? h(VirtualDshCard, { runVirtual, useProjection, t }) : null);
+  }
+
+  const VIRTUAL_BUSY = ['preparing', 'installing', 'adding package', 'starting', 'restarting', 'stopping'];
+  const VIRTUAL_STEPS = ['preparing', 'installing', 'adding package', 'starting', 'running'];
+  function VirtualDshCard({ runVirtual, useProjection, t }) {
+    // The server pushes every change through this projection, whoever started the virtual DSH; the
+    // command answer only fills in until the first push arrives.
+    const pushed = projectionValue(useProjection, 'deepPtcVirtual')?.status;
+    const [answered, setStatus] = React.useState({ state: 'unknown' });
+    const status = pushed && pushed.state !== 'unknown' ? pushed : answered;
+    const [pending, setPending] = React.useState(false);
+    const wantOpen = React.useRef(false);
+    const call = React.useCallback(async payload => {
+      let result;
+      try { result = await runVirtual(payload); } catch (error) { setStatus({ state: 'failed', error: String(error?.message ?? error) }); return; }
+      const text = (result?.value?.result ?? result?.value)?.text;
+      if (commandCode(text) === 'virtual') { try { setStatus(JSON.parse(stripCode(text))); return; } catch { /* below */ } }
+      setStatus({ state: 'failed', error: commandError(result, t) ?? stripCode(text) });
+    }, [runVirtual, t]);
+    // One status call subscribes this conversation; later changes arrive as pushes.
+    React.useEffect(() => { void call({ op: 'status' }); }, [call]);
+    const open = React.useCallback(() => {
+      if (!status.url) return;
+      try { hostCtx?.get?.('sidebarRight')?.openTab('browser', { params: { url: status.url } }); }
+      catch (error) { console.warn(`[${PLUGIN}] virtual DSH did not open:`, error); }
+    }, [status.url]);
+    // A start from this card opens the sidebar once the virtual DSH is ready.
+    React.useEffect(() => { if (status.state === 'running' && wantOpen.current) { wantOpen.current = false; open(); } }, [status.state, open]);
+    const act = async payload => { setPending(true); try { await call(payload); } finally { setPending(false); } };
+    const state = status.state ?? 'unknown';
+    const running = state === 'running';
+    const busy = pending || VIRTUAL_BUSY.includes(state);
+    const steps = VIRTUAL_STEPS.filter(step => step !== 'adding package' || status.package);
+    const at = steps.indexOf(state === 'restarting' ? 'starting' : state);
+    const added = Array.isArray(status.added) ? status.added : [];
+    const name = typeof status.package === 'string' ? status.package.split(/[\\/]/u).pop() : '';
+    return h('div', { className: 'dpt-virtual', 'data-state': state, 'aria-label': t('virtualTitle') },
+      h('div', { className: 'dpt-virtual-head' },
+        h('span', { className: 'dpt-virtual-dot', 'data-state': state, 'aria-hidden': 'true' }),
+        h('span', { className: 'dpt-virtual-title', title: t('virtualHint') }, t('virtualTitle')),
+        h('span', { className: 'dpt-virtual-badge', 'data-state': state, role: 'status' }, t('virtualState_' + state))),
+      !running && (at >= 0 || state === 'restarting') ? h('ol', { className: 'dpt-virtual-steps' }, ...steps.map((step, index) =>
+        h('li', { key: step, 'data-step': index < at ? 'done' : index === at ? 'active' : 'todo' }, t('virtualStep_' + step)))) : null,
+      name || added.length ? h('p', { className: 'dpt-side-note' }, [name ? tf(t, 'virtualTesting', { name }) : '',
+        added.length ? tf(t, 'virtualAdded', { names: added.map(row => row.name).join('、') }) : ''].filter(Boolean).join(' · ')) : null,
+      state === 'failed' && status.error ? h('p', { className: 'dpt-virtual-error', role: 'alert' }, String(status.error).slice(0, 300)) : null,
+      h('div', { className: 'dpt-side-buttons' },
+        running ? h('button', { type: 'button', className: 'dpt-btn', 'data-primary': '', onClick: open }, t('virtualOpen'))
+          : h('button', { type: 'button', className: 'dpt-btn', disabled: busy, title: t('virtualHint'), onClick: () => { wantOpen.current = true; void act({ op: 'start' }); } }, t('virtualStart')),
+        running || (busy && state !== 'stopping') ? h('button', { type: 'button', className: 'dpt-btn', disabled: pending || state === 'stopping',
+          onClick: () => { wantOpen.current = false; void act({ op: 'stop' }); } }, t('virtualStop')) : null));
   }
 
   // Project cards from the panel: open the editor (the model is not involved), or ask the model to
@@ -1573,8 +1694,8 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     };
     return h('section', { className: 'dpt-side-section dpt-side-project', 'aria-label': t('projectTab') },
       h('div', { className: 'dpt-side-label' }, h('span', null, t('projectTab')),
-        pending > 0 ? h('span', { className: 'dpt-side-hint' }, tf(t, 'projectPanelPending', { count: pending })) : null),
-      h('p', { className: 'dpt-side-note' }, status),
+        h('span', { className: 'dpt-side-hint', 'data-tone': pending > 0 ? 'warn' : undefined, title: status },
+          pending > 0 ? tf(t, 'projectPanelPending', { count: pending }) : cards.length === 0 ? t('sideNone') : status)),
       h('div', { className: 'dpt-side-buttons' },
         h('button', { type: 'button', className: 'dpt-btn', title: t('projectPanelEditHint'), onClick: openEditor }, t('projectPanelEdit')),
         h('button', { type: 'button', className: 'dpt-btn', title: t('projectPanelGuideHint'), onClick: () => { void guide(); } },
@@ -1583,7 +1704,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
   }
 
   // One conversation's environment, subagents, jobs, outputs, SSH and tool state.
-  function DeepPtcPanel({ sessionId, useSessions, useProjection, useJobs, watchJobs, reset, reply, runBrief, runProject, form, inline, t }) {
+  function DeepPtcPanel({ sessionId, useSessions, useProjection, useJobs, watchJobs, reset, reply, runBrief, runProject, runVirtual, form, inline, t }) {
     const sessions = typeof useSessions === 'function' ? useSessions(state => state) : undefined;
     const preset = projectionValue(useProjection, 'agentPreset');
     const activity = projectionValue(useProjection, 'deepPtcActivity');
@@ -1602,6 +1723,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
         !deep ? h('section', { className: 'dpt-side-section' }, h('p', { className: 'dpt-side-note' }, t('sideOtherMode'))) : null,
         h(SortableSections, { t, sections: [
         { key: 'environment', label: t('environment'), node: form ? h(EnvironmentSection, { form, t }) : null },
+        { key: 'creative', label: t('creativeSwitch'), node: deep && form ? h(CreativeSection, { form, runVirtual, useProjection, t }) : null },
         { key: 'brief', label: t('briefTitle'), node: deep && runBrief && formValue(form, 'taskBrief') !== false ? h(BriefPanelSection, { useProjection, run: runBrief, form, t }) : null },
         { key: 'project', label: t('projectTab'), node: deep && formValue(form, 'projectCards') !== false ? h(ProjectSection, { sessionId, useProjection, reply, runProject, form, t }) : null },
         { key: 'agents', label: t('agentsTitle'), node: deep && rows.length ? h('section', { className: 'dpt-side-section dpt-side-agents', 'aria-label': t('agentsTitle') },
@@ -1644,7 +1766,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
 
   // The order of the side panel's sections, chosen by dragging their handles; kept per browser.
   const SECTION_ORDER_KEY = `${PLUGIN}:panel-order`;
-  const SECTION_KEYS = ['environment', 'project', 'brief', 'agents', 'jobs', 'outputs', 'ssh', 'tools'];
+  const SECTION_KEYS = ['environment', 'creative', 'project', 'brief', 'agents', 'jobs', 'outputs', 'ssh', 'tools'];
   function normalizeOrder(value) {
     const known = Array.isArray(value) ? value.filter((key, index) => SECTION_KEYS.includes(key) && value.indexOf(key) === index) : [];
     return [...known, ...SECTION_KEYS.filter(key => !known.includes(key))];
@@ -2175,6 +2297,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
         reply: text => sendReply(child, sessionId, text),
         runBrief: payload => runBriefCommand(child, sessionId, payload),
         runProject: payload => runProjectCommand(child, sessionId, payload),
+        runVirtual: payload => runVirtualCommand(child, sessionId, payload),
         reset: () => {
           const execute = child.remote?.commands?.execute;
           if (typeof execute !== 'function') return Promise.resolve({ ok: true, value: undefined });
@@ -2276,6 +2399,12 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
         }, props => h(LocalizedSlot, { ...props, form, component: CardTail })));
       });
     } catch { /* the conversation keeps working without the card */ }
+    try {
+      // The Virtual DSH card asks for its status through a command: keep those rows out of the chat.
+      ctx.slots.inject('conversation.chat.commandview', () => ctx.slots.register({
+        name: 'conversation.chat.commandview', key: 'deep-ptc-virtual-dsh', locale: 'deep-ptc',
+      }, () => h('span', { hidden: true, 'data-dpt-hidden-command': 'deep-ptc-virtual-dsh' })));
+    } catch { /* the host shows its generic command row */ }
     try {
       ctx.slots.inject('conversation.chat.commandview', () => ctx.slots.register({
         name: 'conversation.chat.commandview', key: BRIEF_COMMAND_NAME, locale: 'deep-ptc',

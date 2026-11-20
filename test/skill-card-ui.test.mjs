@@ -201,3 +201,31 @@ test('a skill switch leaves no command row in the conversation, but a failed swi
   await act(async () => view.unmount());
   assert.equal(f.slots.has('deep-ptc-reset-tools'), false, 'the explicit reset keeps its host row');
 });
+
+test('Deep PTC skills show their summary in the display language; other skills keep the catalog text', async () => {
+  let plugin;
+  let dictionaries;
+  const slots = new Map();
+  vm.runInNewContext(readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8'), {
+    window: { __ModuleLoader__: { load: definition => { plugin = definition.factory(() => React); } } },
+  });
+  const ctx = { locale: { bind: () => key => key, register(_ns, value) { dictionaries = value; } }, effect: fn => fn(),
+    configForms: { get() {}, whileServed: () => () => {} }, remote: { commands: { async execute() { return { ok: true }; } } },
+    slots: { inject: (name, callback) => callback(), register: (slot, render) => { slots.set(slot.id ?? slot.key, { slot, render }); } } };
+  ctx.inject = (deps, callback) => callback(ctx);
+  plugin.apply(ctx);
+  const skill = slots.get('deep-ptc-skills');
+  const state = { v: 1, turn: 2, phase: 'idle', skills: [
+    { name: 'deep-ptc-windows-wsl', description: 'Work across Windows and WSL: path mapping…', enabled: true, loadedTurn: 2 },
+    { name: 'office', description: 'Create Office files.', enabled: true, loadedTurn: 2 }] };
+  for (const [language, expected] of [['zh', /Windows 与 WSL 双环境/u], ['en', /Windows and WSL: path mapping and non-ASCII paths/u]]) {
+    const t = key => dictionaries[language][key] ?? key;
+    let view;
+    await act(async () => { view = Renderer.create(React.createElement(skill.render, { ...skill.slot.inject('session-A'), t,
+      turn: { turn: 2 }, useChat: chatAt(2), useProjection: viewOf(state) })); });
+    const text = JSON.stringify(view.toJSON());
+    assert.match(text, expected, language);
+    assert.match(text, /Create Office files\./u, 'a skill from elsewhere keeps its own description');
+    await act(async () => view.unmount());
+  }
+});
