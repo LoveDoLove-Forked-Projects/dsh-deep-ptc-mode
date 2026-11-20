@@ -1,12 +1,18 @@
 # Deep PTC mode
 
-[中文](README.zh.md) · MIT · **2.1.0**
+[中文](README.zh.md) · MIT · **2.2.0**
 
 [Changelog](CHANGELOG.md) · [Test report](TEST_REPORT.md) · [Plugin workflows and verification](COMPATIBILITY.md)
 
 Deep PTC is a DeepSeek Harness agent mode with progress reports, clarifying questions, task-size planning, and interruptible background work. It builds on the installed official PTC preset with selectable shells, on-demand tools and skills, and a two-layer preset identity adapter for third-party plugins. Cards face both you and the model: you see a clear card, the model reads precise context with ids, sources and states; the task brief files the goals, constraints and acceptance criteria in your messages and, once you confirm, can take the raw messages out of the model's context.
 
 The panel sits beside the conversation and shows the environment, subagents, jobs, output files, SSH connections and tool state. The panel width can be dragged. The capsule expands or collapses it; it sits below the composer by default and can move into the toolbar or be hidden. Deep PTC also has its own settings page. Visual effects are lightweight and start off when an appearance plugin is installed.
+
+## Changes in 2.2.0
+
+- Enable Deep creative mode in the side panel for new conversations. Test plugin archives in a separate DSH Web process with its own home and profile.
+- Six on-demand skills cover DSH operations, local web testing, frontend implementation, primary-source research, Office delivery and scientific figures. Four include runnable examples. The figure generator produces an SVG, a statistical summary and a conversation card from the same measurements.
+- Cards appear above the composer during a running turn. Project cards use a runtime snapshot with a 16,000-character budget including omitted titles. Delivery receipts handle mixed client versions, and project setup follows the active question-tool settings.
 
 ## Changes in 2.1.0
 
@@ -58,7 +64,7 @@ Read the running host's official PTC declaration and inherit its rows as they ar
 
 ### 2. Flexible creative-mode tools
 
-The plugin lab is always on for a session. It reads the host's creative preset and appends only the rows that mode adds, specifically for building DSH plugins. Module names stay as declared; skill directories resolve relative to the creative preset file. Lab packages stay in process memory, are not written to the repository, shipped presets, desktop composition or this plugin's source, and run only through the host's existing approval. Loading reads the roster and documents only; it never calls `composedPreset`.
+Enable Deep creative mode from the side panel for new sessions to access the official creative tools and developer resources. Test candidate packages in a separate Web instance as described below.
 
 ### 3. dsh-go screen-control adaptation
 
@@ -106,7 +112,9 @@ The model leaves cards at the end of the conversation with the `ui_card` tool. C
 - **Model view**: answers and button choices reach the model as `[Card answer: id «title»]` followed by `question id = value «the words you saw»`; tool results carry no presentation fields such as size or tone.
 - **Design**: one type scale, spacing and colour system that follows the host's light and dark themes; the chart palette is validated for colour-vision deficiency and every value is printed, so colour never carries meaning alone. Cards draw once, after the latest turn.
 
-Three built-in skills load on demand. `deep-ptc-cards` explains the conversation card interface and layout. `deep-ptc-card-examples` provides 20 validated templates covering development scenarios and multi-card layouts. `deep-ptc-project-cards` covers settings, proposals and project records.
+Three card skills cover the interface (`deep-ptc-cards`), development templates (`deep-ptc-card-examples`), and project settings and proposals (`deep-ptc-project-cards`).
+
+Deep PTC sessions add six on-demand skills for DSH operations, local web testing, frontend design, primary-source research, Office delivery, and scientific figures. The last four include a working HTML form, a source passage locator, an Excel/Word report generator, and a measurement-to-SVG and card generator. The skill loader supplies the directory containing their examples.
 
 ## Project cards (1.9.9)
 
@@ -270,13 +278,13 @@ The rule is scoped to Deep PTC. `tool` hides the inherited tool of that name. `r
 
 Existing `disabledShellTools: ['pwsh']` configurations keep working. A card command reports an error when its session’s shell is disabled. A reply button can send the decision to the model, which can then use an installed replacement. New sessions use the updated preset settings.
 
-## Plugin lab: official creative mode, in memory
+## Deep creative mode and isolated plugin previews
 
-Deep PTC is often used for programming, and it can also be used to design a DSH plugin. **Plugin lab is always on for a session**; there is no toggle. An existing `pluginLab` key in the Cordis settings is accepted for compatibility but ignored.
+Enable **Deep creative mode** under **Execution environment** in the side panel and open a new Deep PTC conversation. The setting belongs to the profile. Existing conversations retain their preset generation. The mode discovers the host’s creative tools and development skills, including Cordis Inspect where available.
 
-The lab loads the official **creative mode** (创造模式) the same way it loads PTC: from the preset the running host publishes (`agentPresets.readDocument`, preferring the preset named 创造模式, otherwise the shipped id `cordis`). It appends only the rows that creative mode adds beyond the current PTC composition. Module names stay exactly as that document declares them, so an official rename follows the host instead of a name baked into this plugin. Skill directories that the creative preset expresses relative to its own file are resolved against that preset's directory. The desktop already mounts the host runner, so those rows are left to the host and are not copied a second time.
+Develop in a checkout separate from the active plugin installation. Build the candidate and run `npm pack`. Use a managed shell job to run `node "<plugin directory>/lib/preview.mjs" "<absolute path to the built .tgz>"`. The launcher needs Node, the DSH CLI and pnpm. An optional final argument points to the installed DSH CLI’s `lib/bin.js`. The creative prompt supplies the launcher path.
 
-The lab is an environment for designing and trying a plugin in this process: inspect the live composition, define a syntax-checked package, then run it only through the host's existing approval. Packages stay in memory for this process. They do not write the repository, shipped presets, the desktop composition, or this plugin's source. Host approval stays as the host defined it. If the creative preset cannot be read, or a lab tool is missing or fails, the session continues with the official PTC tools.
+Each run installs the archive into a fresh Web profile with its own temporary home, DSH_HOME and workspace and serves it on a dynamically assigned loopback port. Exercise the changed behavior there. Rebuild and start a fresh preview for server code changes. Stopping the job stops the server; the printed directory retains diagnostics. The preview starts with a fresh account state; sign in there to test authenticated screens or model turns. The preview runs with the current OS account’s permissions. Desktop-only APIs need desktop verification.
 
 ## dsh-go and other external tools
 
@@ -323,10 +331,10 @@ A prompt changes the model's working tendency, not the real token limit or billi
 Requires Node `>=24` and DSH `>=0.2.2-rc.1`. The installer rejects the current package on DSH `0.2.1-rc.5` based on its manifest. macOS/Zsh checks cover configuration, argv and tool mounting.
 
 ```js
-plugin_manager({ action: "install_bundle", target: "dsh-deep-ptc-mode@1.9.5" })
+plugin_manager({ action: "install_bundle", target: "dsh-deep-ptc-mode@2.2.0" })
 // Or from a local checkout or archive:
 plugin_manager({ action: "install_bundle", target: "C:\\path\\to\\dsh-deep-ptc-mode" })
-// Or target: "C:\\path\\to\\dsh-deep-ptc-mode-1.9.5.tgz"
+// Or target: "C:\\path\\to\\dsh-deep-ptc-mode-2.2.0.tgz"
 ```
 
 Repository locator: `github:lishize20040802-rgb/dsh-deep-ptc-mode`. It installs content actually published there; a local upgrade does not publish to GitHub or npm.
@@ -343,7 +351,7 @@ Settings persist through the active profile's Cordis patch:
     shellExecutable: ''      # blank keeps the official lookup
 ```
 
-An existing `pluginLab` key is accepted but ignored. If the creative preset cannot be read, or the preset enters safe mode, the session keeps the PTC tools only.
+`pluginLab` defaults to false and can be changed from the side panel.
 
 Prefer the UI, which uses revisioned, atomic Host form writes.
 

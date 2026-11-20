@@ -63,6 +63,9 @@ test('the tool posts a card and its button really runs', async () => {
     actions: [{ id: 'stop', label: '停止提醒', style: 'danger', run: { schedules: ['schedule-a', 'schedule-b'] } }] }, { agent: { session } });
   assert.deepEqual([created.id, created.rev, created.turn, created.phase], ['loop', 1, 1, OPEN]);
   assert.deepEqual(created.cards[0], { id: 'loop', rev: 1, turn: 1, kind: 'card', title: '每小时提醒', phase: OPEN, interactive: true });
+  assert.match(created.next, /^A display card: continue/u, 'a card with only run buttons does not wait');
+  const asking = await tool.execute({ action: 'show', id: 'pick', title: '选方案', note: '二选一', actions: [{ id: 'a', label: 'A', reply: true }] }, { agent: { session } });
+  assert.match(asking.next, /asks the user to decide: .* end your turn/u, 'a reply button means waiting for the choice');
 
   await host.run(session, { id: 'loop', action: 'act', key: 'stop' });
   const card = await settle(host, session, 'loop', version => version.phase === STOPPED);

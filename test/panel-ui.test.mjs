@@ -153,6 +153,18 @@ test('the panel holds the environment switch, outputs, SSH and tool state', asyn
   });
 });
 
+test('the creative mode switch persists both transitions for new sessions', async () => {
+  const f = fixture({ snapshot: windows() });
+  await withPanel(f, {}, async view => {
+    const toggle = () => view.root.findByProps({ role: 'switch', 'aria-label': 'creativeSwitch' });
+    for (const next of [true, false]) {
+      await act(async () => toggle().props.onClick());
+      assert.equal(toggle().props['aria-checked'], next);
+      assert.deepEqual(plain(f.writes.at(-1).ops), [{ op: 'set', path: ['pluginLab'], value: next }]);
+    }
+  });
+});
+
 test('switching environment writes the host form at its current revision and drops a shell of another family', async () => {
   const f = fixture({ snapshot: windows() });
   await withPanel(f, {}, async view => {

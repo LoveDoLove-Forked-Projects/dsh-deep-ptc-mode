@@ -25,7 +25,7 @@ function fixture({ commandResult = { ok: true }, prompt = true } = {}) {
   };
   ctx.inject = (deps, callback) => callback(ctx);
   plugin.apply(ctx);
-  return { cards: slots.get('deep-ptc-cards'), calls, prompts };
+  return { cards: slots.get('deep-ptc-cards'), live: slots.get('deep-ptc-live-cards'), calls, prompts };
 }
 
 // The built-in samples, as the tool would store them.
@@ -119,7 +119,7 @@ test('a question card collects every answer and sends it as one message', async 
     assert.equal(submit().props.disabled, false);
     await act(async () => view.root.find(node => node.type === 'form').props.onSubmit({ preventDefault() {} }));
     const payload = JSON.parse(f.calls.at(-1)[1].slice('/deep-ptc-card-act '.length));
-    assert.deepEqual(payload, { id: 'deploy', action: 'answer', rev: 1, answers: { plan: 'vps', extra: ['bak'], note: '周五前' } });
+    assert.deepEqual(payload, { codedReceipt: true, id: 'deploy', action: 'answer', rev: 1, answers: { plan: 'vps', extra: ['bak'], note: '周五前' } });
     assert.equal(f.prompts[0].mode, 'steer', 'the answer reaches a working model at its next step');
     assert.equal(f.prompts[0].content[0].text, ['questionReplyHead', '1. 用哪种方案？', '   → VPS', '2. 附加项', '   → 备份', '3. 补充说明', '   → 周五前'].join('\n'));
   } finally { await act(async () => view.unmount()); }
@@ -149,7 +149,7 @@ test('a choice and a reply button send the pick to the command and then to the m
     assert.deepEqual(options.map(node => node.props['aria-checked']), [false, true, false], 'the recommended option is preselected');
     await act(async () => options[2].props.onClick());
     await act(async () => button(view, '用这个方案').props.onClick());
-    assert.equal(f.calls.at(-1)[1], '/deep-ptc-card-act {"id":"deploy-plan","action":"act","rev":1,"key":"go","values":{"plan":"k8s"}}');
+    assert.equal(f.calls.at(-1)[1], '/deep-ptc-card-act {"id":"deploy-plan","action":"act","rev":1,"key":"go","values":{"plan":"k8s"},"codedReceipt":true}');
     assert.equal(f.prompts.length, 1);
     assert.equal(f.prompts[0].sessionId, 'session-A');
     assert.equal(f.prompts[0].mode, 'steer');
@@ -176,6 +176,18 @@ test('multiple choice, fields and missing values', async () => {
     assert.deepEqual(JSON.parse(f.calls.at(-1)[1].slice('/deep-ptc-card-act '.length)).values, { time: '07:45', deps: ['a', 'b'] });
     assert.equal(f.prompts[0].content[0].text, '【提醒】设定（时间：07:45；deps：A、B）');
   } finally { await act(async () => view.unmount()); }
+});
+
+test('a successful delivery across client versions sends no duplicate text', async () => {
+  for (const text of ['Choice sent to the model. / 已把选择发给模型。', '[dpt:delivered:choice] sent']) {
+    const f = fixture({ commandResult: { ok: true, value: { result: { kind: 'success', text } } } });
+    const view = await render(f, [sample('deploy-plan')]);
+    try {
+      await act(async () => button(view, '用这个方案').props.onClick());
+      assert.equal(f.calls.length, 1);
+      assert.equal(f.prompts.length, 0);
+    } finally { await act(async () => view.unmount()); }
+  }
 });
 
 test('a refused command shows its reason and sends nothing to the model', async () => {
@@ -219,4 +231,27 @@ test('the layout pairs compact cards, puts three tiny ones in a row and never le
   assert.deepEqual(await sizes([rows('a', 3), rows('b', 3), rows('c', 3)]), ['half', 'half', 'full']);
   assert.deepEqual(await sizes([stat('a', { size: 'half' })]), ['full'], 'an explicit half alone would leave a gap');
   assert.deepEqual(await sizes([rows('a', 6), rows('b', 2)]), ['full', 'full'], 'long rows are wide content');
+});
+
+test('cards posted mid-turn show above the composer at once, until the turn ends', async () => {
+  const f = fixture();
+  const question = { id: 'pick', kind: 'question', title: '选目录', phase: 'open', questions: [{ id: 'folder', prompt: '哪个目录？', type: 'single',
+    options: [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }] }] };
+  const display = { id: 'stats', title: '结果', phase: 'open', blocks: [{ type: 'text', text: 'ok' }] };
+  const mount = async state => {
+    let view;
+    await act(async () => { view = Renderer.create(React.createElement(f.live.render, { ...f.live.slot.inject('session-A'),
+      useProjection: key => key === 'deepPtcCards' ? state : key === 'agentPreset' ? 'deep-ptc' : undefined })); });
+    return view;
+  };
+  const running = await mount({ ...stateOf([question, display]), ended: 0 });
+  try {
+    const text = JSON.stringify(running.toJSON());
+    assert.match(text, /cardLiveNote/u, 'the dock says the model is waiting');
+    assert.match(text, /选目录/u, 'the question shows while the turn runs');
+    assert.match(text, /结果/u, 'every card of the running turn shows at once, display cards too');
+  } finally { await act(async () => running.unmount()); }
+  const ended = await mount({ ...stateOf([question]), ended: 1 });
+  try { assert.equal(ended.toJSON(), null, 'after the turn the tail shows the cards; the dock is empty'); }
+  finally { await act(async () => ended.unmount()); }
 });

@@ -40,7 +40,7 @@ const fixture = name => pathToFileURL(path.join(stage, 'scripts', 'fixtures', na
 const config = path.join(home, 'cordis.yml');
 writeFileSync(config, '[]\n');
 const extra = {
-  plain: [], live: [], cards: [], guide: [], 'cards-wsl': [], 'tool-overrides': [], 'runtime-update': [], 'own-row-fails': [],
+  plain: [], 'deep-skills': [], creative: [{ id: 'cordis-host-runner', name: '@deepseek-ai/dsh-cordis-host-runner' }], live: [], cards: [], guide: [], 'cards-wsl': [], 'tool-overrides': [], 'runtime-update': [], 'own-row-fails': [],
   misbehaving: [{ id: 'misbehaving', name: fixture('misbehaving-plugin.mjs') }],
   'broken-plugin': [{ id: 'broken', name: fixture('broken-plugin.mjs') }],
 }[scenario];
@@ -50,6 +50,7 @@ const patches = [
   { insert: [{ id: 'agent-preset-registry', name: '@deepseek-ai/dsh-agent-preset-registry', config: { default: 'ptc' } }] },
   ...declared('@deepseek-ai/dsh-web-app/presets/ptc.patch.yml'),
   { insert: [{ id: 'deep-ptc-settings', name: 'dsh-deep-ptc-mode', config: {
+    pluginLab: scenario === 'creative',
     environment: useWsl ? 'wsl' : process.platform === 'win32' ? 'powershell' : 'bash', wslDistribution: '',
     ...scenario === 'tool-overrides' ? {
       disabledShellTools: [process.platform === 'win32' ? 'pwsh' : 'bash'],
@@ -111,6 +112,33 @@ assert.ok(official.tools.has('ui_card') && deep.tools.has('ui_card'), 'conversat
 assert.ok(!official.tools.has('project_cards'), 'project cards are scoped to Deep PTC');
 const names = tools => [...tools.keys()].sort();
 const inSdk = (side, name) => new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}\\b`, 'u').test(side.sdk);
+
+if (scenario === 'creative' || scenario === 'deep-skills') {
+  const enabled = scenario === 'creative';
+  assert.equal(deep.sections.has('deep-ptc:plugin-lab'), enabled);
+  assert.ok(!official.sections.has('deep-ptc:plugin-lab'));
+  for (const tool of ['cordis_inspect_list', 'cordis_inspect_query']) {
+    assert.equal(deep.tools.has(tool), enabled, tool);
+    assert.ok(!official.tools.has(tool), tool + ' leaked into the official scope');
+  }
+  const skillsIn = async scope => (await ctx.skills.list({ scope, cwd: home })).map(row => row.name);
+  const active = await skillsIn(deep.scope);
+  const ordinary = await skillsIn(official.scope);
+  for (const name of ['deep-ptc-cards', 'deep-ptc-card-examples', 'deep-ptc-project-cards']) assert.ok(active.includes(name), name);
+  for (const name of ['agent-experience', 'cordis-composition-reference', 'cordis-plugin-development', 'editing-cordis-compositions'])
+    assert.equal(active.includes(name), enabled, name);
+  for (const id of ['dsh-operations', 'local-web-testing', 'frontend-design', 'primary-source-research', 'office-delivery', 'scientific-figures']) {
+    const name = 'deep-ptc-' + id;
+    const loaded = await ctx.skills.get(name, { scope: deep.scope, cwd: home });
+    assert.ok(loaded.content.length > 100 && loaded.resourceBase.kind === 'directory');
+    for (const reference of loaded.content.matchAll(/\]\((examples\/[^)]+)\)/gu))
+      assert.ok(readFileSync(path.join(loaded.resourceBase.path, reference[1])).length > 0);
+    assert.ok(active.includes(name));
+    assert.ok(!ordinary.includes(name));
+  }
+  console.log('ok  scoped tools, skill discovery, bodies and example paths; creative mode: ' + enabled);
+  process.exit(0);
+}
 
 if (scenario === 'tool-overrides') {
   const shell = process.platform === 'win32' ? 'pwsh' : 'bash';

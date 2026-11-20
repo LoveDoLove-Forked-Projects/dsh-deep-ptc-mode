@@ -1,4 +1,4 @@
-export function createConversationCards({ React, h, tf, commandText, useFormValue }) {
+export function createConversationCards({ React, h, tf, commandText, commandCode, useFormValue }) {
   const CARD_PHASES = { stopping: 'cardStopping', stopped: 'cardStopped', failed: 'cardFailed', dismissed: 'cardDismissed' };
   // Built-in card layout. The model chooses blocks (lib/card-blocks.mjs); each block has one renderer
   // here, so every card shares one typography, spacing and colour system. Charts carry one series in
@@ -247,13 +247,16 @@ export function createConversationCards({ React, h, tf, commandText, useFormValu
     return `【${card.title}】${action.label ?? ''}${parts.length > 0 ? `（${parts.join('；')}）` : ''}`;
   }
 
-  // Servers from 2.1.0 deliver the model's view of an answer or reply themselves (lib/model-view.mjs)
-  // and say so in the success text; older servers leave the text reply to the client.
-  const SERVER_DELIVERED = new Set(['Answer sent to the model. / 已把回答发给模型。', 'Choice sent to the model. / 已把选择发给模型。',
-    'Card action completed and reported to the model. / 卡片操作已完成并告知模型。']);
+  // The server delivers the model's view of an answer or reply itself (lib/model-view.mjs) and says
+  // so with the original 2.1.0 receipt or a coded receipt; otherwise the client sends its text reply.
+  const legacyReceipts = new Set([
+    'Answer sent to the model. / 已把回答发给模型。',
+    'Choice sent to the model. / 已把选择发给模型。',
+    'Card action completed and reported to the model. / 卡片操作已完成并告知模型。',
+  ]);
   function deliveredByServer(result) {
     const outcome = result?.value?.result ?? result?.value;
-    return outcome?.kind === 'success' && SERVER_DELIVERED.has(outcome.text);
+    return outcome?.kind === 'success' && (legacyReceipts.has(outcome.text) || commandCode(outcome.text)?.startsWith('delivered:') === true);
   }
 
   // The host command's outcome, reduced to an error text or nothing.
@@ -489,5 +492,21 @@ export function createConversationCards({ React, h, tf, commandText, useFormValu
         return h(version.kind === 'question' ? QuestionCard : CardView, props);
       }));
   }
-  return { CardTail, commandError, layoutSizes };
+  // Cards of a running turn, docked above the composer (conversation.input.dock). The host draws a
+  // turn's tail only after the turn ends, so without this a question asked mid-turn stays out of sight
+  // while the model keeps working. Once the turn ends the dock empties and the tail shows the cards.
+  function LiveCards({ useProjection, run, reply, form, t }) {
+    const state = typeof useProjection === 'function' ? useProjection('deepPtcCards') : undefined;
+    const enabled = useFormValue(form, 'conversationCards') !== false;
+    if (!enabled || !state || state.turn === 0 || state.ended === state.turn) return null;
+    const versions = Array.isArray(state.versions) ? state.versions : [];
+    const mine = versions.filter(version => version.turn === state.turn && version.phase !== 'dismissed');
+    if (mine.length === 0) return null;
+    // Every card of the running turn shows at once, laid out as the turn tail will lay it out.
+    const waiting = mine.some(version => version.kind === 'question' && version.phase === 'open');
+    return h('section', { className: 'dpt-cards-live', 'aria-label': t('cardLiveLabel') },
+      waiting ? h('p', { className: 'dpt-cards-live-note', role: 'status' }, t('cardLiveNote')) : null,
+      h(CardTail, { turn: state.turn, useProjection, run, reply, form, t }));
+  }
+  return { CardTail, LiveCards, commandError, layoutSizes };
 }

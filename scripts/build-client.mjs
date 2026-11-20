@@ -3,8 +3,8 @@ import { readFileSync, writeFileSync } from 'node:fs';
 const root = new URL('../', import.meta.url);
 const read = path => readFileSync(new URL(path, root), 'utf8').replaceAll('\r\n', '\n');
 const modules = {
-  'conversation-cards': 'const { CardTail, commandError } = createConversationCards({ React, h, tf, commandText, useFormValue });',
-  'project-cards': 'const { PROJECT_COMMAND_NAME, runProjectCommand, ProjectView, ProjectChatProposals } = createProjectCards({ React, h, tf, commandError, projectionValue, openTab: openConversationTab });',
+  'conversation-cards': 'const { CardTail, LiveCards, commandError } = createConversationCards({ React, h, tf, commandText, commandCode, useFormValue });',
+  'project-cards': 'const { PROJECT_COMMAND_NAME, runProjectCommand, ProjectView, ProjectChatProposals } = createProjectCards({ React, h, tf, commandError, commandCode, stripCode, projectionValue, openTab: openConversationTab });',
   'task-brief': 'const { BRIEF_COMMAND_NAME, runBriefCommand, BriefTail, BriefPanelSection } = createTaskBrief({ React, h, tf, commandError, projectionValue, useFormValue });',
   styles: '',
 };

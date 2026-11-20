@@ -1,16 +1,18 @@
-export function createProjectCards({ React, h, tf, commandError, projectionValue, openTab = () => false }) {
+export function createProjectCards({ React, h, tf, commandError, commandCode = () => undefined, stripCode = text => text, projectionValue, openTab = () => false }) {
   const PROJECT_COMMAND_NAME = 'deep-ptc-project';
   async function runProjectCommand(child, sessionId, payload) {
     const execute = child.remote?.commands?.execute;
     if (typeof execute !== 'function') return { ok: false, error: { message: 'unavailable' } };
-    return execute(sessionId, `/${PROJECT_COMMAND_NAME} ` + JSON.stringify(payload), []);
+    return execute(sessionId, `/${PROJECT_COMMAND_NAME} ` + JSON.stringify({ ...payload, serverNotice: true }), []);
   }
   // The command's success text, or an error text.
   function projectOutcome(result, t) {
     const error = commandError(result, t);
     if (error !== undefined) return { error };
     const outcome = result?.value?.result ?? result?.value;
-    return { text: typeof outcome?.text === 'string' ? outcome.text : '' };
+    const raw = typeof outcome?.text === 'string' ? outcome.text : '';
+    // `notified`: the server already told the model (and the setup guide), so the view sends nothing.
+    return { text: stripCode(raw), notified: commandCode(raw) === 'notified' };
   }
   // "v4 · stack · +R7 ~R2" → "v4：+R7 ~R2"
   const changeNote = text => {
@@ -178,7 +180,7 @@ export function createProjectCards({ React, h, tf, commandError, projectionValue
           userOwned ? h('button', { type: 'button', className: 'dpt-pv-link', disabled: busy, onClick: () => onEdit(card) }, t('projectEdit')) : null) : null),
       history !== undefined ? h(HistoryPanel, { card, versions, busy, t, onClose: () => setHistory(undefined),
           onRollback: version => { void act({ ...history, op: 'rollback', card: card.id, rev: version.rev }, 'projectMsgRollback', { title: card.title, rev: version.rev }).then(done => { if (done) setHistory(undefined); }); } })
-        : h(ItemRows, { card, t, onQuestion: userOwned ? undefined : (item, question) => act.say('projectMsgQuestion', { title: card.title, id: item.id, text: item.text, question }) }));
+        : h(ItemRows, { card, t, onQuestion: userOwned ? undefined : (item, question) => { void act.question(card, item, question); } }));
   }
 
   function ProposalRow({ proposal, card, busy, act, t }) {
@@ -227,7 +229,7 @@ export function createProjectCards({ React, h, tf, commandError, projectionValue
       try {
         const outcome = projectOutcome(await run(payload), t);
         setMessage(outcome.error ?? '');
-        if (key && !outcome.error && !await reply(tf(t, key, { ...values, change: changeNote(outcome.text) }))) setMessage(t('cardReplyFailed'));
+        if (key && !outcome.error && !outcome.notified && !await reply(tf(t, key, { ...values, change: changeNote(outcome.text) }))) setMessage(t('cardReplyFailed'));
       } catch (error) { setMessage(String(error?.message ?? error)); } finally { setBusy(false); }
     };
     return h('section', { className: 'dpt-pv-group', 'aria-label': t('projectProposals') },
@@ -259,7 +261,7 @@ export function createProjectCards({ React, h, tf, commandError, projectionValue
       try {
         const outcome = projectOutcome(await run(payload), t);
         if (outcome.error) { setMessage(outcome.error); return false; }
-        if (messageKey) {
+        if (messageKey && !outcome.notified) {
           const details = { ...values, change: changeNote(outcome.text) };
           const owner = proposals.find(row => row.id === payload.proposal)?.session;
           // Every change reaches the main conversation at once (a steering message, even mid-task);
@@ -274,11 +276,18 @@ export function createProjectCards({ React, h, tf, commandError, projectionValue
       } catch (error) { setMessage(String(error?.message ?? error)); return false; } finally { setBusy(false); }
     };
     act.say = (key, values) => { void say(key, values); };
+    // A question about a record goes through the server, which tells the model; the text is the fallback.
+    act.question = async (card, item, question) => {
+      const outcome = projectOutcome(await run({ op: 'question', card: card.id, item: item.id, question }).catch(() => undefined), t);
+      if (outcome.error) { setMessage(outcome.error); return; }
+      if (!outcome.notified) await say('projectMsgQuestion', { title: card.title, id: item.id, text: item.text, question });
+    };
     // Guided setup happens in the main conversation: the model asks with question cards there, and
     // the request reaches it at once even mid-task. The editor here never involves the model.
     const guideInChat = async () => {
       setMessage(undefined);
-      const sent = await reply?.(t(cards.length === 0 ? 'projectMsgGuideFirst' : 'projectMsgGuideMore'));
+      const asked = projectOutcome(await run({ op: 'ask', kind: cards.length === 0 ? 'guide-first' : 'guide-more' }).catch(() => undefined), t);
+      const sent = asked.notified || await reply?.(t(cards.length === 0 ? 'projectMsgGuideFirst' : 'projectMsgGuideMore'));
       if (sent === false) { setMessage(t('cardReplyFailed')); return; }
       openTab(sessionId, (_tab, index) => index === 0);
     };
@@ -295,7 +304,7 @@ export function createProjectCards({ React, h, tf, commandError, projectionValue
       if (outcome.error) { setMessage(outcome.error); return; }
       let started = {};
       try { started = JSON.parse(outcome.text); } catch { /* an older server answered plainly */ }
-      if (by === 'chat' && started.instruction) {
+      if (by === 'chat' && started.instruction && !outcome.notified) {
         const sent = await reply?.(started.instruction);
         if (sent === false) setMessage(t('cardReplyFailed'));
       }

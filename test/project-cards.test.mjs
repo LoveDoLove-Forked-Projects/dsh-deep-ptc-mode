@@ -3,9 +3,9 @@ import test from 'node:test';
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { PROJECT_FILE, blankDoc, mergeProposal, ordered, diffItems, parseDoc, promptText, removeCard, serializeDoc, writeCard } from '../lib/project-cards.mjs';
+import { PROJECT_FILE, blankDoc, mergeProposal, ordered, diffItems, parseDoc, promptCards, promptText, removeCard, serializeDoc, writeCard } from '../lib/project-cards.mjs';
 import { createProjectStore } from '../lib/project-store.mjs';
-import { command, install, projectToolDefinition, sectionText, PROJECT_COMMAND, PROJECT_TOOL } from '../lib/project-context.mjs';
+import { cardsContextText, command, install, projectToolDefinition, sectionText, PROJECT_COMMAND, PROJECT_TOOL } from '../lib/project-context.mjs';
 import { apply as applyProjectTool } from '../lib/project-tool.mjs';
 import { deriveDeepPtc } from '../lib/model.mjs';
 import snapshot from '../lib/preset.json' with { type: 'json' };
@@ -53,7 +53,9 @@ test('another conversation sees project setup progress, pending drafts and user 
   const first = { session: { id: 'one', header: { cwd: project } } };
   const second = { session: { id: 'two', header: { cwd: project } } };
   const tool = projectToolDefinition();
-  const instruction = () => sectionText(host.ctx, store, { agent: second });
+  // The setup state rides in the snapshot; the system prompt rules never change with it.
+  const rules = sectionText(host.ctx, store, { agent: second });
+  const instruction = () => { assert.equal(sectionText(host.ctx, store, { agent: second }), rules); return cardsContextText(host.ctx, store, { agent: second }); };
   await tool.execute({ action: 'setup', status: 'guiding', summary: 'Which runtime?' }, { agent: first });
   assert.match(instruction(), /already underway/u);
   assert.equal((await tool.execute({ action: 'read' }, { agent: second })).setup.summary, 'Which runtime?');
@@ -104,7 +106,7 @@ test('ids are stable, never reused, and cannot be claimed', () => {
 test('the prompt carries only the latest version, with editing rights by mode', () => {
   const doc = sampleDoc();
   const deep = promptText(doc, { deep: true, path: 'D:\\p\\PROJECT-CARDS.md' });
-  assert.match(deep, /Only this latest version applies/u);
+  assert.match(deep, /Only the newest snapshot applies/u);
   assert.match(deep, /project_cards propose/u);
   assert.match(deep, /retest affected behavior/u);
   assert.match(deep, /- \*\*R1\*\* 前端 React 18/u);
@@ -280,8 +282,8 @@ test('setting cards group by category, ahead of the model records, in the file a
   const back = parseDoc(serializeDoc(doc)).doc;
   assert.deepEqual(back.cards.map(card => card.category), ['stack', 'constraints', 'other', undefined, undefined]);
   const text = promptText(doc, { deep: true });
-  assert.ok(text.indexOf('# Settings: Stack and environment') < text.indexOf('# Settings: Constraints'));
-  assert.ok(text.indexOf('# Settings: Other') < text.indexOf('# Records kept by Deep PTC'));
+  assert.ok(text.indexOf('## Settings: Stack and environment') < text.indexOf('## Settings: Constraints'));
+  assert.ok(text.indexOf('## Settings: Other') < text.indexOf('## Records kept by Deep PTC'));
 });
 
 test('an oversized prompt leaves out whole cards, settings first, and names the rest', () => {
@@ -289,11 +291,82 @@ test('an oversized prompt leaves out whole cards, settings first, and names the 
   const long = n => Array.from({ length: 12 }, (_, index) => `${n} rule ${index} ${'x'.repeat(400)}`);
   for (let index = 0; index < 6; index++) doc = writeCard(doc, { title: `Rules ${index}`, category: 'code', items: long(index) }).doc;
   doc = writeCard(doc, { kind: 'features', items: ['records come last'] }).doc;
-  const text = promptText(doc, { deep: true });
+  const text = promptCards(doc, { deep: true });
   assert.ok(text.length <= 16_000);
-  assert.match(text, /## Rules 0 \(setting/u, 'the first setting card is kept');
+  assert.match(text, /### Rules 0 \(rules-0, setting/u, 'the first setting card is kept');
   assert.match(text, /more card\(s\) not shown here: .*\(features\)\. Read them with project_cards read/u);
-  for (const block of text.split('\n## ').slice(1, -1)) {
+  for (const block of text.split('\n### ').slice(1, -1)) {
     if (block.startsWith('Rules')) assert.equal(block.split('\n').filter(row => /rule \d+/u.test(row)).length, 12, 'no card is cut in half');
   }
+});
+
+test('long omitted titles and ids fit in the project snapshot budget', () => {
+  let doc = blankDoc();
+  for (let i = 0; i < 45; i++) {
+    doc = writeCard(doc, { title: 'Rules ' + String(i).padStart(2, '0') + ' ' + 'a'.repeat(48),
+      items: Array.from({ length: 10 }, (_, j) => 'item ' + j + ' ' + 'x'.repeat(465)) }).doc;
+  }
+  const snapshot = promptCards(doc, { deep: true });
+  assert.ok(snapshot.length <= 16_000);
+  assert.ok(promptCards(doc, { deep: true, path: 'x'.repeat(20_000) }).length <= 16_000);
+  assert.match(snapshot, /and \d+ more\. Read them with project_cards read/u);
+});
+
+test('the server tells the model about the user\'s edits in a structured form; the rules stay cached', async () => {
+  const { project, store } = workspace();
+  const host = fakeHost();
+  await install(host.ctx, host.records, { store });
+  const delivered = [];
+  const session = { id: 'n1', header: { cwd: project } };
+  const agent = { session, steer: message => delivered.push(message) };
+  const run = payload => host.handlers.get(PROJECT_COMMAND)({ agent,
+    rawInput: JSON.stringify({ serverNotice: true, path: store.target(project), baseVersion: host.state.get(session)?.fileVersion ?? null, ...payload }) });
+  const context = { agent };
+
+  const created = await run({ op: 'submit', title: '代码规范', category: 'conventions', items: ['用两个空格缩进'] });
+  assert.match(created.text, /^\[dpt:notified\] v1 · /u, 'the code tells the view the model already knows');
+  const notice = delivered.at(-1);
+  assert.equal(notice.source.kind, 'deep-ptc-project');
+  assert.equal(notice.source.form, 'notice');
+  assert.match(notice.content[0].text, /^\[Project cards: the user created setting card \S+ «代码规范», rev 1: \+R1\]$/mu);
+  assert.doesNotMatch(notice.content[0].text, /用两个空格缩进/u, 'the notice names ids; the cards live in the snapshot');
+
+  const rules = sectionText(host.ctx, store, context);
+  const tool = projectToolDefinition();
+  await tool.execute({ action: 'write', card: 'features', items: [{ text: '特点卡片视图' }] }, { agent });
+  assert.equal(sectionText(host.ctx, store, context), rules, 'a model write leaves the system prompt unchanged');
+  assert.match(cardsContextText(host.ctx, store, context), /^# Project cards \(.*\) — current version[\s\S]*- \*\*F1\*\* 特点卡片视图/mu);
+
+  const asked = await run({ op: 'question', card: 'features', item: 'F1', question: '这个视图真的实现了吗？' });
+  assert.match(asked.text, /^\[dpt:notified\]/u);
+  assert.match(delivered.at(-1).content[0].text, /the user questions F1 in features card features[\s\S]*Question: «这个视图真的实现了吗？»/u);
+
+  const guide = await run({ op: 'ask', kind: 'guide-more' });
+  assert.match(guide.text, /^\[dpt:notified\]/u);
+  assert.match(delivered.at(-1).content[0].text, /^\[Project cards: the user asks you to help refine the project cards\]/u);
+
+  const id = host.state.get(session).cards.find(card => card.kind === 'setting').id;
+  await tool.execute({ action: 'propose', card: id, items: [{ id: 'R1', text: '用两个空格缩进，禁止 Tab' }] }, { agent });
+  assert.doesNotMatch(delivered.at(-1).content[0].text, /ask_user/u, 'setup follows the active question tool');
+  const rejected = await run({ op: 'reject', proposal: 'P1' });
+  assert.match(rejected.text, /^\[dpt:notified\] rejected/u);
+  assert.match(delivered.at(-1).content[0].text, /rejected proposal P1 for «代码规范»[\s\S]*Do not re-propose it unchanged/u);
+
+  // Without a steerable agent nothing is delivered and the plain text lets the view send its message.
+  const plain = await host.handlers.get(PROJECT_COMMAND)({ agent: { session }, rawInput: JSON.stringify({ op: 'ask', kind: 'guide-first' }) });
+  assert.equal(plain.text, 'asked');
+  const count = delivered.length;
+  const legacy = await run({ op: 'ask', kind: 'guide-first', serverNotice: false });
+  assert.equal(legacy.text, 'asked');
+  assert.equal(delivered.length, count, 'a cached client supplies its own message');
+});
+
+test('project cards and conversation cards are not capped at a small number', () => {
+  let doc = blankDoc();
+  for (let index = 0; index < 120; index++) {
+    const result = writeCard(doc, { title: `Card ${index}`, items: [`rule ${index}`] });
+    assert.equal(result.error, undefined, `card ${index}`);
+    doc = result.doc;
+  }
+  assert.equal(doc.cards.length, 120);
 });

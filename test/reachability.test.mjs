@@ -278,7 +278,10 @@ test('the preset wraps the official shell, job and question modules and caps the
   assert.deepEqual(group.config[0].config, { environment: 'wsl', wslDistribution: 'Ubuntu', base: '@deepseek-ai/dsh-bash-sandbox',
     options: { timeoutMs: 45000, maxTimeoutMs: 45000 } });
   assert.deepEqual(group.config[1], { id: 'tool-bash', name: 'dsh-deep-ptc-mode/terminal', config: { upstream: '@deepseek-ai/dsh-tool-bash' } });
-  assert.deepEqual(preset.plugins.find(row => row.id === 'reachability').config, { foregroundSeconds: 45 });
+  // Question cards are on by default, so the guard's prompt names ask_user instead of the timed box.
+  assert.deepEqual(preset.plugins.find(row => row.id === 'reachability').config, { foregroundSeconds: 45, questionCards: true });
+  const noCards = configuredPreset(template, { environment: 'wsl', wslDistribution: 'Ubuntu', conversationCards: false }, 'win32');
+  assert.deepEqual(noCards.plugins.find(row => row.id === 'reachability').config, { foregroundSeconds: 30 });
   assert.deepEqual(preset.plugins.find(row => row.id === 'tool-jobs').config,
     { upstream: '@deepseek-ai/dsh-tool-jobs', overrides: { waitTimeoutMs: 45000, maxWaitTimeoutMs: 45000 } });
   assert.deepEqual(preset.plugins.find(row => row.id === 'tool-ask-user').config,

@@ -93,7 +93,7 @@ test('the project view joins the conversation tabs for Deep PTC and lists every 
     assert.ok(entry, 'the view is registered while a Deep PTC conversation is on screen');
     assert.equal(entry.slot.order, 50);
     assert.equal(entry.slot.label(), 'projectTab');
-    assert.equal(f.calls[0][1], '/deep-ptc-project {"op":"refresh"}', 'the view refreshes its mirror on open');
+    assert.equal(f.calls[0][1], '/deep-ptc-project {"op":"refresh","serverNotice":true}', 'the view refreshes its mirror on open');
     const text = JSON.stringify(view.toJSON());
     for (const word of ['技术栈', '已实现功能', '用户要求', 'R1', 'F1', 'projectStatusSuperseded', 'projectProposals']) assert.ok(text.includes(word), word);
     assert.equal(buttons(view, 'projectEdit').length, 1, 'only the user\'s setting card is editable');
@@ -111,7 +111,7 @@ test('approve, submit, polish and question each tell the model what happened', a
   const { header, view } = await renderView(f);
   try {
     await act(async () => buttons(view, 'projectApprove')[0].props.onClick());
-    assert.equal(f.calls.at(-1)[1], '/deep-ptc-project {"op":"approve","proposal":"P1"}');
+    assert.equal(f.calls.at(-1)[1], '/deep-ptc-project {"op":"approve","proposal":"P1","serverNotice":true}');
     assert.match(f.prompts.at(-1).content[0].text, /^projectMsgApprove\{"id":"P1","title":"技术栈","change":"v2：\+R3 ~R1"\}$/u);
 
     await act(async () => buttons(view, 'projectEdit')[0].props.onClick());
@@ -120,7 +120,7 @@ test('approve, submit, polish and question each tell the model what happened', a
     const form = view.root.find(node => node.type === 'form');
     await act(async () => form.props.onSubmit({ preventDefault() {} }));
     const sent = JSON.parse(f.calls.at(-1)[1].slice('/deep-ptc-project '.length));
-    assert.deepEqual(sent, { op: 'submit', path: project().path, baseVersion: 'alpha', card: 'stack', title: '技术栈', category: 'stack', items: [{ id: 'R1', text: 'React 19' }, { id: 'R2', text: 'Vite' }], baseRev: 1 });
+    assert.deepEqual(sent, { serverNotice: true, op: 'submit', path: project().path, baseVersion: 'alpha', card: 'stack', title: '技术栈', category: 'stack', items: [{ id: 'R1', text: 'React 19' }, { id: 'R2', text: 'Vite' }], baseRev: 1 });
     assert.match(f.prompts.at(-1).content[0].text, /^projectMsgSubmit/u);
 
     // Polishing never writes and never waits: it starts a polish job for this draft and returns.
@@ -157,7 +157,9 @@ test('the project cards switch removes the view; the empty state offers a guided
     assert.match(JSON.stringify(view.toJSON()), /projectEmptyTitle/u);
     const commands = f.calls.length;
     await act(async () => buttons(view, 'projectPanelGuideFirst')[0].props.onClick());
-    assert.equal(f.calls.length, commands, 'guided setup is a message, not a hidden panel conversation');
+    assert.equal(f.calls.length, commands + 1, 'one ask command: the server tells the model in its structured form');
+    assert.match(JSON.stringify(f.calls.at(-1)), /\\"op\\":\\"ask\\",\\"kind\\":\\"guide-first\\"/u, 'a request for the main conversation, not a hidden panel conversation');
+    // This fixture's server does not answer `notified`, so the view falls back to its text message.
     assert.equal(f.prompts.at(-1).mode, 'steer', 'it reaches the model at once, even mid-task');
     assert.equal(f.prompts.at(-1).content[0].text, 'projectMsgGuideFirst', 'the guidance happens in the main conversation');
   } finally {
