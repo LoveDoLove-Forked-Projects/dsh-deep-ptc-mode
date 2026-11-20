@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.3.0 — 2026-11-20
+
+- 深度创造模式在侧栏有了独立分区，新增「虚拟 DSH 环境」：一键启动与当前宿主版本、插件、Skill 和设置一致的全新 DSH，不含会话、工作区和记忆，在右侧栏打开。启动进度显示在卡片里，可随时停止。登录凭据在启动时从当前 DSH 复制，停止时最先删除；临时目录在停止时清理，残留在下次启动时清除。
+- 创造模式新增 `virtual_dsh` 工具：启动、重启、停止、状态、日志，增删额外插件，读写 `cordis.patch.yml`，在虚拟 DSH 中对话并读回每一轮的回复、工具调用和错误。每个对话审批一次；无论谁启动，侧栏都会实时显示。
+- 内置 Skill 增至十个：新增 `windows-wsl`、`dsh-plugin-dev`、`virtual-dsh-testing`、`tool-evaluation`；`dsh-operations` 补充卡片等待规则、审批、失效工具和常见误用。Skill 卡片上的简介跟随 DSH 界面语言。图表与资料核验 Skill 先检查 Python 依赖。
+- 侧栏更简洁：空分区一行显示，工具状态为「正常 · 重载」，说明改为悬停提示；虚拟 DSH 状态不再以命令行出现在对话里。
+
+- Deep creative mode gets its own side-panel section with a Virtual DSH card: a fresh DSH with the same host version, plugins, skills and settings, without sessions, workspaces or memory, opened in the right sidebar. The card shows startup steps and can stop it any time. Credentials are copied from the launching DSH at start and deleted first at stop; its directory is removed on stop and leftovers are swept at the next start.
+- New `virtual_dsh` tool in creative mode: start, restart, stop, status, logs, extra plugins, its `cordis.patch.yml`, and test conversations with replies, tool calls and errors read back. One approval per conversation; every start shows in the side panel.
+- Ten built-in skills: new `windows-wsl`, `dsh-plugin-dev`, `virtual-dsh-testing` and `tool-evaluation`; `dsh-operations` adds card waiting rules, approvals, quarantined tools and common mistakes. Skill card descriptions follow the DSH display language. The figure and source skills check Python dependencies first.
+- A quieter side panel: one-line empty sections, "OK · Reload" tool state, explanations as tooltips; virtual DSH status no longer shows as command rows in the chat.
+
 ## 2.2.0 — 2026-11-20
 
 - 侧栏新增「深度创造模式」开关，开启后新建会话即可使用官方创造工具和开发资料。开发包可在独立进程、临时目录和 Web profile 中安装测试。

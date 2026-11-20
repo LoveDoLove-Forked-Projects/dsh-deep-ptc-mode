@@ -1,12 +1,19 @@
 # Deep PTC mode
 
-[中文](README.zh.md) · MIT · **2.2.0**
+[中文](README.zh.md) · MIT · **2.3.0**
 
 [Changelog](CHANGELOG.md) · [Test report](TEST_REPORT.md) · [Plugin workflows and verification](COMPATIBILITY.md)
 
 Deep PTC is a DeepSeek Harness agent mode with progress reports, clarifying questions, task-size planning, and interruptible background work. It builds on the installed official PTC preset with selectable shells, on-demand tools and skills, and a two-layer preset identity adapter for third-party plugins. Cards face both you and the model: you see a clear card, the model reads precise context with ids, sources and states; the task brief files the goals, constraints and acceptance criteria in your messages and, once you confirm, can take the raw messages out of the model's context.
 
-The panel sits beside the conversation and shows the environment, subagents, jobs, output files, SSH connections and tool state. The panel width can be dragged. The capsule expands or collapses it; it sits below the composer by default and can move into the toolbar or be hidden. Deep PTC also has its own settings page. Visual effects are lightweight and start off when an appearance plugin is installed.
+The panel sits beside the conversation and shows the environment, Deep creative mode with the virtual DSH, subagents, jobs, output files, SSH connections and tool state. The panel width can be dragged. The capsule expands or collapses it; it sits below the composer by default and can move into the toolbar or be hidden. Deep PTC also has its own settings page. Visual effects are lightweight and start off when an appearance plugin is installed.
+
+## Changes in 2.3.0
+
+- **Virtual DSH**: Deep creative mode has its own section in the side panel with a **Virtual DSH** card. One click starts a fresh DSH with the same host version, plugins, skills and settings as yours, and none of your sessions, workspaces or memory. It opens in the right sidebar. The card shows each startup step and can stop it at any time. It signs in with the credentials of the DSH that launched it, copied when it starts and deleted first when it stops. Stopping removes its temporary directory. Leftovers from a crash are swept at the next start.
+- **The model drives it**: in creative mode the `virtual_dsh` tool can start, restart and stop the virtual DSH, and read its status and logs. It can add or remove extra plugins, read and write its `cordis.patch.yml`, and chat with it: send test messages and read back each turn's replies, tool calls and errors. The first action asks you once per conversation; after that the model can restart it as often as testing needs. Every start shows up in the side panel, whoever started it, so you can stop it there.
+- **Ten built-in skills**: new `windows-wsl`, `dsh-plugin-dev`, `virtual-dsh-testing` and `tool-evaluation`. `dsh-operations` now covers which cards wait for you, approvals, quarantined tools and common mistakes. Skills stay in English; their descriptions on the skill card follow the DSH display language. The figure and source skills check their Python dependencies before running.
+- **A quieter side panel**: empty sections take one line, tool state reads "OK · Reload", and long explanations moved into hover tooltips. Virtual DSH status no longer appears as command rows in the chat.
 
 ## Changes in 2.2.0
 
@@ -64,7 +71,7 @@ Read the running host's official PTC declaration and inherit its rows as they ar
 
 ### 2. Flexible creative-mode tools
 
-Enable Deep creative mode from the side panel for new sessions to access the official creative tools and developer resources. Test candidate packages in a separate Web instance as described below.
+Enable Deep creative mode from the side panel for new sessions to access the official creative tools and developer resources. Test candidate packages in a virtual DSH that copies your environment, as described below.
 
 ### 3. dsh-go screen-control adaptation
 
@@ -114,7 +121,7 @@ The model leaves cards at the end of the conversation with the `ui_card` tool. C
 
 Three card skills cover the interface (`deep-ptc-cards`), development templates (`deep-ptc-card-examples`), and project settings and proposals (`deep-ptc-project-cards`).
 
-Deep PTC sessions add six on-demand skills for DSH operations, local web testing, frontend design, primary-source research, Office delivery, and scientific figures. The last four include a working HTML form, a source passage locator, an Excel/Word report generator, and a measurement-to-SVG and card generator. The skill loader supplies the directory containing their examples.
+Deep PTC sessions add ten on-demand skills: DSH operations, local web testing, frontend design, primary-source research, Office delivery, scientific figures, Windows and WSL, DSH plugin development, virtual DSH testing and tool evaluation. Frontend design, primary-source research, Office delivery and scientific figures include a working HTML form, a source passage locator, an Excel/Word report generator, and a measurement-to-SVG and card generator. The skill loader supplies the directory containing their examples.
 
 ## Project cards (1.9.9)
 
@@ -159,12 +166,14 @@ The Deep PTC mode label, settings, and conversation UI switch between Chinese an
 - **Settings → Deep PTC**: execution environment and shell; under Cards, the conversation cards, project cards and task brief switches; under Appearance, the visual effects switch and the capsule position (the effects switch lives only here, not in the side panel); copyable diagnostics to attach to interface bug reports.
 - **The Deep PTC panel beside the conversation** is open by default when there is room. It follows the conversation width and hides under a fullscreen native sidebar. On narrow screens the bottom capsule expands it.
   - **Execution environment**: WSL, PowerShell, native Bash or Zsh, for newly created Deep PTC sessions.
-  - **Order**: hover a section and drag the handle at its top left to reorder the environment, project cards, task brief, subagents, jobs, output files, SSH and tool state (or focus the handle and press ↑ ↓); the order is kept per browser.
+  - **Deep creative mode**: the switch, and the Virtual DSH card with its status, startup steps and Start / Open in sidebar / Stop.
+  - **Compact by default**: an empty section takes one line, and explanations are hover tooltips.
+  - **Order**: hover a section and drag the handle at its top left to reorder the environment, Deep creative mode, project cards, task brief, subagents, jobs, output files, SSH and tool state (or focus the handle and press ↑ ↓); the order is kept per browser.
   - **Subagents**: the state indicator and name on the left, with duration at the right of the same row; a row opens that subagent's chat in the official right sidebar.
   - **Background jobs**: six positions, up to five active jobs first and up to three finished jobs; overflow folds into one expandable row.
   - **Output files**: files this conversation wrote or delivered, newest first; click to open the file in DSH's native preview. Three positions are available, with overflow folded into one of them. The rule matches DSH's own deliverables card and also counts files written from `run_code`.
   - **SSH connections**: hosts this conversation reached, with their outcome, and the host aliases in `~/.ssh/config`.
-  - **Tool state**: the "Reload all tool states" button and, when present, the failed external tools.
+  - **Tool state**: "OK" with a Reload link in its header (it reloads all tool states), and the failed external tools when there are any.
 - **The capsule** shows the environment, subagent count and tool notices, and toggles the independent side panel. Its position is a setting (Settings → Deep PTC → Appearance): auto, below the composer, in the composer toolbar, or hidden. Auto uses the toolbar beside dsh-claude-style so a one-row composer stays one row. When hidden, open the panel from the Deep PTC tab on the right sidebar.
 - **Panel location**: choose Beside conversation or Sidebar under Settings → Deep PTC → Appearance. In Sidebar mode the whole panel lives in the Deep PTC tab of the right sidebar and the capsule opens it; with dsh-better-sidebar installed it opens as one of its pages and can also go in its bottom workbench.
 - **Panel width**: drag the panel's left edge, or focus it and use the arrow keys (Shift for larger steps) or Home/End; a double click restores 280px. The width is remembered, from 240 to 640px, and a docked panel leaves at least 540px for the conversation.
@@ -280,11 +289,15 @@ Existing `disabledShellTools: ['pwsh']` configurations keep working. A card comm
 
 ## Deep creative mode and isolated plugin previews
 
-Enable **Deep creative mode** under **Execution environment** in the side panel and open a new Deep PTC conversation. The setting belongs to the profile. Existing conversations retain their preset generation. The mode discovers the host’s creative tools and development skills, including Cordis Inspect where available.
+Enable **Deep creative mode** in its own section of the side panel and open a new Deep PTC conversation. The setting belongs to the profile. Existing conversations retain their preset generation. The mode discovers the host’s creative tools and development skills, including Cordis Inspect where available.
 
-Develop in a checkout separate from the active plugin installation. Build the candidate and run `npm pack`. Use a managed shell job to run `node "<plugin directory>/lib/preview.mjs" "<absolute path to the built .tgz>"`. The launcher needs Node, the DSH CLI and pnpm. An optional final argument points to the installed DSH CLI’s `lib/bin.js`. The creative prompt supplies the launcher path.
+Develop in a checkout separate from the active plugin installation, build the candidate and run `npm pack`.
 
-Each run installs the archive into a fresh Web profile with its own temporary home, DSH_HOME and workspace and serves it on a dynamically assigned loopback port. Exercise the changed behavior there. Rebuild and start a fresh preview for server code changes. Stopping the job stops the server; the printed directory retains diagnostics. The preview starts with a fresh account state; sign in there to test authenticated screens or model turns. The preview runs with the current OS account’s permissions. Desktop-only APIs need desktop verification.
+**Virtual DSH.** The Virtual DSH card in the side panel starts a fresh DSH Web instance with the same host version as the desktop app (it uses the CLI the desktop app ships), the same plugins, skills, agent presets and settings, and none of your sessions, workspaces, memory or `AGENTS.md`. It signs in with the credentials of the DSH that launched it: they are copied at start and deleted first at stop, and no account is ever bundled with the plugin. Only one runs at a time; it opens in the right sidebar, and stopping it removes its directory. A crash leaves a directory that the next start sweeps.
+
+**The `virtual_dsh` tool** (creative mode) lets the model drive it: `start` (optionally with `package`, the built `.tgz`), `status`, `restart`, `stop`, `logs`, `add_plugin` / `remove_plugin` / `list_plugins` for extra plugins (a `.tgz`, a directory or an npm name), `read_config` / `write_config` for its `cordis.patch.yml`, and `chat` / `transcript` / `sessions` / `cancel` to hold test conversations in it and read back replies, tool calls and errors. The first action that starts, changes or talks to it asks you once for the whole conversation. Changes restart it on the same port, so an open sidebar tab keeps working. The `deep-ptc-virtual-dsh-testing` skill describes the testing procedure.
+
+Without the tool, the same launcher runs as a managed shell job: `node "<plugin directory>/lib/preview.mjs" --package "<absolute path to the built .tgz>"`, with `--cli <path>` for a specific DSH CLI and `--no-credentials` to start signed out. The creative prompt supplies the launcher and CLI paths. Desktop-only APIs need desktop verification.
 
 ## dsh-go and other external tools
 
@@ -331,10 +344,10 @@ A prompt changes the model's working tendency, not the real token limit or billi
 Requires Node `>=24` and DSH `>=0.2.2-rc.1`. The installer rejects the current package on DSH `0.2.1-rc.5` based on its manifest. macOS/Zsh checks cover configuration, argv and tool mounting.
 
 ```js
-plugin_manager({ action: "install_bundle", target: "dsh-deep-ptc-mode@2.2.0" })
+plugin_manager({ action: "install_bundle", target: "dsh-deep-ptc-mode@2.3.0" })
 // Or from a local checkout or archive:
 plugin_manager({ action: "install_bundle", target: "C:\\path\\to\\dsh-deep-ptc-mode" })
-// Or target: "C:\\path\\to\\dsh-deep-ptc-mode-2.2.0.tgz"
+// Or target: "C:\\path\\to\\dsh-deep-ptc-mode-2.3.0.tgz"
 ```
 
 Repository locator: `github:lishize20040802-rgb/dsh-deep-ptc-mode`. It installs content actually published there; a local upgrade does not publish to GitHub or npm.

@@ -1,7 +1,7 @@
 {
   "name": "dsh-deep-ptc-mode",
-  "version": "2.2.0",
-  "description": "Deep PTC for DeepSeek Harness: interruptible jobs, selectable shells, interactive conversation cards with a precise model view, a task brief that files your goals and constraints, versioned project cards, a sortable side panel, and on-demand tools and skills.",
+  "version": "2.3.0",
+  "description": "Deep PTC for DeepSeek Harness: interruptible jobs, selectable shells, interactive conversation cards with a precise model view, a task brief that files your goals and constraints, versioned project cards, a sortable side panel, on-demand tools and skills, and a virtual DSH for testing plugins.",
   "type": "module",
   "keywords": [
     "dsh-plugin",
@@ -18,6 +18,7 @@
     "preset-compatibility",
     "dsh-ops",
     "creative-mode",
+    "virtual-dsh",
     "tool-cooperation",
     "official-ptc-fallback",
     "ssh",
@@ -97,6 +98,7 @@
     "./project-tool": "./lib/project-tool.mjs",
     "./question-tool": "./lib/question-tool.mjs",
     "./brief-tool": "./lib/brief-tool.mjs",
+    "./virtual-dsh-tool": "./lib/virtual-dsh-tool.mjs",
     "./client": "./lib/client.js",
     "./locale/*.json": "./locale/*.json",
     "./package.json": "./package.json"

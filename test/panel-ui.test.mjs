@@ -145,11 +145,11 @@ test('the panel holds the environment switch, outputs, SSH and tool state', asyn
     assert.deepEqual(radios(view).map(node => node.props.children), ['envAuto', 'WSL', 'PowerShell', 'Bash']);
     assert.equal(checked(view), 'PowerShell');
     assert.match(text(view), /envForNew/u, 'the switch applies to new sessions');
-    assert.ok(view.root.findAllByType('button').some(node => node.props.children === 'toolReset'));
-    assert.deepEqual(sections(view), ['environment', 'projectTab', 'briefTitle', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
+    assert.ok(view.root.findAllByType('button').some(node => node.props['aria-label'] === 'toolReset'));
+    assert.deepEqual(sections(view), ['environment', 'creativeSwitch', 'projectTab', 'briefTitle', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
     assert.equal(view.root.findAllByProps({ role: 'switch', 'aria-label': 'visualEffects' }).length, 0, 'the effects switch lives in settings');
-    assert.match(text(view), /outputsEmpty/u);
-    assert.match(text(view), /sshEmpty/u);
+    assert.ok(view.root.findAll(node => node.props.title === 'outputsEmpty').length > 0);
+    assert.ok(view.root.findAll(node => node.props.title === 'sshEmpty').length > 0);
   });
 });
 
@@ -229,7 +229,7 @@ test('subagents keep live state indicators and show only their names and same-ro
     assert.deepEqual(rows.map(visibleText), [' Research', ' Report 1m 15s', ' Live']);
     assert.equal(rows[1].children.at(-1).props.className, 'dpt-agent-duration');
     assert.equal(rows[1].props['aria-label'], 'Report · Done', 'the state remains accessible without visible status text');
-    assert.deepEqual(sections(view).slice(0, 4), ['Execution environment', 'Project cards', 'Task brief', 'Subagents']);
+    assert.deepEqual(sections(view).slice(0, 5), ['Execution environment', 'Deep creative mode', 'Project cards', 'Task brief', 'Subagents']);
   });
 });
 
@@ -530,7 +530,7 @@ test('the reload button resets only the current conversation through the host co
   await withPanel(f, { sessionId: 'session-A', tools: { ...noTools, report: { tools: [{ name: 'bad_tool', provider: 'example-plugin' }] } } }, async view => {
     assert.match(text(view), /bad_tool/u);
     assert.match(text(view), /example-plugin/u);
-    const reload = view.root.findAllByType('button').find(node => node.props.children === 'toolReset');
+    const reload = view.root.findAllByType('button').find(node => node.props['aria-label'] === 'toolReset');
     await act(async () => { await reload.props.onClick(); });
     assert.deepEqual(plain(f.calls), [['session-A', '/deep-ptc-reset-tools', []]]);
     assert.match(text(view), /toolResetDone/u);
@@ -541,7 +541,7 @@ test('the panel and an existing reload result follow the DSH language', async ()
   const f = fixture({ snapshot: windows(), localeId: 'en' });
   await withPanel(f, { sessions: { jobsBySession: { deep: jobs(1, 'running') } } }, async view => {
     assert.match(text(view), /Background jobs.*Output files.*SSH connections.*Tool state/u);
-    const reload = view.root.findAllByType('button').find(node => node.props.children === 'Reload all tool states');
+    const reload = view.root.findAllByType('button').find(node => node.props['aria-label'] === 'Reload all tool states');
     await act(async () => reload.props.onClick());
     assert.match(text(view), /Tool states reloaded for this conversation/u);
     await act(async () => f.setLocale('zh'));
@@ -555,7 +555,7 @@ test('the panel and an existing reload result follow the DSH language', async ()
 test('a denied reset is shown as a failure; the panel never claims success', async () => {
   const f = fixture({ snapshot: windows(), outcome: { ok: false, error: { code: 'access-denied', message: 'access denied' } } });
   await withPanel(f, {}, async view => {
-    await act(async () => { await view.root.findAllByType('button').find(node => node.props.children === 'toolReset').props.onClick(); });
+    await act(async () => { await view.root.findAllByType('button').find(node => node.props['aria-label'] === 'toolReset').props.onClick(); });
     assert.match(text(view), /toolResetFailed/u);
     assert.match(text(view), /access denied/u);
     assert.doesNotMatch(text(view), /toolResetDone/u);
@@ -568,7 +568,7 @@ test('a missing remote command is distinguishable from a handler failure', async
     [{ ok: true, value: { result: { kind: 'error', text: 'state not writable' } } }, /state not writable/u],
   ]) {
     await withPanel(fixture({ snapshot: windows(), outcome }), {}, async view => {
-      await act(async () => view.root.findAllByType('button').find(node => node.props.children === 'toolReset').props.onClick());
+      await act(async () => view.root.findAllByType('button').find(node => node.props['aria-label'] === 'toolReset').props.onClick());
       assert.match(text(view), reason);
       assert.doesNotMatch(text(view), /toolResetDone/u);
     });
@@ -579,7 +579,7 @@ test('without settings or a readable tool state the panel keeps the reload butto
   const f = fixture({ snapshot: undefined });
   await withPanel(f, { tools: null }, async view => {
     assert.equal(radios(view).length, 0, 'no settings form, no environment switch');
-    assert.ok(view.root.findAllByType('button').some(node => node.props.children === 'toolReset'));
+    assert.ok(view.root.findAllByType('button').some(node => node.props['aria-label'] === 'toolReset'));
     assert.doesNotMatch(text(view), /toolFailures/u);
     assert.equal(f.calls.length, 0);
   });
@@ -589,7 +589,7 @@ test('other modes have no Deep PTC side panel or capsule', async () => {
   const f = fixture({ snapshot: windows() });
   await withPanel(f, { preset: 'standard', activity: { v: 1, outputs: outputs(2), ssh: [{ host: 'x-host', ok: true, count: 1, turn: 1 }] } }, async view => {
     assert.equal(view.toJSON(), null);
-    assert.equal(view.root.findAllByType('button').some(node => node.props.children === 'toolReset'), false);
+    assert.equal(view.root.findAllByType('button').some(node => node.props['aria-label'] === 'toolReset'), false);
     assert.equal(view.root.findAllByProps({ 'aria-label': 'outputsTitle' }).length, 0);
     assert.doesNotMatch(text(view), /x-host/u, 'another mode\'s SSH use is not listed');
     assert.equal(f.calls.length, 0);
@@ -815,24 +815,24 @@ test('panel sections reorder by drag or keyboard, and the order is remembered', 
       assert.equal(view.root.findAll(node => node.props?.className === 'dpt-sortable' && node.props['data-drop']).length, 1, 'a drop line shows');
       await act(async () => gripOf(key).props.onPointerUp({ clientX: 0, clientY }));
     };
-    assert.deepEqual(order(), ['environment', 'projectTab', 'briefTitle', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
+    assert.deepEqual(order(), ['environment', 'creativeSwitch', 'projectTab', 'briefTitle', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
     // Drag SSH onto the upper half of the environment section: it moves to the top.
     await drag('ssh', 10);
-    assert.deepEqual(order(), ['sshTitle', 'environment', 'projectTab', 'briefTitle', 'jobsTitle', 'outputsTitle', 'toolsSection']);
+    assert.deepEqual(order(), ['sshTitle', 'environment', 'creativeSwitch', 'projectTab', 'briefTitle', 'jobsTitle', 'outputsTitle', 'toolsSection']);
     // Drag SSH onto the lower half of output files: it lands after them.
     under = { key: 'outputs', top: 0 };
     await drag('ssh', 90);
-    assert.deepEqual(order(), ['environment', 'projectTab', 'briefTitle', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
+    assert.deepEqual(order(), ['environment', 'creativeSwitch', 'projectTab', 'briefTitle', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
     under = { key: 'environment', top: 0 };
     await drag('ssh', 10);
-    assert.deepEqual(order(), ['sshTitle', 'environment', 'projectTab', 'briefTitle', 'jobsTitle', 'outputsTitle', 'toolsSection']);
+    assert.deepEqual(order(), ['sshTitle', 'environment', 'creativeSwitch', 'projectTab', 'briefTitle', 'jobsTitle', 'outputsTitle', 'toolsSection']);
     // Keyboard: the tool state section moves up one place.
-    await act(async () => grips()[6].props.onKeyDown({ key: 'ArrowUp', preventDefault() {} }));
-    assert.deepEqual(order(), ['sshTitle', 'environment', 'projectTab', 'briefTitle', 'jobsTitle', 'toolsSection', 'outputsTitle']);
+    await act(async () => grips()[7].props.onKeyDown({ key: 'ArrowUp', preventDefault() {} }));
+    assert.deepEqual(order(), ['sshTitle', 'environment', 'creativeSwitch', 'projectTab', 'briefTitle', 'jobsTitle', 'toolsSection', 'outputsTitle']);
     await act(async () => grips()[0].props.onKeyDown({ key: 'ArrowDown', preventDefault() {} }));
-    assert.deepEqual(order(), ['environment', 'sshTitle', 'projectTab', 'briefTitle', 'jobsTitle', 'toolsSection', 'outputsTitle']);
+    assert.deepEqual(order(), ['environment', 'sshTitle', 'creativeSwitch', 'projectTab', 'briefTitle', 'jobsTitle', 'toolsSection', 'outputsTitle']);
   });
-  assert.deepEqual(JSON.parse(storage.get('dsh-deep-ptc-mode:panel-order')), ['environment', 'ssh', 'project', 'brief', 'agents', 'jobs', 'tools', 'outputs'], 'hidden sections keep a place too');
+  assert.deepEqual(JSON.parse(storage.get('dsh-deep-ptc-mode:panel-order')), ['environment', 'ssh', 'creative', 'project', 'brief', 'agents', 'jobs', 'tools', 'outputs'], 'hidden sections keep a place too');
 });
 
 test('the panel location setting moves the whole panel into the right sidebar tab', async () => {

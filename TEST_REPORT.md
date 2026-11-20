@@ -1,5 +1,15 @@
 # Deep PTC 测试报告 / Test report
 
+## 2.3.0 · 2026-11-20
+
+- Windows、Node 24，306 项自动化测试通过，`npm run check` 通过。新增测试覆盖环境复制（不含会话与记忆）、残留目录清理、启动参数、桌面版 CLI 查找、侧栏命令、`virtual_dsh` 工具与审批（每个对话一次）、状态推送和对话记录摘要。
+- DSH 桌面版 0.2.2-rc.5：用户从侧栏启动虚拟 DSH，插件、Skill 与设置和真实环境一致；停止按钮确实结束进程，再次启动得到全新实例。模型操作虚拟 DSH 的功能由用户试用，未发现问题。
+- 通过 Web API 在未登录的虚拟 DSH 中发起对话：会话创建、消息送达和事件读取正常，该轮以模型请求错误结束，符合预期。新侧栏布局在桌面版中截图核对。
+
+- Windows, Node 24: 306 automated tests and `npm run check` pass. New tests cover environment mirroring without sessions or memory, sweeping leftovers, launcher arguments, desktop CLI lookup, the panel command, the `virtual_dsh` tool with one approval per conversation, status pushes and transcript summaries.
+- DSH desktop 0.2.2-rc.5: the user started the virtual DSH from the side panel with the same plugins, skills and settings; Stop ended it and a new start was fresh. The user also tried the model-driven controls without finding problems.
+- A test conversation through the Web API in a signed-out virtual DSH created the session, delivered the message and read the events; the turn ended with the expected model request error. The compact panel was checked in the desktop app.
+
 ## 2.2.0 · 2026-11-20
 
 - Windows、Node 24，296 项自动化测试通过。客户端构建一致性和 10 种环境组合通过检查。

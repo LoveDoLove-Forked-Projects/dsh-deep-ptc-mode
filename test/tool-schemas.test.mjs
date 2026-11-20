@@ -3,6 +3,7 @@ import test from 'node:test';
 import { briefToolDefinition } from '../lib/brief-context.mjs';
 import { install as installCards, questionToolDefinition } from '../lib/cards-context.mjs';
 import { projectToolDefinition } from '../lib/project-context.mjs';
+import { virtualToolDefinition } from '../lib/virtual-dsh.mjs';
 
 // The PTC SDK renders a tool's parameters as TypeScript only when the schema stays inside the host's
 // subset (dsh-tools assertSupportedJsonSchema); anything else becomes `unknown`, and the model has
@@ -25,6 +26,6 @@ test('every Deep PTC tool schema stays inside the SDK subset, so the model sees 
   const registered = new Map();
   await installCards({ logger: { warn() {} }, effect: register => register(), sessionProjections: { register: async () => ({ stateOf() {}, dispose() {} }) },
     commands: { register() {} }, tools: { register: definition => { registered.set(definition.name, definition); return () => {}; } } }, async () => () => {});
-  const tools = [registered.get('ui_card'), questionToolDefinition(), projectToolDefinition(), briefToolDefinition()];
+  const tools = [registered.get('ui_card'), questionToolDefinition(), projectToolDefinition(), briefToolDefinition(), virtualToolDefinition()];
   for (const tool of tools) assert.deepEqual(problems(tool.parameters), [], tool.name);
 });
