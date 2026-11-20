@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.2.0 — 2026-11-20
+
+- 侧栏新增「深度创造模式」开关，开启后新建会话即可使用官方创造工具和开发资料。开发包可在独立进程、临时目录和 Web profile 中安装测试。
+- 深度 PTC 新增六个按需 Skill，覆盖宿主操作、本地 Web 验证、前端实现、原始资料核验、办公交付与科学图表。后四项附有可运行的示例。科学图表可从同一组观测值生成 SVG、统计表和结果卡片。
+- 对话进行中即可在输入框上方看到卡片。项目卡使用运行时上下文快照，并将省略名单计入 16,000 字符预算。修复新旧客户端重复通知模型和关闭卡片后仍被要求使用卡片工具的问题。
+
+- Enable Deep creative mode in the side panel for new conversations. Test plugin archives in a separate DSH Web process with its own home and profile.
+- Six on-demand skills cover DSH operations, local web testing, frontend implementation, primary-source research, Office delivery and scientific figures. Four include runnable examples. The figure generator produces an SVG, a statistical summary and a conversation card from the same measurements.
+- Cards appear above the composer during a running turn. Project cards use a runtime snapshot with a 16,000-character budget including omitted titles. Delivery receipts handle mixed client versions, and project setup follows the active question-tool settings.
+
 ## 2.1.0 — 2026-11-19
 
 - 新增任务卡「本次任务」：模型把用户消息整理成目标、约束、验收、背景和待确认条目，复述用户的条目附经过核对的原话引文，隐含需求标为推断；逐段覆盖检查，未归档原文原样列出。

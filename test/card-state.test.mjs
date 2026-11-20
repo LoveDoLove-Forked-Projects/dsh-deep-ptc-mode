@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { CARDS_EVENT, archivedReason, blankCards, cardsDigest, foldCardsState, latestOf, latestVersions, records, MAX_VERSIONS } from '../lib/card-state.mjs';
+import { CARDS_EVENT, archivedReason, blankCards, cardsDigest, foldCardsState, latestOf, latestVersions, parseCardsState, records, MAX_VERSIONS } from '../lib/card-state.mjs';
 import { readCardInput, ANSWERED, DISMISSED, OPEN, STOPPED } from '../lib/cards.mjs';
 import { answerMessage, readAnswers, readQuestionInput } from '../lib/card-questions.mjs';
 
@@ -112,4 +112,20 @@ test('question cards: defaults, recommendations and validation', () => {
   state = foldCardsState(state, rec(records.phase(latestOf(state, 'deploy'), ANSWERED, { answers, at: 1 })));
   assert.deepEqual(latestOf(state, 'deploy').result, { answers, at: 1 });
   assert.equal(archivedReason(state, latestOf(state, 'deploy')), 'settled', 'an answered question takes no second answer');
+});
+
+test('a conversation may hold any number of distinct cards; the state still parses', () => {
+  let state = blankCards();
+  for (let index = 0; index < 400; index++) state = show(state, `c${index}`, body(`C${index}`));
+  assert.equal(latestVersions(state).size, 400, 'every card keeps its newest version');
+  assert.doesNotThrow(() => parseCardsState(state));
+});
+
+test('a turn end is recorded, so the client knows when the turn tail exists', () => {
+  let state = foldCardsState(blankCards(), { type: 'turn/start', data: { turn: 2 } });
+  assert.equal(state.ended, undefined);
+  state = foldCardsState(state, { type: 'turn/end', data: { turn: 2 } });
+  assert.equal(state.ended, 2);
+  state = foldCardsState(state, { type: 'turn/start', data: { turn: 3 } });
+  assert.notEqual(state.ended, state.turn, 'a new turn is running again');
 });

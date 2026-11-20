@@ -225,6 +225,8 @@ ${DARK} .dpt-cc{--cc-surface:var(--dsw-static-neutral-850,#1b1f27);--cc-raised:c
 .dpt-cq-text:focus{outline:2px solid color-mix(in srgb,var(--cc-s1) 55%,transparent);outline-offset:0;border-color:var(--cc-s1)}
 .dpt-cq-answer{margin:0;padding-left:26px;font-size:13px;line-height:20px;color:var(--cc-ink-2);white-space:pre-wrap;overflow-wrap:anywhere}
 .dpt-cq .dpt-cc-tags{padding-left:26px}
+.dpt-cards-live{display:flex;flex-direction:column;gap:8px;margin:0 0 8px;max-height:min(55vh,520px);overflow:auto}
+.dpt-cards-live-note{margin:0;font-size:12px;line-height:17px;color:var(--dsw-alias-label-tertiary,#667085)}
 .dpt-tb{--cc-accent:var(--cc-s3)}
 .dpt-tb-body{display:flex;flex-direction:column;gap:10px;padding:6px 14px 10px}
 .dpt-tb-group{display:flex;flex-direction:column;gap:4px}

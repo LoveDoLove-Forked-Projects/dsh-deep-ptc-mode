@@ -217,6 +217,8 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     skillKeepAll: '全部保留', skillCloseAll: '全部关闭', skillNoDescription: '无描述', skillThisTurn: '本轮',
     skillShowAll: '显示全部 {count} 个', skillShowLess: '收起',
     cardLabel: '对话卡片', cardStopDefault: '停止', cardDismiss: '关闭',
+    creativeSwitch: '深度创造模式', creativeHint: '新建深度 PTC 会话时生效，可在独立 DSH 中测试插件。',
+    cardLiveLabel: '等待你操作的卡片', cardLiveNote: '模型在等你回答，同时继续做不依赖答案的部分；回答会立刻送到它手上。',
     cardStopping: '正在处理…', cardStopped: '已执行', cardFailed: '执行失败', cardDismissed: '已关闭',
     briefTitle: '本次任务', briefGoal: '目标', briefConstraint: '约束', briefAcceptance: '验收', briefContext: '背景', briefQuestion: '待确认',
     briefBasisUser: '原话', briefBasisInferred: '推断', briefBasisConfirmed: '已确认', briefDone: '已完成',
@@ -311,7 +313,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     cardChose: "已选：{action}",
     questionKicker: "需要你决定",
     questionWaiting: "等你回答",
-    questionAnswered: "已回答",
+    questionAnswered: "已回答并发给模型",
     questionUnanswered: "未回答",
     questionOptional: "可选",
     questionSubmit: "提交回答",
@@ -347,8 +349,8 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     projectPanelGuideHint: "在主对话里由模型提问，引导你建立或完善特点卡片；模型正在工作时也会立刻收到",
     projectPanelGuideSent: "已发到主对话，模型会在那里引导你。",
     projectPanelNoTab: "找不到特点卡片页，请先打开这个对话。",
-    projectMsgGuideFirst: "请在这个对话里引导我为项目建立特点卡片：先用 project_cards read 和工作区里的 AGENTS.md / README 了解现状，再用 ask_user 一次问我几个关键问题（技术栈、代码规范、约束、协作方式）。根据回答用 project_cards propose 提交卡片，我在特点卡片页批准。",
-    projectMsgGuideMore: "请在这个对话里引导我完善现有的特点卡片：先用 project_cards read 看看哪些地方缺失、含糊或过时，再用 ask_user 问我需要补充的内容。根据回答用 project_cards propose 提交修改，我在特点卡片页批准。",
+    projectMsgGuideFirst: "请在这个对话里引导我为项目建立特点卡片：先用 project_cards read 和工作区里的 AGENTS.md / README 了解现状，再按当前提问设置一次问我几个关键问题（技术栈、代码规范、约束、协作方式）。根据回答用 project_cards propose 提交卡片，我在特点卡片页批准。",
+    projectMsgGuideMore: "请在这个对话里引导我完善现有的特点卡片：先用 project_cards read 看看哪些地方缺失、含糊或过时，再按当前提问设置问我需要补充的内容。根据回答用 project_cards propose 提交修改，我在特点卡片页批准。",
     panelLocation: "面板位置",
     locationBeside: "对话区侧边",
     locationSidebar: "侧边栏",
@@ -389,6 +391,8 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     skillKeepAll: 'Keep all', skillCloseAll: 'Close all', skillNoDescription: 'No description', skillThisTurn: 'this turn',
     skillShowAll: 'Show all {count}', skillShowLess: 'Show less',
     cardLabel: 'Conversation cards', cardStopDefault: 'Stop', cardDismiss: 'Dismiss',
+    creativeSwitch: 'Deep creative mode', creativeHint: 'Applies to new Deep PTC chats. Test plugins in a separate DSH instance.',
+    cardLiveLabel: 'Cards waiting for you', cardLiveNote: 'The model is waiting for your answer and keeps working on what does not depend on it; your answer reaches it at once.',
     cardStopping: 'Working…', cardStopped: 'Done', cardFailed: 'Failed', cardDismissed: 'Dismissed',
     briefTitle: 'Task brief', briefGoal: 'Goals', briefConstraint: 'Constraints', briefAcceptance: 'Acceptance', briefContext: 'Context', briefQuestion: 'Open questions',
     briefBasisUser: 'Your words', briefBasisInferred: 'Inferred', briefBasisConfirmed: 'Confirmed', briefDone: 'Done',
@@ -483,7 +487,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     cardChose: "Chose: {action}",
     questionKicker: "Your decision",
     questionWaiting: "Waiting for you",
-    questionAnswered: "Answered",
+    questionAnswered: "Answered · sent to the model",
     questionUnanswered: "Not answered",
     questionOptional: "optional",
     questionSubmit: "Submit answers",
@@ -519,8 +523,8 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     projectPanelGuideHint: "The model asks you questions in the main conversation to set up or refine the cards; it receives this at once, even mid-task",
     projectPanelGuideSent: "Sent to the main conversation; the model guides you there.",
     projectPanelNoTab: "The Project cards view is not available; open this conversation first.",
-    projectMsgGuideFirst: "Please guide me through setting up project cards here: read the current state with project_cards read and the workspace AGENTS.md / README, then ask me a few key questions at once with ask_user (stack, conventions, constraints, how I work). Propose the cards with project_cards propose; I approve them in the Project cards view.",
-    projectMsgGuideMore: "Please guide me through refining the existing project cards here: check with project_cards read what is missing, vague or outdated, then ask me what to add with ask_user. Propose the changes with project_cards propose; I approve them in the Project cards view.",
+    projectMsgGuideFirst: "Please guide me through setting up project cards here: read the current state with project_cards read and the workspace AGENTS.md / README, then follow the current asking settings to ask me a few key questions together (stack, conventions, constraints, how I work). Propose the cards with project_cards propose; I approve them in the Project cards view.",
+    projectMsgGuideMore: "Please guide me through refining the existing project cards here: check with project_cards read what is missing, vague or outdated, then follow the current asking settings to ask me what to add. Propose the changes with project_cards propose; I approve them in the Project cards view.",
     panelLocation: "Panel location",
     locationBeside: "Beside conversation",
     locationSidebar: "Sidebar",
@@ -564,9 +568,15 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     ['This command is available in Deep PTC sessions only. / 该功能仅在深度 PTC 会话中可用。', 'commandWrongMode'],
     ['Invalid skill card command. / 无效的 Skill 卡片操作。', 'commandInvalidSkill'],
   ]);
+  // Command texts may start with a stable code, `[dpt:<code>] human text` (lib/model-view.mjs). The
+  // client acts on the code, never on the wording.
+  const COMMAND_CODE = /^\[dpt:([a-z][a-z0-9-]*(?::[a-z0-9-]+)*)\] ?/u;
+  const commandCodeKeys = new Map([['no-session', 'commandNoSession'], ['wrong-mode', 'commandWrongMode']]);
+  function commandCode(text) { return COMMAND_CODE.exec(typeof text === 'string' ? text : '')?.[1]; }
+  function stripCode(text) { return typeof text === 'string' ? text.replace(COMMAND_CODE, '') : ''; }
   function commandText(text, t) {
-    const key = commandMessageKeys.get(text);
-    return key ? t(key) : text;
+    const key = commandCodeKeys.get(commandCode(text)) ?? commandMessageKeys.get(stripCode(text));
+    return key ? t(key) : stripCode(text);
   }
   let hostCtx;
 
@@ -1058,7 +1068,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
   function runCardCommand(child, sessionId, payload) {
     const execute = child.remote?.commands?.execute;
     if (typeof execute !== 'function') return Promise.resolve({ ok: false, error: { message: 'unavailable' } });
-    return execute(sessionId, `/${CARD_COMMAND_NAME} ` + JSON.stringify(payload), []);
+    return execute(sessionId, `/${CARD_COMMAND_NAME} ` + JSON.stringify({ ...payload, codedReceipt: true }), []);
   }
 
   // @client conversation-cards
@@ -1339,6 +1349,10 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     else if (environment === 'auto') note = tf(t, 'envAutoNow', { env: envLabel(effective, t) });
     return h('section', { className: 'dpt-side-section', 'aria-label': t('environment') },
       h('div', { className: 'dpt-side-label' }, h('span', null, t('environment')), h('span', { className: 'dpt-side-hint' }, t('envForNew'))),
+      h('div', { className: 'dpt-side-label' }, h('span', null, t('creativeSwitch')),
+        h(SkillSwitch, { on: value.pluginLab === true, label: t('creativeSwitch'), disabled,
+          onChange: next => { void save([{ op: 'set', path: ['pluginLab'], value: next }], t('creativeSwitch')); } })),
+      h('p', { className: 'dpt-side-note' }, t('creativeHint')),
       h('div', { className: 'dpt-seg', role: 'radiogroup', 'aria-label': t('environment') },
         ...allowedEnvironments(platform).map(option => h('button', { key: option, type: 'button', role: 'radio', className: 'dpt-seg-btn',
           'aria-checked': option === (editingBash ? 'bash' : environment), disabled,
@@ -1532,7 +1546,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
 
   // Project cards from the panel: open the editor (the model is not involved), or ask the model to
   // guide setup in the main conversation (first setup or further setup; it asks with question cards).
-  function ProjectSection({ sessionId, useProjection, reply, form, t }) {
+  function ProjectSection({ sessionId, useProjection, reply, runProject, form, t }) {
     const enabled = useFormValue(form, 'projectCards') !== false;
     const project = projectionValue(useProjection, 'deepPtcProject');
     const [note, setNote] = React.useState();
@@ -1548,7 +1562,10 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     };
     const guide = async () => {
       setNote(undefined);
-      const sent = typeof reply === 'function' ? await reply(t(cards.length === 0 ? 'projectMsgGuideFirst' : 'projectMsgGuideMore')) : false;
+      // The server tells the model in its structured form; an older server leaves it to this text.
+      const asked = typeof runProject === 'function' ? await runProject({ op: 'ask', kind: cards.length === 0 ? 'guide-first' : 'guide-more' }).catch(() => undefined) : undefined;
+      const notified = commandCode((asked?.value?.result ?? asked?.value)?.text) === 'notified';
+      const sent = notified || (typeof reply === 'function' ? await reply(t(cards.length === 0 ? 'projectMsgGuideFirst' : 'projectMsgGuideMore')) : false);
       if (sent === false) { setNote(t('cardReplyFailed')); return; }
       // The guidance happens in the main conversation: show it there.
       openConversationTab(sessionId, (tab, index) => index === 0);
@@ -1566,7 +1583,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
   }
 
   // One conversation's environment, subagents, jobs, outputs, SSH and tool state.
-  function DeepPtcPanel({ sessionId, useSessions, useProjection, useJobs, watchJobs, reset, reply, runBrief, form, inline, t }) {
+  function DeepPtcPanel({ sessionId, useSessions, useProjection, useJobs, watchJobs, reset, reply, runBrief, runProject, form, inline, t }) {
     const sessions = typeof useSessions === 'function' ? useSessions(state => state) : undefined;
     const preset = projectionValue(useProjection, 'agentPreset');
     const activity = projectionValue(useProjection, 'deepPtcActivity');
@@ -1586,7 +1603,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
         h(SortableSections, { t, sections: [
         { key: 'environment', label: t('environment'), node: form ? h(EnvironmentSection, { form, t }) : null },
         { key: 'brief', label: t('briefTitle'), node: deep && runBrief && formValue(form, 'taskBrief') !== false ? h(BriefPanelSection, { useProjection, run: runBrief, form, t }) : null },
-        { key: 'project', label: t('projectTab'), node: deep && formValue(form, 'projectCards') !== false ? h(ProjectSection, { sessionId, useProjection, reply, form, t }) : null },
+        { key: 'project', label: t('projectTab'), node: deep && formValue(form, 'projectCards') !== false ? h(ProjectSection, { sessionId, useProjection, reply, runProject, form, t }) : null },
         { key: 'agents', label: t('agentsTitle'), node: deep && rows.length ? h('section', { className: 'dpt-side-section dpt-side-agents', 'aria-label': t('agentsTitle') },
           h('div', { className: 'dpt-side-label' }, h('span', null, t('agentsTitle'))),
           h('ol', { className: 'dpt-agents-list' }, ...rows.map(row =>
@@ -2157,6 +2174,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
       const props = {
         reply: text => sendReply(child, sessionId, text),
         runBrief: payload => runBriefCommand(child, sessionId, payload),
+        runProject: payload => runProjectCommand(child, sessionId, payload),
         reset: () => {
           const execute = child.remote?.commands?.execute;
           if (typeof execute !== 'function') return Promise.resolve({ ok: true, value: undefined });
@@ -2239,6 +2257,14 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
           name: 'conversation.chat.turnTail', id: 'deep-ptc-task-brief', order: 20, locale: 'deep-ptc',
           inject: sessionId => ({ sessionId, run: payload => runBriefCommand(child, sessionId, payload) }),
         }, props => h(LocalizedSlot, { ...props, form, component: BriefTail })));
+        // A running turn has no tail yet: its open cards dock above the composer until it ends.
+        child.slots.inject('conversation.input.dock', () => child.slots.register({
+          name: 'conversation.input.dock', id: 'deep-ptc-live-cards', order: 20, locale: 'deep-ptc',
+          inject: sessionId => ({
+            run: (id, action, extra) => runCardCommand(child, sessionId, { id, action, ...extra }),
+            reply: text => sendReply(child, sessionId, text),
+          }),
+        }, props => projectionValue(props.useProjection, 'agentPreset') === 'deep-ptc' ? h(LocalizedSlot, { ...props, form, component: LiveCards }) : null));
         child.slots.inject('conversation.chat.turnTail', () => child.slots.register({
           name: 'conversation.chat.turnTail', id: 'deep-ptc-cards', order: 21, locale: 'deep-ptc',
           inject: sessionId => ({
