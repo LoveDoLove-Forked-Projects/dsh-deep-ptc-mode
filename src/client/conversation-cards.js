@@ -1,4 +1,4 @@
-export function createConversationCards({ React, h, tf, useCurrentReview, commandText, commandCode, useFormValue }) {
+export function createConversationCards({ React, h, tf, commandText, commandCode, useFormValue }) {
   const CARD_PHASES = { stopping: 'cardStopping', stopped: 'cardStopped', failed: 'cardFailed', dismissed: 'cardDismissed' };
   // Built-in card layout. The model chooses blocks (lib/card-blocks.mjs); each block has one renderer
   // here, so every card shares one typography, spacing and colour system. Charts carry one series in
@@ -422,6 +422,7 @@ export function createConversationCards({ React, h, tf, useCurrentReview, comman
     const status = answered ? { phase: 'stopped', text: t('questionAnswered') }
       : live ? { phase: 'question', text: t('questionWaiting') } : { phase: 'archived', text: t('questionUnanswered') };
     return h('form', { className: 'dpt-cc dpt-cq', 'data-answered': answered ? '' : undefined, 'data-archived': live ? undefined : archived,
+      'data-family': card.review === 'project' ? 'project' : card.review === 'brief' ? 'task' : undefined,
       'aria-label': card.title, onSubmit: event => { void submit(event); } },
       h('header', { className: 'dpt-cc-head' },
         h('span', { className: 'dpt-cc-icon dpt-cq-icon' }, h(QuestionIcon)),
@@ -473,10 +474,10 @@ export function createConversationCards({ React, h, tf, useCurrentReview, comman
     const blocks = Array.isArray(card.blocks) ? card.blocks : [];
     const count = block => Array.isArray(block.items) ? block.items.length : 0;
     const wide = blocks.some(block => block.type === 'table' || (block.type === 'line' && (block.points?.length ?? 0) > 12)
-      || (block.type === 'choice' && (block.options?.length ?? 0) > 3) || (block.type === 'bars' && count(block) > 5)
-      || (block.type === 'steps' && count(block) > 5) || (block.type === 'stats' && count(block) > 2) || (block.type === 'rows' && count(block) > 4)
-      || ((block.type === 'text' || block.type === 'callout') && (block.text?.length ?? 0) > 160));
-    if (wide || blocks.length > 3 || (card.actions?.length ?? 0) > 2) return 'wide';
+      || (block.type === 'choice' && (block.options?.length ?? 0) > 4) || (block.type === 'bars' && count(block) > 6)
+      || (block.type === 'steps' && count(block) > 6) || (block.type === 'stats' && count(block) > 4) || (block.type === 'rows' && count(block) > 6)
+      || (block.type === 'donut' && count(block) > 6) || ((block.type === 'text' || block.type === 'callout') && (block.text?.length ?? 0) > 280));
+    if (wide || blocks.length > 3 || (card.actions?.length ?? 0) > 3) return 'wide';
     const tiny = blocks.length <= 1 && (card.actions?.length ?? 0) <= 1
       && blocks.every(block => (block.type === 'stats' && count(block) <= 2) || (block.type === 'progress' && count(block) <= 1)
         || (block.type === 'rows' && count(block) <= 2) || block.type === 'tags');
@@ -511,8 +512,9 @@ export function createConversationCards({ React, h, tf, useCurrentReview, comman
   }
 
   // Each turn draws the card versions posted in it; only the newest version in the latest turn is live.
-  function ConversationCards({ anchor, sessionId, useProjection, run, reply, form, t }) {
-    const current = useCurrentReview(useProjection, form, sessionId);
+  // Every pending card shows where it was posted, at once: no card waits hidden behind another, so a
+  // decision left open further up (or by an interrupted turn) never holds the next one back.
+  function ConversationCards({ anchor, useProjection, run, reply, form, t }) {
     const state = useProjection('deepPtcCards');
     const cardsOn = useFormValue(form, 'conversationCards') !== false;
     const briefOn = useFormValue(form, 'taskBrief') !== false;
@@ -520,9 +522,11 @@ export function createConversationCards({ React, h, tf, useCurrentReview, comman
     const [busy, setBusy] = React.useState();
     const versions = state?.versions ?? [];
     const latest = new Map(versions.map(version => [version.id, version]));
-    const mine = versions.filter(version => String(version.anchor ?? version.rev) === anchor &&
-      (!version.review || version.phase !== 'open' || current === 'question:' + version.rev) &&
+    const here = versions.filter(version => String(version.anchor ?? version.rev) === anchor &&
       (version.review === 'brief' ? briefOn : version.review === 'project' ? projectOn : cardsOn));
+    // A card shown again in the same group keeps its place in the grid with its newest state.
+    const newest = new Map(here.map(version => [version.id, version]));
+    const mine = here.filter(version => newest.get(version.id) === version);
     if (!mine.length) return null;
     const guarded = version => async (action, extra) => {
       setBusy(versionKey(version));

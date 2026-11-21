@@ -244,18 +244,30 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     briefTitle: '本次任务', briefGoal: '目标', briefConstraint: '约束', briefAcceptance: '验收', briefContext: '背景', briefQuestion: '待确认',
     briefBasisUser: '原话', briefBasisInferred: '推断', briefBasisConfirmed: '已确认', briefDone: '已完成',
     briefConfirmOne: '确认', briefEdit: '改', briefRemove: '删', briefMarkDone: '完成', briefReopen: '重开', briefSave: '保存',
-    briefPromote: '设为长期要求', briefPromoteHint: '写入项目特点卡片的「用户要求」，之后的对话也会遵守', briefPromoted: '已写入特点卡片的用户要求。',
+   
     briefAdd: '+ 添加一条', briefAddPlaceholder: '一条目标、约束或验收标准', briefSection: '分区', briefFrom: '出自消息 {ref}',
     briefMessage: '第 {turn} 轮的消息', briefCovered: '已整理 {covered}/{total} 段', briefUnfiled: '未归档原文',
     briefCondensed: '已移出上下文', briefCondensedHint: '模型上下文里这条消息已换成任务卡替身；原话仍在聊天和会话记录中，模型需要时可以读回。',
     briefCondensing: '下一步移出上下文', briefRestoring: '下一步恢复原文', briefRestore: '恢复原文',
     briefCount: '{count} 条', briefInferredCount: '{count} 条推断待确认', briefUnfiledCount: '{count} 段未归档', briefCondensedCount: '{count} 条消息已精简',
-    briefAllConfirmed: '已全部确认', briefRethink: '理解有偏差', briefFeedback: '哪里需要重新理解？可直接补充，也可请模型列出选项。', briefAskOptions: '请模型澄清', briefReturned: '已退回澄清', briefContentQuestion: '将「{text}」列入本次任务吗？', projectContentQuestion: '项目的「{title}」要怎样设置？', versionPreview: '查看「{label}」的内容', reviewSet: '可以，按此设置', reviewSkip: '不设置这张卡片', reviewOther: '其他：填写我的想法', reviewRewriteHint: '写下你的想法，模型会重新整理并再次询问。', briefSetQuestion: '是否设置下面这项任务？', projectSetQuestion: '是否设置下面这张特点卡片？', briefClarify: '本次任务 · 澄清需求', projectClarify: '特点卡片 · 澄清设定', reviewOwnAnswer: '我有其他理解', reviewUseOptions: '返回选项', projectMsgRethink: '请按以下意见重新整理「{title}」，再单独询问我是否设置。{feedback}', amendProposal: '修改提案', projectApproveEdits: '批准修改后的提案', briefManage: '管理当前任务', briefPending: '待确认', briefArchived: '已归档', briefConfirmAll: '全部确认', briefCondense: '确认并精简上下文',
-    briefConfirmedNote: '已确认。确认过的条目只有你能修改或删除。',
+    briefRethink: '理解有偏差', briefFeedback: '哪里需要重新理解？可直接补充，也可请模型列出选项。', briefAskOptions: '请模型澄清', briefReturned: '已退回澄清', briefContentQuestion: '将「{text}」列入本次任务吗？', projectContentQuestion: '项目的「{title}」要怎样设置？', versionPreview: '查看「{label}」的内容', reviewSet: '可以，按此设置', reviewSkip: '不设置这张卡片', reviewOther: '其他：填写我的想法', reviewRewriteHint: '写下你的想法，模型会重新整理并再次询问。', briefSetQuestion: '是否设置下面这项任务？', projectSetQuestion: '是否设置下面这张特点卡片？', briefClarify: '本次任务 · 澄清需求', projectClarify: '特点卡片 · 澄清设定', reviewOwnAnswer: '我有其他理解', reviewUseOptions: '返回选项', projectMsgRethink: '请按以下意见重新整理「{title}」，再单独询问我是否设置。{feedback}', amendProposal: '修改提案', projectApproveEdits: '批准修改后的提案', briefManage: '管理当前任务', briefPending: '待确认', briefArchived: '已归档', briefConfirmAll: '全部确认', briefCondense: '确认并精简上下文',
     briefCondenseNote: '已确认。模型下一次请求前，这些原话会换成任务卡替身，聊天里的原话不变。',
     briefCondenseHint: '核对无误后可精简上下文：原话移出模型上下文但不删除，未归档的原文会逐字保留。',
     briefFootHint: '模型按这张卡工作，并在结束前逐条核对验收。',
-    briefPanelNone: '模型还没有整理本次任务。', briefShow: '查看', briefHide: '收起', briefSources: '来源消息',
+    briefMore: '更多操作', briefInProgress: '进行中', briefPendingCount: '待确认 {count} 条', briefAcceptanceProgress: '验收 {done}/{total}',
+    briefSourcesSummary: '原话来源 · {count} 条消息', briefReadyToArchive: '验收已全部完成，核对无误就可以归档了。', briefDrop: '放弃任务', briefDropConfirm: '确认放弃',
+    briefComplete: '完成并归档', briefDecidedConfirmed: '已确认', briefDecidedDeclined: '不设置', briefDecidedReturned: '已退回', briefRedraftingChip: '重拟中',
+    briefYourNote: '你的意见：{text}', briefRedraftedFrom: '按你的意见重拟：{text}', briefSetThis: '按此设置', briefSkipThis: '不设置',
+    briefRemaining: '确定后还剩 {count} 条', briefLastItem: '这是最后一条', briefConfirmRest: '其余全部按此设置',
+    briefRoundTitle: '核对我整理的 {count} 条', briefRoundSub: '从你的消息里整理，逐条确认；确定后下一条会出现在这里。', briefRoundSummary: '已确认 {confirmed} · 不设置 {declined}',
+    briefReviewProgress: '待确认 {at}/{total}', briefExpand: '展开', briefCollapse: '收起', briefRedrafting: '模型正在按你的意见重写 {id}，写好后会出现在这里再问你一次。',
+    briefStateDone: '已完成', briefStateDropped: '已放弃', briefReceiptStub: '本次任务 · {title} · {state}', briefRecordedAs: '已记入特点卡片 · 已完成任务 {id} · {date}',
+    briefRecordedDropped: '已记入特点卡片 · {id}（放弃）· {date}', briefArchivedHere: '已归档 · {date}', briefArchivedItems: '归档时的 {count} 条条目',
+    briefClearedNote: '任务卡已清空，下一个任务从这里开始。', briefOpenProject: '在特点卡片中查看', briefSnapshotStub: '本次任务 v{rev} · {count} 条 · 已折叠',
+    briefThisConversation: '这个对话', briefNoTask: '这个对话暂无进行中的任务。',
+    projectPastTasks: '过往任务', projectWholeWorkspace: '整个工作区', projectNoPastTasks: '这个工作区还没有归档过任务。任务完成或放弃后会记在这里。',
+    projectKindTasks: '记录 · 自动归档', projectCompletedTasks: '已完成任务', projectTaskCount: '{count} 个任务', projectSettledStub: '特点卡片 · {title} · {outcome}',
+    briefSources: '来源消息',
     briefSwitch: '任务卡', briefSwitchHint: '模型把你消息里的目标、约束和验收标准整理成「本次任务」卡，附上原话出处并标出推断的部分。核对后可把原话移出模型上下文，原话不会删除。',
     cardLast: '上次：{action}', cardNeeds: '先填写：{names}', cardReplyFailed: '未能把选择发送给模型，请直接在对话里告诉它。',
     cardsSection: "卡片",
@@ -440,18 +452,29 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     briefTitle: 'Task brief', briefGoal: 'Goals', briefConstraint: 'Constraints', briefAcceptance: 'Acceptance', briefContext: 'Context', briefQuestion: 'Open questions',
     briefBasisUser: 'Your words', briefBasisInferred: 'Inferred', briefBasisConfirmed: 'Confirmed', briefDone: 'Done',
     briefConfirmOne: 'Confirm', briefEdit: 'Edit', briefRemove: 'Remove', briefMarkDone: 'Done', briefReopen: 'Reopen', briefSave: 'Save',
-    briefPromote: 'Keep for the project', briefPromoteHint: "Add to the project cards' user requirements, so later conversations follow it too", briefPromoted: "Added to the project's user requirements.",
     briefAdd: '+ Add an item', briefAddPlaceholder: 'A goal, constraint or acceptance criterion', briefSection: 'Section', briefFrom: 'From message {ref}',
     briefMessage: 'Message in turn {turn}', briefCovered: '{covered}/{total} clauses filed', briefUnfiled: 'Unfiled text',
     briefCondensed: 'Out of context', briefCondensedHint: "In the model's context this message is replaced by a stub pointing to the brief; the original stays in the chat and the log, and the model can read it back.",
     briefCondensing: 'Leaves context next step', briefRestoring: 'Restored next step', briefRestore: 'Restore original',
     briefCount: '{count} items', briefInferredCount: '{count} inferred to check', briefUnfiledCount: '{count} unfiled', briefCondensedCount: '{count} messages condensed',
-    briefAllConfirmed: 'All confirmed', briefRethink: 'Revisit interpretation', briefFeedback: 'Add a correction or ask for alternative interpretations.', briefAskOptions: 'Request clarification', briefReturned: 'Returned for clarification', briefContentQuestion: 'Include “{text}” in this task?', projectContentQuestion: 'How should “{title}” be set for this project?', versionPreview: 'Preview {label}', reviewSet: 'Yes, use this', reviewSkip: 'Do not set this card', reviewOther: 'Other: write my suggestion', reviewRewriteHint: 'Describe the change. The model will redraft and ask again.', briefSetQuestion: 'Set this task item?', projectSetQuestion: 'Set this project card?', briefClarify: 'Task brief · Clarification', projectClarify: 'Project card · Clarification', reviewOwnAnswer: 'Describe another interpretation', reviewUseOptions: 'Back to options', projectMsgRethink: 'Revise {title} using my feedback and ask me to approve the new draft. {feedback}', amendProposal: 'Edit proposal', projectApproveEdits: 'Approve edited proposal', briefManage: 'Manage current brief', briefPending: 'Awaiting review', briefArchived: 'Archived', briefConfirmAll: 'Confirm all', briefCondense: 'Confirm and condense',
-    briefConfirmedNote: 'Confirmed. Only you can change or remove confirmed items.',
+    briefRethink: 'Revisit interpretation', briefFeedback: 'Add a correction or ask for alternative interpretations.', briefAskOptions: 'Request clarification', briefReturned: 'Returned for clarification', briefContentQuestion: 'Include “{text}” in this task?', projectContentQuestion: 'How should “{title}” be set for this project?', versionPreview: 'Preview {label}', reviewSet: 'Yes, use this', reviewSkip: 'Do not set this card', reviewOther: 'Other: write my suggestion', reviewRewriteHint: 'Describe the change. The model will redraft and ask again.', briefSetQuestion: 'Set this task item?', projectSetQuestion: 'Set this project card?', briefClarify: 'Task brief · Clarification', projectClarify: 'Project card · Clarification', reviewOwnAnswer: 'Describe another interpretation', reviewUseOptions: 'Back to options', projectMsgRethink: 'Revise {title} using my feedback and ask me to approve the new draft. {feedback}', amendProposal: 'Edit proposal', projectApproveEdits: 'Approve edited proposal', briefManage: 'Manage current brief', briefPending: 'Awaiting review', briefArchived: 'Archived', briefConfirmAll: 'Confirm all', briefCondense: 'Confirm and condense',
     briefCondenseNote: "Confirmed. Before the model's next request these messages are replaced by stubs; the chat keeps your words.",
     briefCondenseHint: "Once it is right, condense: your messages leave the model's context without being deleted, and unfiled text is kept verbatim.",
     briefFootHint: 'The model works from this card and checks each acceptance item before it finishes.',
-    briefPanelNone: 'The model has not filed this task yet.', briefShow: 'Show', briefHide: 'Hide', briefSources: 'Source messages',
+    briefMore: 'More actions', briefInProgress: 'In progress', briefPendingCount: '{count} to review', briefAcceptanceProgress: 'Acceptance {done}/{total}',
+    briefSourcesSummary: 'Sources · {count} messages', briefReadyToArchive: 'Every acceptance item is done. Archive the task once you have checked it.', briefDrop: 'Give up task', briefDropConfirm: 'Confirm give up',
+    briefComplete: 'Complete and archive', briefDecidedConfirmed: 'Confirmed', briefDecidedDeclined: 'Left out', briefDecidedReturned: 'Returned', briefRedraftingChip: 'Redrafting',
+    briefYourNote: 'Your note: {text}', briefRedraftedFrom: 'Redrafted from your note: {text}', briefSetThis: 'Set as written', briefSkipThis: 'Leave it out',
+    briefRemaining: '{count} more after this', briefLastItem: 'This is the last item', briefConfirmRest: 'Set all the rest as written',
+    briefRoundTitle: 'Check the {count} items I filed', briefRoundSub: 'Filed from your message. Decide each one; the next appears here.', briefRoundSummary: '{confirmed} confirmed · {declined} left out',
+    briefReviewProgress: 'Reviewing {at}/{total}', briefExpand: 'Expand', briefCollapse: 'Collapse', briefRedrafting: 'The model is rewriting {id} from your note; it will be asked here again.',
+    briefStateDone: 'Done', briefStateDropped: 'Given up', briefReceiptStub: 'Task · {title} · {state}', briefRecordedAs: 'Recorded in Project cards · Completed tasks {id} · {date}',
+    briefRecordedDropped: 'Recorded in Project cards · {id} (given up) · {date}', briefArchivedHere: 'Archived · {date}', briefArchivedItems: 'The {count} items at archive time',
+    briefClearedNote: 'The brief is empty; the next task starts here.', briefOpenProject: 'Open in Project cards', briefSnapshotStub: 'Task brief v{rev} · {count} items · folded',
+    briefThisConversation: 'this conversation', briefNoTask: 'No task in progress in this conversation.',
+    projectPastTasks: 'Past tasks', projectWholeWorkspace: 'whole workspace', projectNoPastTasks: 'No task has been archived in this workspace yet. Finished or abandoned tasks are recorded here.',
+    projectKindTasks: 'Record · archived automatically', projectCompletedTasks: 'Completed tasks', projectTaskCount: '{count} tasks', projectSettledStub: 'Project cards · {title} · {outcome}',
+    briefSources: 'Source messages',
     briefSwitch: 'Task brief', briefSwitchHint: "The model files the goals, constraints and acceptance criteria in your messages into a Task brief card, quoting your words and marking what it inferred. Once checked, your messages can leave the model's context; they are never deleted.",
     cardLast: 'Last: {action}', cardNeeds: 'Fill in first: {names}', cardReplyFailed: 'Could not send the choice to the model; tell it in the conversation instead.',
     cardsSection: "Cards",
@@ -1136,30 +1159,6 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     return execute(sessionId, `/${CARD_COMMAND_NAME} ` + JSON.stringify({ ...payload, codedReceipt: true }), []);
   }
 
-  // Multiple SDK calls or a setup guide can publish proposals concurrently. Their event
-  // sequence numbers share one clock within the chat. Archives never compete for input.
-  function useCurrentReview(useProjection, form, sessionId) {
-    const brief = projectionValue(useProjection, 'deepPtcBrief');
-    const project = projectionValue(useProjection, 'deepPtcProject');
-    const cards = projectionValue(useProjection, 'deepPtcCards');
-    const briefOn = useFormValue(form, 'taskBrief') !== false;
-    const projectOn = useFormValue(form, 'projectCards') !== false;
-    const pending = [];
-    if (briefOn && !brief?.revising && brief?.items?.some(i => i.status === 'open' && i.basis !== 'confirmed')) {
-      pending.push({ id: 'brief', seq: brief.versions?.at(-1)?.askedSeq });
-    }
-    const proposal = projectOn && !project?.revising && project?.proposals?.find(row => (row.chat ?? row.session) === sessionId ||
-      (project.guide && row.session === project.guide.childId));
-    if (proposal) pending.push({ id: 'project:' + proposal.id, seq: proposal.reviewOrder ?? proposal.anchor });
-    const latest = new Map((cards?.versions ?? []).map(row => [row.id, row]));
-    for (const row of latest.values()) {
-      if (row.phase === 'open' && (row.review === 'brief' ? briefOn : row.review === 'project' && projectOn)) {
-        pending.push({ id: 'question:' + row.rev, seq: row.askedSeq });
-      }
-    }
-    return pending.sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0))[0]?.id;
-  }
-
   // @client conversation-cards
 
   // ---------------------------------------------------------------------------------------------
@@ -1739,7 +1738,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
   }
 
   // One conversation's environment, subagents, jobs, outputs, SSH and tool state.
-  function DeepPtcPanel({ sessionId, useSessions, useProjection, useJobs, watchJobs, reset, reply, runBrief, runProject, runVirtual, form, inline, t }) {
+  function DeepPtcPanel({ sessionId, useSessions, useProjection, useJobs, watchJobs, reset, reply, runProject, runVirtual, form, inline, t }) {
     const sessions = typeof useSessions === 'function' ? useSessions(state => state) : undefined;
     const preset = projectionValue(useProjection, 'agentPreset');
     const activity = projectionValue(useProjection, 'deepPtcActivity');
@@ -1759,7 +1758,6 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
         h(SortableSections, { t, sections: [
         { key: 'environment', label: t('environment'), node: form ? h(EnvironmentSection, { form, t }) : null },
         { key: 'creative', label: t('creativeSwitch'), node: deep && form ? h(CreativeSection, { form, runVirtual, useProjection, t }) : null },
-        { key: 'brief', label: t('briefTitle'), node: deep && runBrief && formValue(form, 'taskBrief') !== false ? h(BriefPanelSection, { useProjection, run: runBrief, form, t }) : null },
         { key: 'project', label: t('projectTab'), node: deep && formValue(form, 'projectCards') !== false ? h(ProjectSection, { sessionId, useProjection, reply, runProject, form, t }) : null },
         { key: 'agents', label: t('agentsTitle'), node: deep && rows.length ? h('section', { className: 'dpt-side-section dpt-side-agents', 'aria-label': t('agentsTitle') },
           h('div', { className: 'dpt-side-label' }, h('span', null, t('agentsTitle'))),
@@ -1801,7 +1799,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
 
   // The order of the side panel's sections, chosen by dragging their handles; kept per browser.
   const SECTION_ORDER_KEY = `${PLUGIN}:panel-order`;
-  const SECTION_KEYS = ['environment', 'creative', 'project', 'brief', 'agents', 'jobs', 'outputs', 'ssh', 'tools'];
+  const SECTION_KEYS = ['environment', 'creative', 'project', 'agents', 'jobs', 'outputs', 'ssh', 'tools'];
   function normalizeOrder(value) {
     const known = Array.isArray(value) ? value.filter((key, index) => SECTION_KEYS.includes(key) && value.indexOf(key) === index) : [];
     return [...known, ...SECTION_KEYS.filter(key => !known.includes(key))];
@@ -2330,7 +2328,6 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
       const jobs = child.get?.('jobs');
       const props = {
         reply: text => sendReply(child, sessionId, text),
-        runBrief: payload => runBriefCommand(child, sessionId, payload),
         runProject: payload => runProjectCommand(child, sessionId, payload),
         runVirtual: payload => runVirtualCommand(child, sessionId, payload),
         reset: () => {
@@ -2444,6 +2441,11 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
         inline('deep-ptc-skills', { 'tool/result': skillResult, 'tool/ptc-dispatch': event => event.data?.name === 'skill' ? skillResult(event) : null },
           SkillTail, sessionId => ({ setSkill: (name, enabled) => runSkillCommand(child, sessionId, { action: 'set', name, enabled }),
             setAll: enabled => runSkillCommand(child, sessionId, { action: 'all', enabled }) }));
+        // The confirmed task sits in the composer dock beside the host's plan (todo order 0, goal 10).
+        child.slots.inject('conversation.input.dock', () => child.slots.register({
+          name: 'conversation.input.dock', id: 'deep-ptc-task', order: 5, locale: 'deep-ptc',
+          inject: sessionId => ({ sessionId, run: payload => runBriefCommand(child, sessionId, payload) }),
+        }, props => h(LocalizedSlot, { ...props, form, component: TaskDock })));
         child.slots.inject('conversation.session.header.actions', () => child.slots.register({
           name: 'conversation.session.header.actions', id: 'deep-ptc-project-sync',
           inject: sessionId => ({ sessionId, refresh: () => runProjectCommand(child, sessionId, { op: 'refresh' }) }),
@@ -2481,7 +2483,8 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
             if (wanted && dispose === undefined) {
               dispose = child.slots.inject('conversation.view', () => child.slots.register({
                 name: 'conversation.view', id: 'deep-ptc-project', order: 50, locale: 'deep-ptc', label: () => t('projectTab'),
-                inject: sessionId => ({ sessionId, run: payload => runProjectCommand(child, sessionId, payload), reply: text => sendReply(child, sessionId, text) }),
+                inject: sessionId => ({ sessionId, run: payload => runProjectCommand(child, sessionId, payload), reply: text => sendReply(child, sessionId, text),
+                  runBrief: formValue(form, 'taskBrief') !== false ? payload => runBriefCommand(child, sessionId, payload) : undefined }),
               }, props => h(LocalizedSlot, { ...props, component: ProjectView })));
             } else if (!wanted && dispose !== undefined) { const stop = dispose; dispose = undefined; stop?.(); }
           };

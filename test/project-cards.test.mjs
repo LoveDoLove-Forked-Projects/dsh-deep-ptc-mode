@@ -202,7 +202,7 @@ test('the user edits setting cards; the model proposes and the user approves', a
   const id = host.state.get(session).cards[0].id;
 
   const tool = projectToolDefinition();
-  await assert.rejects(() => tool.execute({ action: 'write', card: 'card', items: [] }, { agent: { session } }), /features or requirements/u);
+  await assert.rejects(() => tool.execute({ action: 'write', card: 'card', items: [] }, { agent: { session } }), /features, requirements or tasks/u);
   const proposed = await tool.execute({ action: 'propose', card: id, items: [{ id: 'R1', text: '使用两个空格缩进，禁止 Tab。' }], reason: '润色' }, { agent: { session } });
   assert.equal(host.tools.has(PROJECT_TOOL), false, 'the tool is not registered profile-wide');
   assert.equal(proposed.proposal, 'P1');
@@ -470,4 +470,21 @@ test('each project version rebases from the same original card and only the revi
   const receipt = host.state.get(session).settled.at(-1);
   assert.equal(receipt.review.question, question);
   assert.equal(receipt.selected, 'v2');
+});
+
+test('completed tasks are a model record with done or dropped states, and only the newest reach the prompt', () => {
+  const items = Array.from({ length: 10 }, (_, index) => ({ text: `Task ${index + 1} (11/21)`, status: index === 3 ? 'dropped' : 'done' }));
+  const written = writeCard(blankDoc(), { kind: 'tasks', items }, '2026-11-21T00:00:00.000Z');
+  assert.equal(written.card.id, 'tasks');
+  assert.equal(written.card.items[3].status, 'dropped');
+  const source = serializeDoc(written.doc);
+  assert.match(source, /next=R1,F1,Q1,T11 -->/u);
+  assert.match(source, /- \*\*T4\*\* \[dropped\] Task 4/u);
+  const back = parseDoc(source);
+  assert.deepEqual(back.warnings, []);
+  assert.deepEqual(back.doc.cards[0].items.map(item => item.status).filter(state => state === 'dropped'), ['dropped']);
+  const prompt = promptCards(back.doc, { deep: true });
+  assert.match(prompt, /2 older tasks not shown/u);
+  assert.doesNotMatch(prompt, /Task 2 /u);
+  assert.match(prompt, /Task 10/u);
 });

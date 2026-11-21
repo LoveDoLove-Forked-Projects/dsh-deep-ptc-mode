@@ -129,3 +129,19 @@ test('a turn end is recorded, so the client knows when the turn tail exists', ()
   state = foldCardsState(state, { type: 'turn/start', data: { turn: 3 } });
   assert.notEqual(state.ended, state.turn, 'a new turn is running again');
 });
+
+test('display cards posted back to back share a node until reply text or an interactive card comes between', async () => {
+  const { cardGroup } = await import('../lib/cards-context.mjs');
+  const show = (state, id, body, seq, group) => foldCardsState(state, { type: CARDS_EVENT, seq, data: { ...records.show(state, id, body), ...(group ? { group } : {}) } });
+  const display = { title: 'Tests', blocks: [{ type: 'text', text: 'ok' }] };
+  let state = foldCardsState(blankCards(), { type: 'turn/start', data: { turn: 1 } });
+  state = show(state, 'a', display, 10, 'call-1');
+  assert.equal(cardGroup(state, display, 'call-2'), 'call-1', 'the next display card joins the first');
+  assert.equal(cardGroup(state, { ...display, actions: [{ id: 'x', label: 'Go', reply: true }] }, 'call-2'), 'call-2', 'an interactive card keeps its own place');
+  state = foldCardsState(state, { type: 'assistant/message', seq: 12, data: { message: { content: [{ type: 'reasoning', text: 'thinking' }] } } });
+  assert.equal(cardGroup(state, display, 'call-2'), 'call-1', 'reasoning is not visible text');
+  state = foldCardsState(state, { type: 'assistant/message', seq: 13, data: { message: { content: [{ type: 'text', text: 'Here are the results.' }] } } });
+  assert.equal(cardGroup(state, display, 'call-2'), 'call-2', 'reply text starts a new group');
+  state = foldCardsState(state, { type: 'turn/start', data: { turn: 2 } });
+  assert.equal(cardGroup(state, display, 'call-3'), 'call-3', 'a new turn starts a new group');
+});

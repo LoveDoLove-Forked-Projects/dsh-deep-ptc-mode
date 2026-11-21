@@ -1,5 +1,13 @@
 # Deep PTC 测试报告 / Test report
 
+## 2.4.0 · 2026-11-21
+
+- Windows、Node 24：328 项自动化测试通过，`npm run check` 通过。新增测试覆盖展示卡分组（回复文字、交互卡和新一轮会断开分组）、同一张卡内逐条审批、退回后原卡等待重拟、「其余全部按此设置」、完成与放弃归档、模型在验收未勾完时不能归档、归档后原话不再参与覆盖检查、T 编号记录的读写与只给模型最近 8 条，以及输入框上方的任务条。
+- DSH 桌面版 0.2.2-rc.5（deepseek-flash）实测两个任务：6 条与 5 条条目在同一张卡里逐条出现，确认后 2 秒内显示下一条；「其余全部按此设置」后审批卡收成一行，任务出现在输入框上方并可展开勾选；模型连续发出的两张展示卡并排；模型调用 complete 与点击「完成并归档」都写入了 T 编号并留下可收起的回执；特点卡片页显示本次任务与过往任务。测试中发现并修复：模型在验收未勾完时归档、自拟问题时看不到条目原文、展开的任务条被输入框遮挡。测试写入的 T 记录已从工作区删除。
+
+- Windows and Node 24: 328 automated tests and `npm run check` pass. New tests cover display card grouping (broken by reply text, interactive cards and new turns), item-by-item review in one card, waiting in place for a redraft, confirming the rest, completing and dropping tasks, refusing a model completion with open acceptance items, leaving archived messages out of coverage, the T record with only the newest 8 in the prompt, and the task bar above the composer.
+- DSH desktop 0.2.2-rc.5 (deepseek-flash), two tasks: 6 and 5 items appeared one by one in a single card, the next within 2 seconds of each decision; after confirming the rest the review folded to one line and the task appeared above the composer, expandable and checkable; two display cards posted in a row paired up; both the model's complete and the Complete and archive button recorded a T entry and left a foldable receipt; the Project cards view showed the current and past tasks. Found and fixed during the run: completion with open acceptance items, a hidden item text under model-written questions, and the expanded task bar under the composer. The test T entries were removed from the workspace.
+
 ## 2.3.4 · 2026-11-21
 
 - Windows、Node 24：322 项自动化测试通过。测试覆盖候选版本选择、过期审批、提案合并、退回重拟和逐张询问。

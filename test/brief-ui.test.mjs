@@ -46,32 +46,89 @@ function fixture({ formValue = {} } = {}) {
 const item = (overrides = {}) => ({ id: 'G1', section: 'goal', text: 'Keep this behavior', basis: 'user', status: 'open', quote: 'Keep this behavior', from: 'm7', ...overrides });
 const brief = (overrides = {}) => ({ v: 1, rev: 2, turn: 5, updatedTurn: 5, items: [item()], messages: [],
   versions: [{ rev: 2, turn: 5, items: [item()], messages: [] }], ...overrides });
-const buttons = (view, label) => view.root.findAll(node => node.type === 'button' && JSON.stringify(node.props.children ?? '').includes(label));
+const textOf = node => typeof node === 'string' ? node : (node.children ?? []).map(textOf).join('');
+const buttons = (view, label) => view.root.findAll(node => node.type === 'button' && textOf(node).includes(label));
 const shown = view => JSON.stringify(view.toJSON());
 
-test('the task brief is interactive at its original transcript node and remains there after confirmation', async () => {
+const round = (overrides = {}) => ({ round: true, anchor: 2, rev: 2, turn: 5, askedSeq: 9, items: [item()], queue: ['G1'], decided: [], messages: [], ...overrides });
+
+test('a review round asks each item in one card at its transcript node and keeps the decisions there', async () => {
   const f = fixture();
   const entry = f.slots.get('conversation.chat.node#deep-ptc-task-brief');
   assert.ok(entry);
-  assert.ok(![...f.slots.keys()].some(key => key.startsWith('conversation.input.dock#deep-ptc')));
   const render = state => React.createElement(entry.render, { ...entry.slot.inject('deep'), node: { data: { anchor: '2' } },
     useProjection: key => key === 'deepPtcBrief' ? state : undefined });
   let view;
-  await act(async () => { view = Renderer.create(render(brief())); });
+  await act(async () => { view = Renderer.create(render(brief({ versions: [round()] }))); });
   try {
     const options = () => view.root.findAllByProps({ role: 'radio' });
-    assert.equal(options().length, 3);
+    assert.equal(options().length, 3, 'set, leave out, or write my own');
     assert.match(shown(view), /briefContentQuestion/u);
-    assert.match(JSON.stringify(options().at(-1).props.children.map(node => node.props.className)), /option-text/u);
     await act(async () => options().at(-1).props.onClick());
     await act(async () => view.root.findByType('textarea').props.onChange({ target: { value: 'Include archived rows too' } }));
     await act(async () => view.root.findByType('form').props.onSubmit({ preventDefault() {} }));
     assert.deepEqual(JSON.parse(f.calls.at(-1)[1].slice('/deep-ptc-brief '.length)),
       { op: 'rethink', id: 'G1', rev: 2, feedback: 'Include archived rows too' });
-    await act(async () => view.update(render(brief({ rev: 3, revising: { item: item() }, items: [], versions: [
-      { anchor: 2, rev: 3, turn: 5, items: [item()], messages: [], outcome: 'returned', feedback: 'Include archived rows too' }] }))));
+    // Returned: the same card waits for the redraft and shows the note.
+    await act(async () => view.update(render(brief({ rev: 3, revising: { item: item() }, items: [], versions: [round({ rev: 3, items: [], queue: [], waiting: 'G1',
+      decided: [{ item: item(), outcome: 'returned', feedback: 'Include archived rows too' }] })] }))));
     assert.equal(options().length, 0);
     assert.match(shown(view), /Include archived rows too/u);
+    assert.match(shown(view), /briefRedrafting/u);
+    // Two items left: one click confirms the rest.
+    const second = item({ id: 'G2', text: 'Second', quote: undefined, basis: 'inferred' });
+    await act(async () => view.update(render(brief({ rev: 4, items: [item(), second], versions: [round({ rev: 4, queue: ['G1', 'G2'] })] }))));
+    await act(async () => buttons(view, 'briefConfirmRest')[0].props.onClick());
+    assert.deepEqual(JSON.parse(f.calls.at(-1)[1].slice('/deep-ptc-brief '.length)), { op: 'confirm-rest', rev: 4 });
+    // Settled: folded to the decisions, expandable.
+    await act(async () => view.update(render(brief({ rev: 5, items: [item({ basis: 'confirmed' })], versions: [round({ rev: 5, settled: true, items: [], queue: [],
+      decided: [{ item: item({ basis: 'confirmed' }), outcome: 'confirmed' }, { item: second, outcome: 'declined' }] })] }))));
+    assert.equal(options().length, 0);
+    assert.match(shown(view), /briefRoundSummary/u);
+    assert.match(shown(view), /G2 Second/u);
+  } finally { await act(async () => view.unmount()); }
+});
+
+test('a finished task leaves a receipt that folds to one line', async () => {
+  const f = fixture();
+  const entry = f.slots.get('conversation.chat.node#deep-ptc-task-brief');
+  const done = { status: 'done', title: 'Keep this behavior', record: 'T4', at: '2026-11-21T10:00:00.000Z', summary: 'All checks pass',
+    counts: { goal: 1, goalDone: 1, acceptance: 2, acceptanceDone: 2, constraint: 3 }, items: [item({ status: 'done' })] };
+  const state = brief({ rev: 6, items: [], versions: [{ completed: done, anchor: 6, rev: 6, items: [], messages: [] }] });
+  let view;
+  await act(async () => { view = Renderer.create(React.createElement(entry.render, { ...entry.slot.inject('deep'), node: { data: { anchor: '6' } },
+    useProjection: key => key === 'deepPtcBrief' ? state : undefined })); });
+  try {
+    assert.match(shown(view), /briefRecordedAs.*T4/u);
+    assert.match(shown(view), /All checks pass/u);
+    assert.ok(buttons(view, 'briefOpenProject').length === 1);
+    await act(async () => view.root.findByProps({ className: 'dpt-cc-close' }).props.onClick());
+    assert.match(shown(view), /briefReceiptStub/u);
+    assert.doesNotMatch(shown(view), /All checks pass/u);
+  } finally { await act(async () => view.unmount()); }
+});
+
+test('the confirmed task docks above the composer as one line that opens the working plan', async () => {
+  const f = fixture();
+  const entry = f.slots.get('conversation.input.dock#deep-ptc-task');
+  assert.ok(entry, 'the task sits in the composer dock beside the host plan');
+  assert.ok(entry.slot.order > 0 && entry.slot.order < 10, 'between the todo plan and the goal');
+  const accept = item({ id: 'A1', section: 'acceptance', text: 'Tests pass', basis: 'confirmed', quote: undefined });
+  const render = state => React.createElement(entry.render, { ...entry.slot.inject('deep'), useProjection: key => key === 'deepPtcBrief' ? state : undefined });
+  let view;
+  await act(async () => { view = Renderer.create(render(brief({ items: [item()] }))); });
+  try {
+    assert.equal(view.toJSON(), null, 'items under review stay in the chat card');
+    await act(async () => view.update(render(brief({ title: 'Keep this behavior', items: [item({ basis: 'confirmed' }), accept] }))));
+    assert.match(shown(view), /Keep this behavior/u);
+    assert.match(shown(view), /briefAcceptanceProgress/u);
+    assert.equal(buttons(view, 'briefComplete').length, 0, 'folded to one line');
+    await act(async () => view.root.findByProps({ className: 'dpt-taskdock-head' }).props.onClick());
+    assert.equal(view.root.findAllByProps({ role: 'checkbox', className: 'dpt-tb-check' }).length, 2, 'goals and acceptance items can be ticked');
+    await act(async () => view.root.findAllByProps({ role: 'checkbox', className: 'dpt-tb-check' })[0].props.onClick());
+    assert.deepEqual(JSON.parse(f.calls.at(-1)[1].slice('/deep-ptc-brief '.length)), { op: 'status', id: 'G1', status: 'done', rev: 2 });
+    await act(async () => buttons(view, 'briefComplete')[0].props.onClick());
+    assert.deepEqual(JSON.parse(f.calls.at(-1)[1].slice('/deep-ptc-brief '.length)), { op: 'complete', rev: 2 });
   } finally { await act(async () => view.unmount()); }
 });
 

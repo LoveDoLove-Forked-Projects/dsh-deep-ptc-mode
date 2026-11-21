@@ -1,12 +1,18 @@
 # Deep PTC mode
 
-[中文](README.zh.md) · MIT · **2.3.4**
+[中文](README.zh.md) · MIT · **2.4.0**
 
 [Changelog](CHANGELOG.md) · [Test report](TEST_REPORT.md) · [Plugin workflows and verification](COMPATIBILITY.md)
 
 Deep PTC is a DeepSeek Harness agent mode with progress reports, clarifying questions, task-size planning, and interruptible background work. It builds on the installed official PTC preset with selectable shells, on-demand tools and skills, and a two-layer preset identity adapter for third-party plugins. Cards face both you and the model: you see a clear card, the model reads precise context with ids, sources and states; the task brief files the goals, constraints and acceptance criteria in your messages and, once you confirm, can take the raw messages out of the model's context.
 
 The panel sits beside the conversation and shows the environment, Deep creative mode with the virtual DSH, subagents, jobs, output files, SSH connections and tool state. The panel width can be dragged. The capsule expands or collapses it; it sits below the composer by default and can move into the toolbar or be hidden. Deep PTC also has its own settings page. Visual effects are lightweight and start off when an appearance plugin is installed.
+
+## Changes in 2.4.0
+
+- **The task brief from filing to archive**: one filing is reviewed item by item in a single card; the next item appears in place, and "Set all the rest as written" confirms the remainder. The confirmed task sits above the composer beside the host plan, as one line with acceptance progress that opens the checkable plan. A finished or abandoned task is recorded in the project cards as a completed task, leaves a foldable receipt in the chat, and empties the brief for the next task.
+- **Project cards**: the view starts with this conversation's task and the workspace's past tasks. Project cards, proposals and task cards share the display and question card shell, coloured by family.
+- **Cards side by side**: display cards posted back to back in a turn with no reply text between them share a row. Pending cards all show at once instead of waiting behind each other.
 
 ## Changes in 2.3.4
 
@@ -119,11 +125,11 @@ The model posts cards in the chat transcript with the `ui_card` tool. Cards are 
 
 - **Display blocks**: `stats` tiles, `rows`, `progress`, `bars`, `line` (with a hover tooltip), `donut`, `steps` (checklist or timeline), `table`, `tags`, `text`, `callout`.
 - **Interactive blocks**: `choice` (single or multiple, with a preselected recommendation) and `field` (time, date or number).
-- **Layout**: each card can set `size` (full / half / third); several cards form a grid, two side by side or three in a row, stacking in narrow windows.
+- **Layout**: cards form a grid, two side by side or three in a row, stacking in narrow windows. Display cards posted back to back in a turn with no reply text between them form one group and pair automatically; a half holds 4 stat tiles, 6 rows or 280 characters, while tables and long charts take the full width. `size` (full / half / third) sets a width explicitly. A card shown again keeps only its newest version in the group.
 - **Buttons**: `run` really runs on the host (deletes scheduled tasks, or runs one command in **your selected execution environment**); `reply` sends the user's choice to the model as their next message; a button can do both. `keep` leaves the card usable after a press (restart, snooze, rerun).
 - **Safety**: `{name}` placeholders in a command are filled only from times, dates, numbers and option values the card declared, so free text never reaches a shell; the server validates them again. Destructive buttons use the `danger` style.
 - **Model view**: answers and button choices reach the model as `[Card answer: id «title»]` followed by `question id = value «the words you saw»`; tool results carry no presentation fields such as size or tone.
-- **Design**: one type scale, spacing and colour system that follows the host's light and dark themes; the chart palette is validated for colour-vision deficiency and every value is printed, so colour never carries meaning alone. Interactive cards appear as soon as they are requested.
+- **Design**: display, question, task and project cards share one shell (icon, kicker, title, status pill, footer), coloured by family: blue questions, green tasks, orange project cards. It follows the host's light and dark themes; the chart palette is validated for colour-vision deficiency and every value is printed, so colour never carries meaning alone. Interactive cards appear as soon as they are requested and all pending ones can be answered at once.
 
 Three card skills cover the interface (`deep-ptc-cards`), development templates (`deep-ptc-card-examples`), and project settings and proposals (`deep-ptc-project-cards`).
 
@@ -134,23 +140,26 @@ Deep PTC sessions add ten on-demand skills: DSH operations, local web testing, f
 The project's standing rules and records, kept in `PROJECT-CARDS.md` at the workspace root. Like AGENTS.md it lives in the workspace, and other AI tools read it as plain documentation.
 
 - **Current file on each request**. The system prompt includes the current `PROJECT-CARDS.md` for DSH conversations in the workspace. User-approved settings take precedence among project documents. Earlier copies quoted in the conversation are historical. The project-card interface is read-only in other modes.
-- **Three kinds**:
+- **Four kinds**:
   - **Setting cards** (R ids) are yours, grouped as stack and environment, code conventions, constraints, workflow, product and other. The model can only propose changes, which take effect once you approve them.
   - **Implemented features** (F): the model records verified behavior, its entry point and relevant checks. Before changing related code, it reads these entries and retests existing behavior affected by the change. Users can question records for the model to verify and correct.
   - **User requirements** (Q ids) record the lasting requirements you have stated, with their status (active / done / superseded). The model checks new requests against them and asks you first when they conflict.
-- **The Project cards view** sits next to Chat / Trajectory / Stats in Deep PTC sessions. You can browse cards by group, edit and submit them, or tick a box to have the model polish your edit first (it comes back as a proposal for you to approve). You can also browse history and roll back, approve or reject proposals, and question the model's records. Each submit, approval and rollback sends the model a message.
+  - **Completed tasks** (T ids) are recorded automatically when a task brief is completed or given up, with its title, a one-line outcome and the date. They are shared by the workspace, the newest 60 are kept, and the model reads the newest 8.
+- **The Project cards view** sits next to Chat / Trajectory / Stats in Deep PTC sessions. It opens with this conversation's task and the workspace's past tasks. You can browse cards by group, edit and submit them, or tick a box to have the model polish your edit first (it comes back as a proposal for you to approve). You can also browse history and roll back, approve or reject proposals, and question the model's records. Each submit, approval and rollback sends the model a message.
 - **Getting started**: when project cards are enabled and a project has no setting cards, the model should initiate setup in its first visible reply with a specific question or grounded draft. Setup started in chat offers approval in that chat. Starting setup in the Project cards panel opens the main chat. Proposals from an existing setup guide also appear there. A reply steers its current task.
 - **Edit protection**. Submit, delete and rollback check the file version from when the edit began. On a conflict, the editor keeps the draft and offers to merge it with the current content. Writes preserve Markdown outside the managed lines. History and proposals live in `$DSH_HOME/storages/deep-ptc-project-cards.json`.
 - Under **Settings → Deep PTC → Cards** you can switch off conversation cards and project cards separately (both on by default).
 
-## Task brief (2.1.0)
+## Task brief (2.1.0, full life cycle since 2.4.0)
 
 People write the way they talk: goals, limits, background and pleasantries in one message, spread over several turns. The task brief files them into one conversation card: you see a clear card, the model reads clean, numbered context.
 
 - **Five sections**: goals G, constraints C, acceptance A, context K, open questions O. One fact per item, in your language, each fact once.
 - **Sources**: an item that restates you carries your words as a quote, checked against your message or card answer; a made-up quote is refused. Implicit needs the model infers are marked inferred and checked with you before it relies on them.
 - **Coverage**: each message is checked clause by clause. Text neither quoted by an item nor marked as carrying no task content shows on the card as unfiled text and goes back to the model to file.
-- **On the card**: confirm, edit, finish or reopen, and remove each item; keep a goal or constraint for the project, which writes it to the project cards' user requirements (Q); add your own items. The model cannot reword or drop items you confirmed.
+- **Item by item**: one filing is asked in a single chat card: set as written, leave out, or Other to send it back for a redraft. The next item appears in place, and "Set all the rest as written" confirms the remainder. The settled review folds to one line. The model cannot reword or drop items you confirmed.
+- **In progress**: the confirmed task sits above the composer beside the host plan, as one line with acceptance progress that opens the plan. Tick goals and acceptance items, edit, remove or add items there.
+- **Complete and archive**: the model calls `task_brief complete` after checking every acceptance item, or you press Complete and archive / Give up task. The task is recorded in the project cards as a completed task, a foldable receipt stays in the chat, and the brief empties for the next task. Archiving is not deleting: the items stay in the receipt and the session log.
 - **Condensing**: Confirm and condense replaces filed messages in the model's context with a stub listing their items and repeating unfiled text verbatim. The original event is kept and the chat is unchanged; Restore original undoes it. Condensing recomputes the prefix cache after that message once, so it pays most for long messages condensed early.
 - **What the model reads** (a context snapshot appended when it changes):
 
@@ -163,7 +172,7 @@ People write the way they talk: goals, limits, background and pleasantries in on
   - A1 [confirmed] 给一张按时间排好的表格
   ```
 
-- Review the brief in the chat transcript. The sidebar shows its current state and the conversation keeps the settled version. Switch it off under Settings → Deep PTC → Cards.
+- Switch it off under Settings → Deep PTC → Cards.
 
 ## Panel, settings page and visual effects
 
@@ -174,7 +183,7 @@ The Deep PTC mode label, settings, and conversation UI switch between Chinese an
   - **Execution environment**: WSL, PowerShell, native Bash or Zsh, for newly created Deep PTC sessions.
   - **Deep creative mode**: the switch, and the Virtual DSH card with its status, startup steps and Start / Open in sidebar / Stop.
   - **Compact by default**: an empty section takes one line, and explanations are hover tooltips.
-  - **Order**: hover a section and drag the handle at its top left to reorder the environment, Deep creative mode, project cards, task brief, subagents, jobs, output files, SSH and tool state (or focus the handle and press ↑ ↓); the order is kept per browser.
+  - **Order**: hover a section and drag the handle at its top left to reorder the environment, Deep creative mode, project cards, subagents, jobs, output files, SSH and tool state (or focus the handle and press ↑ ↓); the order is kept per browser.
   - **Subagents**: the state indicator and name on the left, with duration at the right of the same row; a row opens that subagent's chat in the official right sidebar.
   - **Background jobs**: six positions, up to five active jobs first and up to three finished jobs; overflow folds into one expandable row.
   - **Output files**: files this conversation wrote or delivered, newest first; click to open the file in DSH's native preview. Three positions are available, with overflow folded into one of them. The rule matches DSH's own deliverables card and also counts files written from `run_code`.

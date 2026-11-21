@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.4.0 — 2026-11-21
+
+- 本次任务有了完整的生命周期：一次整理出的条目在同一张卡里逐条确认，确定后下一条立刻出现在原位置，也可以「其余全部按此设置」一次确认；审批结束后卡片折叠成一行摘要。确认后的任务显示在输入框上方、与计划同一位置，一行写明当前任务和验收进度，展开即是可勾选的规划；侧边面板不再显示本次任务。
+- 任务完成或放弃后归档：模型核对验收后调用 `task_brief complete`，你也可以点「完成并归档」或「放弃任务」。任务记入特点卡片的「已完成任务」（T 编号，整个工作区共享，保留最近 60 条，模型只看到最近 8 条），对话里留一张可收起的回执，任务卡清空迎接下一个任务。
+- 特点卡片页顶部显示本次任务和整个工作区的过往任务；所有特点卡片、提案与任务卡改用和展示卡、提问卡相同的外壳，按家族区分颜色。已处理的提案折叠成一行，可展开查看。
+- 展示卡更容易并排：同一轮里连续发出、中间没有回复文字的展示卡归为一组；半宽可容纳的内容放宽到 4 个数字块、6 行、280 字。同一张卡的更新只显示最新版本。待处理的审批卡、提案和提问不再互相排队隐藏。
+
+- The task brief has a full life cycle. One filing is reviewed item by item in a single card; the next item appears in place, and "Set all the rest as written" confirms the remainder at once. The settled review folds to one line. The confirmed task sits above the composer beside the host plan, as one line with acceptance progress that opens the checkable plan; the side panel no longer shows it.
+- Finished or abandoned tasks are archived: the model calls `task_brief complete` after checking acceptance, or you press Complete and archive / Give up task. The task is recorded in the project cards as a completed task (T ids, workspace-wide, newest 60 kept, the model sees the newest 8), a foldable receipt stays in the chat, and the brief empties for the next task.
+- The Project cards view starts with this conversation's task and the workspace's past tasks. Project cards, proposals and task cards share the display and question card shell, coloured by family. Settled proposals fold to one line.
+- Display cards pair more often: cards posted back to back in a turn with no reply text between them share a row, and a half holds up to 4 stat tiles, 6 rows or 280 characters. A card shown again keeps only its newest version in the row. Pending reviews, proposals and questions no longer hide behind each other.
+
 ## 2.3.4 — 2026-11-21
 
 - 任务条目与项目提案支持模型拟定的问题和多个候选版本。每个选项带有独立内容与可选说明，用户提交后只采用选中的版本，也可自填意见让模型重拟。
