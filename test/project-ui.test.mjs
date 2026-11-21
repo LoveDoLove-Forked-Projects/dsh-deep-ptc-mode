@@ -79,9 +79,10 @@ test('the inline proposal group includes its guide proposals and excludes unrela
     ...tail.slot.inject('chat'), node: { data: { anchor: '7' } }, useProjection: key => key === 'deepPtcProject' ? state : key === 'agentPreset' ? 'deep-ptc' : undefined, turn: 2, useChat: select => select({ timeline: { turnOrder: [1, 2] } }),
   })); });
   try {
-    assert.equal(view.root.findAllByType('form').length, 1, 'only one proposal asks at a time');
+    assert.equal(view.root.findAllByType('form').length, 2, 'every open proposal of this chat shows at once');
+    assert.doesNotMatch(JSON.stringify(view.toJSON()), /"P3"/u, 'another chat\'s proposal stays out');
     await act(async () => view.root.findAllByProps({ role: 'radio' })[0].props.onClick());
-    await act(async () => view.root.findByType('form').props.onSubmit({ preventDefault() {} }));
+    await act(async () => view.root.findAllByType('form')[0].props.onSubmit({ preventDefault() {} }));
     assert.equal(f.calls.at(-1)[0], 'chat');
     assert.match(f.calls.at(-1)[1], /"proposal":"P1"/u);
     assert.equal(f.prompts[0].mode, 'steer');
@@ -100,7 +101,7 @@ test('the project view joins the conversation tabs for Deep PTC and lists every 
     for (const word of ['技术栈', '已实现功能', '用户要求', 'R1', 'F1', 'projectStatusSuperseded', 'projectProposals']) assert.ok(text.includes(word), word);
     assert.equal(buttons(view, 'projectEdit').length, 1, 'only the user\'s setting card is editable');
     const groups = view.root.findAll(node => node.type === 'section' && node.props.className === 'dpt-pv-group').map(node => node.props['aria-label']);
-    assert.deepEqual(groups, ['projectProposals', 'projectCat_stack', 'projectRecords'], 'setting cards by category, then the model records');
+    assert.deepEqual(groups, ['projectPastTasks', 'projectProposals', 'projectCat_stack', 'projectRecords'], 'past tasks, then setting cards by category, then the model records');
     assert.ok(buttons(view, 'projectQuestion').length >= 3, 'model-kept entries can be questioned');
   } finally {
     await act(async () => view?.unmount());
@@ -251,6 +252,8 @@ test('a proposal appears inline and stays as a read-only card after approval', a
       after: [{ id: 'R1', text: 'React 18（函数组件）' }, { id: 'R3', text: 'TypeScript 严格模式' }] }] };
     await act(async () => { view.update(React.createElement(live.render, { ...injected, node: { data: { anchor: '7' } }, useProjection: projectionFor(settled) })); });
     assert.equal(view.root.findAllByProps({ role: 'radio' }).length, 0);
+    assert.match(JSON.stringify(view.toJSON()), /projectProposalApproved/u, 'the settled proposal folds to its outcome');
+    await act(async () => view.root.findByProps({ className: 'dpt-cc-pill', 'aria-expanded': false }).props.onClick());
     const shown = JSON.stringify(view.toJSON());
     assert.match(shown, /projectProposalApproved/u);
     assert.match(shown, /TypeScript/u);
@@ -269,6 +272,7 @@ test('a settled proposal stays in its turn as a read-only history card', async (
     useChat: select => select({ timeline: { turnOrder: [1, 2] } }) })); });
   try {
     assert.equal(view.root.findAllByProps({ role: 'radio' }).length, 0);
+    await act(async () => view.root.findByProps({ className: 'dpt-cc-pill', 'aria-expanded': false }).props.onClick());
     const shown = JSON.stringify(view.toJSON());
     assert.match(shown, /projectProposalRejected/u);
     assert.match(shown, /React 18/u);

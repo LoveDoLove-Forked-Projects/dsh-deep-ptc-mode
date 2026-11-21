@@ -1,4 +1,4 @@
-export function createProjectCards({ React, h, tf, useCurrentReview, DecisionCard, commandError, commandCode = () => undefined, stripCode = text => text, projectionValue, useFormValue, openTab = () => false }) {
+export function createProjectCards({ React, h, tf, DecisionCard, commandError, commandCode = () => undefined, stripCode = text => text, projectionValue, useFormValue, openTab = () => false, TaskSection }) {
   const PROJECT_COMMAND_NAME = 'deep-ptc-project';
   async function runProjectCommand(child, sessionId, payload) {
     const execute = child.remote?.commands?.execute;
@@ -19,8 +19,21 @@ export function createProjectCards({ React, h, tf, useCurrentReview, DecisionCar
     const match = /^v(\d+) · [^ ]+ · (.*)$/u.exec(text ?? '');
     return match ? `v${match[1]}${match[2] === '=' ? '' : `：${match[2]}`}` : '';
   };
-  const KIND_LABEL = { setting: 'projectKindSetting', features: 'projectKindFeatures', requirements: 'projectKindRequirements' };
+  const KIND_LABEL = { setting: 'projectKindSetting', features: 'projectKindFeatures', requirements: 'projectKindRequirements', tasks: 'projectKindTasks' };
   const STATUS_LABEL = { active: 'projectStatusActive', done: 'projectStatusDone', superseded: 'projectStatusSuperseded' };
+  const svg = children => h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': 'true' }, ...children);
+  const stroke = { stroke: 'currentColor', strokeWidth: 1.4, strokeLinecap: 'round', strokeLinejoin: 'round' };
+  const KIND_ICON = {
+    setting: () => svg([h('path', { key: 1, d: 'M6 4.5h7.5M6 8h7.5M6 11.5h7.5M2.8 4.5h.1M2.8 8h.1M2.8 11.5h.1', ...stroke })]),
+    features: () => svg([h('circle', { key: 1, cx: 8, cy: 8, r: 6, ...stroke }), h('path', { key: 2, d: 'm5.4 8.2 1.8 1.8 3.5-3.8', ...stroke })]),
+    requirements: () => svg([h('rect', { key: 1, x: 3, y: 2.5, width: 10, height: 11, rx: 2, ...stroke }), h('path', { key: 2, d: 'M5.8 6h4.4M5.8 8.5h4.4M5.8 11h2.4', ...stroke })]),
+    tasks: () => svg([h('rect', { key: 1, x: 2.5, y: 3, width: 11, height: 3, rx: 1, ...stroke }), h('path', { key: 2, d: 'M3.5 6v6.5h9V6M6.5 8.8h3', ...stroke })]),
+  };
+  // A completed task line: "title — summary (11/21)".
+  const taskParts = text => {
+    const match = /^(.*?)(?: — (.*?))?(?: \((\d\d\/\d\d)\))?$/u.exec(text ?? '');
+    return { title: match?.[1] || text, detail: [match?.[2], match?.[3]].filter(Boolean).join(' · ') };
+  };
   const shortDate = value => typeof value === 'string' && value.length >= 10 ? value.slice(5, 10).replace('-', '/') : '';
   const PROJECT_CATEGORIES = ['stack', 'conventions', 'constraints', 'workflow', 'product', 'other'];
   const draftOf = card => ({ title: card?.title ?? '', category: card?.category ?? 'other', items: (card?.items ?? []).map(item => typeof item === 'string' ? { text: item } : { id: item.id, text: item.text }) });
@@ -29,11 +42,15 @@ export function createProjectCards({ React, h, tf, useCurrentReview, DecisionCar
     const [asking, setAsking] = React.useState();
     const [text, setText] = React.useState('');
     if (card.items.length === 0) return h('p', { className: 'dpt-pv-empty-line' }, t('projectNoItems'));
-    return h('ol', { className: 'dpt-pv-items' }, ...card.items.map(item => h('li', { key: item.id, className: 'dpt-pv-item', 'data-status': item.status },
+    const tasks = card.kind === 'tasks';
+    const items = tasks ? [...card.items].reverse() : card.items;
+    return h('ol', { className: 'dpt-pv-items' }, ...items.map(item => h('li', { key: item.id, className: 'dpt-pv-item', 'data-status': item.status },
       h('span', { className: 'dpt-pv-id' }, item.id),
       h('div', { className: 'dpt-pv-item-main' },
-        h('span', { className: 'dpt-pv-item-text' }, item.text),
-        item.status && item.status !== 'active' ? h('span', { className: 'dpt-pv-status' }, tf(t, STATUS_LABEL[item.status], { by: item.by ?? '' })) : null,
+        h('span', { className: 'dpt-pv-item-text' }, tasks ? taskParts(item.text).title : item.text),
+        tasks && taskParts(item.text).detail ? h('span', { className: 'dpt-pv-note' }, taskParts(item.text).detail) : null,
+        tasks ? h('span', { className: 'dpt-pv-status', 'data-state': item.status }, t(item.status === 'dropped' ? 'briefStateDropped' : 'briefStateDone'))
+          : item.status && item.status !== 'active' ? h('span', { className: 'dpt-pv-status' }, tf(t, STATUS_LABEL[item.status], { by: item.by ?? '' })) : null,
         asking === item.id ? h('form', { className: 'dpt-pv-ask', onSubmit: event => { event.preventDefault(); if (!text.trim()) return; onQuestion(item, text.trim()); setAsking(undefined); setText(''); } },
           h('input', { className: 'dpt-cc-input', autoFocus: true, value: text, placeholder: t('projectQuestionPlaceholder'), onChange: event => setText(event.target.value) }),
           h('button', { type: 'submit', className: 'dpt-cc-btn', 'data-primary': '', disabled: !text.trim() }, t('projectSend')),
@@ -170,17 +187,20 @@ export function createProjectCards({ React, h, tf, useCurrentReview, DecisionCar
   function ProjectCard({ card, versions, busy, act, t, onEdit, file }) {
     const [history, setHistory] = React.useState();
     const userOwned = card.kind === 'setting';
-    return h('section', { className: 'dpt-pv-card', 'data-kind': card.kind, 'aria-label': card.title },
-      h('header', { className: 'dpt-pv-card-head' },
-        h('div', { className: 'dpt-pv-card-titles' },
-          h('span', { className: 'dpt-pv-card-title' }, card.title),
-          h('span', { className: 'dpt-pv-meta' }, t(KIND_LABEL[card.kind]), ` · v${card.rev}`, card.updated && card.updated !== '-' ? ` · ${shortDate(card.updated)}` : '')),
+    const Icon = KIND_ICON[card.kind] ?? KIND_ICON.setting;
+    return h('section', { className: 'dpt-cc dpt-pv-card', 'data-family': 'project', 'data-kind': card.kind, 'aria-label': card.title },
+      h('header', { className: 'dpt-cc-head' },
+        h('span', { className: 'dpt-cc-icon' }, h(Icon)),
+        h('div', { className: 'dpt-cc-titles' },
+          h('span', { className: 'dpt-cc-kicker' }, t(KIND_LABEL[card.kind])),
+          h('span', { className: 'dpt-cc-title' }, card.kind === 'tasks' && /^Completed tasks/u.test(card.title) ? t('projectCompletedTasks') : card.title),
+          h('span', { className: 'dpt-cc-sub' }, `v${card.rev}`, card.updated && card.updated !== '-' ? ` · ${shortDate(card.updated)}` : '', card.kind === 'tasks' ? ` · ${tf(t, 'projectTaskCount', { count: card.items.length })}` : '')),
         history === undefined ? h('div', { className: 'dpt-pv-card-actions' },
           versions.length > 0 ? h('button', { type: 'button', className: 'dpt-pv-link', onClick: () => setHistory({ ...file, baseRev: card.rev }) }, t('projectHistory')) : null,
           userOwned ? h('button', { type: 'button', className: 'dpt-pv-link', disabled: busy, onClick: () => onEdit(card) }, t('projectEdit')) : null) : null),
-      history !== undefined ? h(HistoryPanel, { card, versions, busy, t, onClose: () => setHistory(undefined),
+      h('div', { className: 'dpt-cc-body' }, history !== undefined ? h(HistoryPanel, { card, versions, busy, t, onClose: () => setHistory(undefined),
           onRollback: version => { void act({ ...history, op: 'rollback', card: card.id, rev: version.rev }, 'projectMsgRollback', { title: card.title, rev: version.rev }).then(done => { if (done) setHistory(undefined); }); } })
-        : h(ItemRows, { card, t, onQuestion: userOwned ? undefined : (item, question) => { void act.question(card, item, question); } }));
+        : h(ItemRows, { card, t, onQuestion: userOwned || card.kind === 'tasks' ? undefined : (item, question) => { void act.question(card, item, question); } })));
   }
 
   function ProposalRow({ proposal, card, busy, act, t, settled, previewOnly }) {
@@ -256,18 +276,35 @@ export function createProjectCards({ React, h, tf, useCurrentReview, DecisionCar
         onClick: () => { void act({ op: 'rebase', proposal: proposal.id }); } }, t('projectReviewMerge')) : null);
   }
 
+  function SettledProposal({ row, t }) {
+    const [open, setOpen] = React.useState(false);
+    const outcome = row.outcome === 'approved' ? 'projectProposalApproved' : row.outcome === 'returned' ? 'briefReturned' : 'projectProposalRejected';
+    if (open) return h('div', { className: 'dpt-cc-stub-open' },
+      h('button', { type: 'button', className: 'dpt-cc-stub', 'aria-expanded': true, onClick: () => setOpen(false) }, tf(t, 'projectSettledStub', { title: row.title, outcome: t(outcome) })),
+      h(DecisionCard, { kind: 'project', title: tf(t, 'projectContentQuestion', { title: row.title }), text: row.title, review: row.review, selected: row.selected,
+        outcome: row.outcome === 'rejected' ? 'declined' : row.outcome, feedback: row.feedback, t }, h(ProposalRow, { proposal: row, settled: true, t })));
+    return h('section', { className: 'dpt-cc', 'data-family': 'project', 'data-archived': 'settled', 'aria-label': row.title },
+      h('header', { className: 'dpt-cc-head' },
+        h('span', { className: 'dpt-cc-icon' }, h(KIND_ICON.setting)),
+        h('div', { className: 'dpt-cc-titles' },
+          h('span', { className: 'dpt-cc-kicker' }, t('projectTab') + (row.id ? ' · ' + row.id : '')),
+          h('span', { className: 'dpt-cc-title' }, row.title),
+          row.feedback ? h('span', { className: 'dpt-cc-sub' }, row.feedback) : null),
+        h('button', { type: 'button', className: 'dpt-cc-pill', 'data-phase': row.outcome === 'approved' ? 'stopped' : 'archived', 'aria-expanded': false, onClick: () => setOpen(true) },
+          t(outcome))));
+  }
+
   function ProjectInline({ sessionId, useProjection, anchor, run, reply, form, t }) {
     const state = projectionValue(useProjection, 'deepPtcProject');
     const enabled = useFormValue(form, 'projectCards') !== false;
     const [message, setMessage] = React.useState('');
     const [busy, setBusy] = React.useState(false);
-    const selected = useCurrentReview(useProjection, form, sessionId);
     if (!enabled) return null;
     const settledRows = (state?.settled ?? []).filter(row => String(row.anchor) === anchor);
-    const first = (state?.proposals ?? []).find(row =>
-      (row.chat ?? row.session) === sessionId || (state.guide && row.session === state.guide.childId));
-    const pending = first && selected === 'project:' + first.id && String(first.anchor) === anchor ? first : undefined;
-    if (!pending && !settledRows.length && !message) return null;
+    // Every open proposal shows at its own place in the chat, at once.
+    const open = (state?.proposals ?? []).filter(row => String(row.anchor) === anchor &&
+      ((row.chat ?? row.session) === sessionId || (state.guide && row.session === state.guide.childId)));
+    if (!open.length && !settledRows.length && !message) return null;
     const act = async (payload, key, values) => {
       setBusy(true);
       try {
@@ -277,14 +314,12 @@ export function createProjectCards({ React, h, tf, useCurrentReview, DecisionCar
       } catch (error) { setMessage(String(error?.message ?? error)); } finally { setBusy(false); }
     };
     return h('section', { className: 'dpt-pv-group', 'aria-label': t('projectProposals') },
-      ...settledRows.map(row => h(DecisionCard, { key: row.id, kind: 'project', title: tf(t, 'projectContentQuestion', { title: row.title }), text: row.title, review: row.review, selected: row.selected,
-        outcome: row.outcome === 'rejected' ? 'declined' : row.outcome, feedback: row.feedback, t },
-        h(ProposalRow, { proposal: row, settled: true, t }))),
-      pending ? h(ProjectDecision, { key: pending.id, proposal: pending, card: state.cards.find(row => row.id === pending.card), act, busy, t }) : null,
+      ...settledRows.map(row => h(SettledProposal, { key: row.id + ':' + (row.rev ?? ''), row, t })),
+      ...open.map(row => h(ProjectDecision, { key: row.id, proposal: row, card: state.cards.find(card => card.id === row.card), act, busy, t })),
       message ? h('p', { role: 'alert' }, message) : null);
   }
 
-  function ProjectView({ sessionId, useProjection, run, reply, t }) {
+  function ProjectView({ sessionId, useProjection, run, reply, runBrief, t }) {
     const state = projectionValue(useProjection, 'deepPtcProject');
     const [busy, setBusy] = React.useState(false);
     const [message, setMessage] = React.useState();
@@ -368,6 +403,13 @@ export function createProjectCards({ React, h, tf, useCurrentReview, DecisionCar
           h('button', { type: 'button', className: 'dpt-cc-btn', 'data-ghost': '', disabled: busy, onClick: () => { void run?.({ op: 'refresh' }); } }, t('projectRefresh')),
           h('button', { type: 'button', className: 'dpt-cc-btn', disabled: busy || editing !== undefined, onClick: () => beginEdit() }, t('projectNewCard')))),
       h('p', { className: 'dpt-pv-intro' }, t('projectIntro')),
+      TaskSection && typeof runBrief === 'function' ? h(TaskSection, { sessionId, useProjection, run: runBrief, t }) : null,
+      h('section', { className: 'dpt-pv-group', 'aria-label': t('projectPastTasks') },
+        h('h3', { className: 'dpt-pv-group-title' }, t('projectPastTasks'), h('span', { className: 'dpt-pv-tally' }, t('projectWholeWorkspace'))),
+        cards.some(card => card.kind === 'tasks')
+          ? h('div', { className: 'dpt-pv-grid dpt-pv-single' }, ...cards.filter(card => card.kind === 'tasks').map(card => h(ProjectCard, { key: card.id, card, onEdit: beginEdit, file: fileBasis,
+            versions: Array.isArray(state?.history?.[card.id]) ? state.history[card.id] : [], busy: busy || editing !== undefined, act, t })))
+          : h('p', { className: 'dpt-pv-empty-line' }, t('projectNoPastTasks'))),
       !cards.some(card => card.kind === 'setting') ? h('div', { className: 'dpt-cc-actions' },
         state?.setupStatus ? h('span', { role: 'status' }, t('projectSetup_' + state.setupStatus)) : null,
         state?.setupStatus === 'guiding' && state.setupSummary && !state.guide ? h('p', null, state.setupSummary) : null,
@@ -385,7 +427,7 @@ export function createProjectCards({ React, h, tf, useCurrentReview, DecisionCar
       proposals.length > 0 ? h('section', { className: 'dpt-pv-group', 'aria-label': t('projectProposals') },
         h('h3', { className: 'dpt-pv-group-title' }, t('projectProposals'), h('span', { className: 'dpt-pv-count' }, proposals.length)),
         ...proposals.map(proposal => h(proposal.review ? ProjectDecision : ProposalRow, { key: proposal.id, proposal, card: cards.find(card => card.id === proposal.card), busy, act, t }))) : null,
-      editing ? h('section', { className: 'dpt-pv-card', 'data-kind': 'setting' },
+      editing ? h('section', { className: 'dpt-cc dpt-pv-card dpt-pv-editing', 'data-family': 'project', 'data-kind': 'setting' },
         h(CardEditor, { initial: editing, latest: cards.find(card => card.id === editing.card?.id), file: fileBasis, busy, t,
           suggestions: Array.isArray(state?.suggestions) ? state.suggestions : [], onPolish: polish, onDismissPolish: dismissPolish,
           onCancel: () => setEditing(undefined),
@@ -400,7 +442,7 @@ export function createProjectCards({ React, h, tf, useCurrentReview, DecisionCar
       // Setting cards by topic, then the records the model keeps, each group with its own heading.
       ...[...PROJECT_CATEGORIES.map(category => ({ key: category, label: t(`projectCat_${category}`),
         cards: cards.filter(card => card.kind === 'setting' && (card.category ?? 'other') === category) })),
-      { key: 'records', label: t('projectRecords'), cards: cards.filter(card => card.kind !== 'setting') }]
+      { key: 'records', label: t('projectRecords'), cards: cards.filter(card => card.kind !== 'setting' && card.kind !== 'tasks') }]
         .filter(group => group.cards.length > 0)
         .map(group => h('section', { key: group.key, className: 'dpt-pv-group', 'aria-label': group.label },
           h('h3', { className: 'dpt-pv-group-title' }, group.label, h('span', { className: 'dpt-pv-tally' }, group.cards.length)),

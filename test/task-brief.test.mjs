@@ -251,8 +251,9 @@ test('the root SDK call waits for every brief item and partial edits keep it pau
   assert.equal((await confirm(['G2'])).kind, 'success');
   await posted;
   assert.equal(resumed, true);
-  assert.equal(host.state(session).versions.length, 2);
+  assert.equal(host.state(session).versions.length, 1, 'one review round keeps one card');
   assert.equal(host.state(session).versions[0].settled, true);
+  assert.deepEqual(host.state(session).versions[0].decided.map(d => [d.item.id, d.outcome]), [['G1', 'confirmed'], ['G2', 'confirmed']]);
   await tool.execute({ action: 'update', items: [{ section: 'constraint', inferred: true, text: 'third' }] }, nested);
   const stop = new AbortController();
   const interrupted = post({ ...root, signal: stop.signal }, {}, () => 'aborted');
@@ -260,8 +261,8 @@ test('the root SDK call waits for every brief item and partial edits keep it pau
   assert.equal(await interrupted, 'aborted');
   assert.equal(host.state(session).items.at(-1).basis, 'inferred', 'cancellation grants no approval');
   await confirm(['C1']);
-  assert.deepEqual(host.state(session).versions.map(v => v.items[0].id), ['G1', 'G2', 'C1']);
-  assert.deepEqual(host.state(session).versions.map(v => v.anchor), [1, 2, 4]);
+  assert.deepEqual(host.state(session).versions.map(v => v.decided.map(d => d.item.id)), [['G1', 'G2'], ['C1']]);
+  assert.deepEqual(host.state(session).versions.map(v => v.anchor), [1, 4]);
 });
 
 test('returning a draft releases its wait and preserves the original review and correction', async () => {
@@ -276,11 +277,13 @@ test('returning a draft releases its wait and preserves the original review and 
   await cmd({ agent, rawInput: JSON.stringify({ op: 'rethink', rev: 1, feedback: 'Which subset?' }) });
   const returned = host.state(session);
   assert.equal(returned.items.length, 0);
-  assert.equal(returned.versions[0].feedback, 'Which subset?');
-  assert.equal(returned.versions[0].items[0].text, 'First interpretation');
+  assert.equal(returned.versions[0].decided[0].feedback, 'Which subset?');
+  assert.equal(returned.versions[0].decided[0].item.text, 'First interpretation');
+  assert.equal(returned.versions[0].waiting, 'G1', 'the round waits in place for the redraft');
   assert.match(messages[0].content[0].text, /task_brief update.*[\s\S]*Which subset\?/u);
   await file('Corrected interpretation');
-  assert.deepEqual(host.state(session).versions.map(row => row.anchor), [1, 3]);
+  assert.deepEqual(host.state(session).versions.map(row => row.anchor), [1], 'the redraft returns to the same card');
+  assert.equal(host.state(session).versions[0].items[0].text, 'Corrected interpretation');
 });
 
 test('a custom response pauses the queue until the corrected item is presented and decided separately', async () => {
@@ -297,12 +300,12 @@ test('a custom response pauses the queue until the corrected item is presented a
   assert.equal((await run({ op: 'confirm', ids: ['G1', 'G2'] })).kind, 'error');
   await run({ op: 'rethink', id: 'G1', feedback: 'Across all pages', rev: 1 });
   assert.deepEqual(host.state(session).items.map(i => i.id), ['G2', 'G3']);
-  assert.equal(host.state(session).versions.at(-1).outcome, 'returned');
+  assert.equal(host.state(session).versions.at(-1).decided.at(-1).outcome, 'returned');
   assert.equal((await run({ op: 'confirm', ids: ['G2'] })).kind, 'error');
   session.append('user/message', notices.at(-1));
   await update([{ id: 'G1', text: 'Use all pages', quote: 'Across all pages' }]);
   const revised = host.state(session).versions.at(-1);
-  assert.equal(revised.anchor, 3);
+  assert.equal(revised.anchor, 1);
   assert.equal(revised.items[0].id, 'G1');
   assert.notEqual(revised.items[0].basis, 'confirmed');
   assert.equal((await run({ op: 'confirm', ids: ['G1'], rev: 1 })).kind, 'error');
@@ -310,8 +313,9 @@ test('a custom response pauses the queue until the corrected item is presented a
   await run({ op: 'remove', id: 'G2', rev: 4 });
   await run({ op: 'confirm', ids: ['G3'], rev: 5 });
   const state = host.state(session);
-  assert.deepEqual(state.versions.map(v => [v.items[0].id, v.outcome]), [
-    ['G1', 'returned'], ['G1', 'confirmed'], ['G2', 'declined'], ['G3', 'confirmed']]);
+  assert.equal(state.versions.length, 1);
+  assert.deepEqual(state.versions[0].decided.map(d => [d.item.id, d.outcome]), [['G1', 'confirmed'], ['G2', 'declined'], ['G3', 'confirmed']]);
+  assert.equal(state.versions[0].decided[0].feedback, 'Across all pages', 'the returned note stays with the item');
   assert.deepEqual(state.items.map(i => i.id), ['G1', 'G3']);
 });
 
@@ -336,7 +340,64 @@ test('task review commits only the explicitly selected wording and preserves the
   const state = host.state(session);
   assert.equal(state.items[0].text, versions[1].text);
   assert.equal(state.items[0].basis, 'confirmed');
-  assert.equal(state.versions[0].items[0].review.question, question);
-  assert.equal(state.versions[0].items[0].selected, 'v2');
+  assert.equal(state.versions[0].decided[0].item.review.question, question);
+  assert.equal(state.versions[0].decided[0].item.selected, 'v2');
   assert.match(messages[0].content[0].text, /整个小组.*每日通知小组所有成员/u);
+});
+
+test('confirming the rest settles every remaining item without versions in one step', async () => {
+  const host = fakeHost(), session = host.session('confirm-rest');
+  const agent = { session, steer: () => {} };
+  await install(host.ctx, host.records);
+  session.append('turn/start', { turn: 1 });
+  const tool = briefToolDefinition();
+  await tool.execute({ action: 'update', items: [
+    ...['first', 'second', 'third'].map(text => ({ section: 'goal', inferred: true, text })),
+    { section: 'constraint', inferred: true, text: 'scope', question: 'Which scope?', versions: [{ label: 'A', text: 'Only A' }, { label: 'B', text: 'Only B' }] },
+  ] }, { agent });
+  const run = payload => host.handlers.get(BRIEF_COMMAND)({ agent, rawInput: JSON.stringify(payload) });
+  assert.equal((await run({ op: 'confirm-rest' })).kind, 'success');
+  const state = host.state(session);
+  assert.deepEqual(state.items.filter(item => item.basis === 'confirmed').map(item => item.id), ['G1', 'G2', 'G3']);
+  assert.equal(state.versions.length, 1);
+  assert.equal(state.versions[0].items[0].id, 'C1', 'an item with versions is still asked');
+  assert.deepEqual(state.versions[0].queue, ['C1']);
+});
+
+test('completing a task archives it, leaves a receipt and empties the brief for the next task', async () => {
+  const host = fakeHost(), session = host.session('complete');
+  const notices = [];
+  const agent = { session, steer: message => notices.push(message) };
+  await install(host.ctx, host.records);
+  session.append('turn/start', { turn: 1 });
+  session.append('user/message', { content: [{ type: 'text', text: '帮我做杭州两日行程，预算别超过1500' }], source: { kind: 'user' } });
+  const tool = briefToolDefinition();
+  await tool.execute({ action: 'update', items: [{ section: 'goal', text: '杭州两日行程', quote: '杭州两日行程' }, { section: 'acceptance', inferred: true, text: '表格覆盖两天' }] }, { agent });
+  const run = payload => host.handlers.get(BRIEF_COMMAND)({ agent, rawInput: JSON.stringify(payload) });
+  await run({ op: 'confirm-rest' });
+  await assert.rejects(tool.execute({ action: 'complete' }, { agent }), /mark the finished goal and acceptance items.*G1, A1/u);
+  const update = await tool.execute({ action: 'update', done: ['G1', 'A1'] }, { agent });
+  assert.match(update.finished, /action=complete/u, 'the model is told it can archive');
+  const done = await tool.execute({ action: 'complete', summary: '两天行程表，合计 1386 元' }, { agent });
+  assert.equal(done.status, 'done');
+  assert.equal(done.title, '杭州两日行程');
+  const state = host.state(session);
+  assert.deepEqual(state.items, []);
+  const receipt = state.versions.at(-1);
+  assert.equal(receipt.completed.title, '杭州两日行程');
+  assert.equal(receipt.completed.counts.acceptanceDone, 1);
+  assert.equal(state.tasks.at(-1).summary, '两天行程表，合计 1386 元');
+  assert.deepEqual(briefView(state).messages, [], 'messages of the archived task leave the coverage view');
+  assert.equal(stateText(state), '', 'an empty brief puts nothing in the prompt');
+  // The next task starts fresh and cannot quote the archived message.
+  const next = await tool.execute({ action: 'update', items: [{ section: 'goal', text: 'x', quote: '杭州两日行程' }] }, { agent });
+  assert.match(next.rejected[0], /not in/u);
+  // The user can give a task up from the card.
+  await tool.execute({ action: 'update', items: [{ section: 'goal', inferred: true, text: '另一个任务' }] }, { agent });
+  assert.equal((await run({ op: 'complete', status: 'dropped' })).text, 'dropped');
+  await tool.execute({ action: 'update', items: [{ section: 'acceptance', inferred: true, text: '用户说完成' }] }, { agent });
+  assert.equal((await run({ op: 'complete' })).text, 'done', 'the user can complete with open checks');
+  assert.equal(host.state(session).versions.at(-1).completed.counts.acceptanceDone, 1);
+  assert.match(notices.at(-2).content[0].text, /abandoned/u);
+  assert.equal((await run({ op: 'complete' })).kind, 'error', 'an empty brief has nothing to complete');
 });

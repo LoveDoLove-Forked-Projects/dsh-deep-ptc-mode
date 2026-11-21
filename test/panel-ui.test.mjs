@@ -146,7 +146,7 @@ test('the panel holds the environment switch, outputs, SSH and tool state', asyn
     assert.equal(checked(view), 'PowerShell');
     assert.match(text(view), /envForNew/u, 'the switch applies to new sessions');
     assert.ok(view.root.findAllByType('button').some(node => node.props['aria-label'] === 'toolReset'));
-    assert.deepEqual(sections(view), ['environment', 'creativeSwitch', 'projectTab', 'briefTitle', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
+    assert.deepEqual(sections(view), ['environment', 'creativeSwitch', 'projectTab', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
     assert.equal(view.root.findAllByProps({ role: 'switch', 'aria-label': 'visualEffects' }).length, 0, 'the effects switch lives in settings');
     assert.ok(view.root.findAll(node => node.props.title === 'outputsEmpty').length > 0);
     assert.ok(view.root.findAll(node => node.props.title === 'sshEmpty').length > 0);
@@ -229,7 +229,7 @@ test('subagents keep live state indicators and show only their names and same-ro
     assert.deepEqual(rows.map(visibleText), [' Research', ' Report 1m 15s', ' Live']);
     assert.equal(rows[1].children.at(-1).props.className, 'dpt-agent-duration');
     assert.equal(rows[1].props['aria-label'], 'Report · Done', 'the state remains accessible without visible status text');
-    assert.deepEqual(sections(view).slice(0, 5), ['Execution environment', 'Deep creative mode', 'Project cards', 'Task brief', 'Subagents']);
+    assert.deepEqual(sections(view).slice(0, 5), ['Execution environment', 'Deep creative mode', 'Project cards', 'Subagents', 'Background jobs']);
   });
 });
 
@@ -815,24 +815,24 @@ test('panel sections reorder by drag or keyboard, and the order is remembered', 
       assert.equal(view.root.findAll(node => node.props?.className === 'dpt-sortable' && node.props['data-drop']).length, 1, 'a drop line shows');
       await act(async () => gripOf(key).props.onPointerUp({ clientX: 0, clientY }));
     };
-    assert.deepEqual(order(), ['environment', 'creativeSwitch', 'projectTab', 'briefTitle', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
+    assert.deepEqual(order(), ['environment', 'creativeSwitch', 'projectTab', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
     // Drag SSH onto the upper half of the environment section: it moves to the top.
     await drag('ssh', 10);
-    assert.deepEqual(order(), ['sshTitle', 'environment', 'creativeSwitch', 'projectTab', 'briefTitle', 'jobsTitle', 'outputsTitle', 'toolsSection']);
+    assert.deepEqual(order(), ['sshTitle', 'environment', 'creativeSwitch', 'projectTab', 'jobsTitle', 'outputsTitle', 'toolsSection']);
     // Drag SSH onto the lower half of output files: it lands after them.
     under = { key: 'outputs', top: 0 };
     await drag('ssh', 90);
-    assert.deepEqual(order(), ['environment', 'creativeSwitch', 'projectTab', 'briefTitle', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
+    assert.deepEqual(order(), ['environment', 'creativeSwitch', 'projectTab', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
     under = { key: 'environment', top: 0 };
     await drag('ssh', 10);
-    assert.deepEqual(order(), ['sshTitle', 'environment', 'creativeSwitch', 'projectTab', 'briefTitle', 'jobsTitle', 'outputsTitle', 'toolsSection']);
+    assert.deepEqual(order(), ['sshTitle', 'environment', 'creativeSwitch', 'projectTab', 'jobsTitle', 'outputsTitle', 'toolsSection']);
     // Keyboard: the tool state section moves up one place.
-    await act(async () => grips()[7].props.onKeyDown({ key: 'ArrowUp', preventDefault() {} }));
-    assert.deepEqual(order(), ['sshTitle', 'environment', 'creativeSwitch', 'projectTab', 'briefTitle', 'jobsTitle', 'toolsSection', 'outputsTitle']);
+    await act(async () => grips()[6].props.onKeyDown({ key: 'ArrowUp', preventDefault() {} }));
+    assert.deepEqual(order(), ['sshTitle', 'environment', 'creativeSwitch', 'projectTab', 'jobsTitle', 'toolsSection', 'outputsTitle']);
     await act(async () => grips()[0].props.onKeyDown({ key: 'ArrowDown', preventDefault() {} }));
-    assert.deepEqual(order(), ['environment', 'sshTitle', 'creativeSwitch', 'projectTab', 'briefTitle', 'jobsTitle', 'toolsSection', 'outputsTitle']);
+    assert.deepEqual(order(), ['environment', 'sshTitle', 'creativeSwitch', 'projectTab', 'jobsTitle', 'toolsSection', 'outputsTitle']);
   });
-  assert.deepEqual(JSON.parse(storage.get('dsh-deep-ptc-mode:panel-order')), ['environment', 'ssh', 'creative', 'project', 'brief', 'agents', 'jobs', 'tools', 'outputs'], 'hidden sections keep a place too');
+  assert.deepEqual(JSON.parse(storage.get('dsh-deep-ptc-mode:panel-order')), ['environment', 'ssh', 'creative', 'project', 'agents', 'jobs', 'tools', 'outputs'], 'hidden sections keep a place too');
 });
 
 test('the panel location setting moves the whole panel into the right sidebar tab', async () => {

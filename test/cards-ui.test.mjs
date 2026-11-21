@@ -230,7 +230,7 @@ test('the layout pairs compact cards, puts three tiny ones in a row and never le
   assert.deepEqual(await sizes([rows('a', 3), table, rows('b', 3)]), ['full', 'full', 'full'], 'a narrow card with no partner takes the full width');
   assert.deepEqual(await sizes([rows('a', 3), rows('b', 3), rows('c', 3)]), ['half', 'half', 'full']);
   assert.deepEqual(await sizes([stat('a', { size: 'half' })]), ['full'], 'an explicit half alone would leave a gap');
-  assert.deepEqual(await sizes([rows('a', 6), rows('b', 2)]), ['full', 'full'], 'long rows are wide content');
+  assert.deepEqual(await sizes([rows('a', 7), rows('b', 2)]), ['full', 'full'], 'long rows are wide content');
 });
 
 test('cards posted mid-turn show at their transcript position immediately', async () => {
