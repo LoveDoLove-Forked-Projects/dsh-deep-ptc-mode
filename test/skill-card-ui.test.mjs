@@ -12,7 +12,7 @@ function fixture() {
   vm.runInNewContext(readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8'), {
     window: { __ModuleLoader__: { load: definition => { plugin = definition.factory(() => React); } } },
   });
-  const ctx = { locale: { bind: () => key => key, register() {} }, effect: fn => fn(),
+  const ctx = { uiConversation: { events: { register() {} } }, locale: { bind: () => key => key, register() {} }, effect: fn => fn(),
     configForms: { get() {}, whileServed: () => () => {} },
     remote: { commands: { async execute(...args) { calls.push(args); return { ok: true, value: { result: { kind: 'success' } } }; } } },
     slots: { inject: (name, callback) => callback(), register: (slot, render) => { slots.set(slot.id ?? slot.key, { slot, render }); } },
@@ -27,20 +27,20 @@ function fixture() {
 const viewOf = state => key => key === 'agentPreset' ? 'deep-ptc' : key === 'deepPtcSkills' ? state : undefined;
 const chatAt = last => selector => selector({ timeline: { turnOrder: [1, last] } });
 
-const cardState = () => ({ v: 1, turn: 2, phase: 'idle', skills: [
+const cardState = () => ({ v: 1, anchor: 3, turn: 2, phase: 'idle', skills: [
   { name: 'office', description: 'Create Office files.', enabled: true, loadedTurn: 2 },
   { name: 'research', description: 'Search the web.', enabled: false, loadedTurn: 1 },
 ] });
 
 async function render(f, props) {
   let view;
-  await act(async () => { view = Renderer.create(React.createElement(f.skill.render, props)); });
+  await act(async () => { view = Renderer.create(React.createElement(f.skill.render, { node: { data: { anchor: '3' } }, ...props })); });
   return view;
 }
 
-test('the skill card lives at the end of the latest turn in the conversation, not in the composer', async () => {
+test('the skill card lives in the transcript', async () => {
   const f = fixture();
-  assert.equal(f.skill.slot.name, 'conversation.chat.turnTail');
+  assert.equal(f.skill.slot.name, 'conversation.chat.node');
   assert.deepEqual([...f.slots.values()].filter(entry => entry.slot.name === 'conversation.composer.dock').map(entry => entry.slot.id), ['deep-ptc-side'],
     'only the side card host is docked, and it draws beside the conversation');
   const injected = f.skill.slot.inject('session-A');
@@ -73,7 +73,7 @@ test('skill card renders descriptions, a closing summary and switches', async ()
   await act(async () => view.unmount());
 });
 
-test('bulk actions send one command, are disabled when they would change nothing, and the card hides while running', async () => {
+test('bulk actions send one command, are disabled when they would change nothing, and the controls are available while running', async () => {
   const f = fixture();
   const injected = f.skill.slot.inject('session-B');
   let view = await render(f, { ...injected, turn: { turn: 2 }, useChat: chatAt(2), useProjection: viewOf(cardState()) });
@@ -89,7 +89,7 @@ test('bulk actions send one command, are disabled when they would change nothing
   await act(async () => view.unmount());
 
   view = await render(f, { ...injected, turn: { turn: 2 }, useChat: chatAt(2), useProjection: viewOf({ ...cardState(), phase: 'running' }) });
-  assert.equal(view.toJSON(), null);
+  assert.equal(view.root.findAllByProps({ role: 'switch' }).length, 2);
   await act(async () => view.unmount());
 });
 
@@ -97,7 +97,7 @@ test('long skill lists are folded until the user expands them', async () => {
   const f = fixture();
   const skills = Array.from({ length: 6 }, (_, index) => ({ name: `skill-${index}`, description: '', enabled: true, loadedTurn: 1 }));
   const view = await render(f, { ...f.skill.slot.inject('s'), turn: { turn: 2 }, useChat: chatAt(2),
-    useProjection: viewOf({ v: 1, turn: 2, phase: 'idle', skills }) });
+    useProjection: viewOf({ v: 1, anchor: 3, turn: 2, phase: 'idle', skills }) });
   assert.equal(view.root.findAllByProps({ role: 'switch' }).length, 4);
   const more = view.root.findAllByType('button').find(node => node.props.className === 'dpt-link');
   await act(async () => { more.props.onClick(); });
@@ -114,7 +114,7 @@ test('the card can appear after the projection becomes available without changin
   const view = await render(f, props);
   assert.equal(view.toJSON(), null);
   state = cardState();
-  await act(async () => { view.update(React.createElement(f.skill.render, props)); });
+  await act(async () => { view.update(React.createElement(f.skill.render, { node: { data: { anchor: '3' } }, ...props })); });
   assert.equal(view.root.findAllByProps({ role: 'switch' }).length, 2);
   await act(async () => view.unmount());
 });
@@ -144,7 +144,7 @@ test('the card is empty without skills, and a broken projection is not hidden as
     if (key === 'deepPtcSkills') throw new Error('unavailable');
     return undefined;
   };
-  assert.throws(() => Renderer.create(React.createElement(f.skill.render, { ...injected, turn: { turn: 0 }, useChat: chatAt(0), useProjection: throwing })), /unavailable/u);
+  assert.throws(() => Renderer.create(React.createElement(f.skill.render, { ...injected, turn: { turn: 0 }, useChat: chatAt(0), node: { data: { anchor: '3' } }, useProjection: throwing })), /unavailable/u);
 });
 
 test('the session bridge renders nothing visible and reads only the preset for other modes', async () => {
@@ -209,19 +209,19 @@ test('Deep PTC skills show their summary in the display language; other skills k
   vm.runInNewContext(readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8'), {
     window: { __ModuleLoader__: { load: definition => { plugin = definition.factory(() => React); } } },
   });
-  const ctx = { locale: { bind: () => key => key, register(_ns, value) { dictionaries = value; } }, effect: fn => fn(),
+  const ctx = { uiConversation: { events: { register() {} } }, locale: { bind: () => key => key, register(_ns, value) { dictionaries = value; } }, effect: fn => fn(),
     configForms: { get() {}, whileServed: () => () => {} }, remote: { commands: { async execute() { return { ok: true }; } } },
     slots: { inject: (name, callback) => callback(), register: (slot, render) => { slots.set(slot.id ?? slot.key, { slot, render }); } } };
   ctx.inject = (deps, callback) => callback(ctx);
   plugin.apply(ctx);
   const skill = slots.get('deep-ptc-skills');
-  const state = { v: 1, turn: 2, phase: 'idle', skills: [
+  const state = { v: 1, anchor: 3, turn: 2, phase: 'idle', skills: [
     { name: 'deep-ptc-windows-wsl', description: 'Work across Windows and WSL: path mapping…', enabled: true, loadedTurn: 2 },
     { name: 'office', description: 'Create Office files.', enabled: true, loadedTurn: 2 }] };
   for (const [language, expected] of [['zh', /Windows 与 WSL 双环境/u], ['en', /Windows and WSL: path mapping and non-ASCII paths/u]]) {
     const t = key => dictionaries[language][key] ?? key;
     let view;
-    await act(async () => { view = Renderer.create(React.createElement(skill.render, { ...skill.slot.inject('session-A'), t,
+    await act(async () => { view = Renderer.create(React.createElement(skill.render, { ...skill.slot.inject('session-A'), node: { data: { anchor: '3' } }, t,
       turn: { turn: 2 }, useChat: chatAt(2), useProjection: viewOf(state) })); });
     const text = JSON.stringify(view.toJSON());
     assert.match(text, expected, language);

@@ -250,7 +250,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     briefCondensed: '已移出上下文', briefCondensedHint: '模型上下文里这条消息已换成任务卡替身；原话仍在聊天和会话记录中，模型需要时可以读回。',
     briefCondensing: '下一步移出上下文', briefRestoring: '下一步恢复原文', briefRestore: '恢复原文',
     briefCount: '{count} 条', briefInferredCount: '{count} 条推断待确认', briefUnfiledCount: '{count} 段未归档', briefCondensedCount: '{count} 条消息已精简',
-    briefAllConfirmed: '已全部确认', briefConfirmAll: '全部确认', briefCondense: '确认并精简上下文',
+    briefAllConfirmed: '已全部确认', briefRethink: '理解有偏差', briefFeedback: '哪里需要重新理解？可直接补充，也可请模型列出选项。', briefAskOptions: '请模型澄清', briefReturned: '已退回澄清', briefContentQuestion: '将「{text}」列入本次任务吗？', projectContentQuestion: '项目的「{title}」要怎样设置？', versionPreview: '查看「{label}」的内容', reviewSet: '可以，按此设置', reviewSkip: '不设置这张卡片', reviewOther: '其他：填写我的想法', reviewRewriteHint: '写下你的想法，模型会重新整理并再次询问。', briefSetQuestion: '是否设置下面这项任务？', projectSetQuestion: '是否设置下面这张特点卡片？', briefClarify: '本次任务 · 澄清需求', projectClarify: '特点卡片 · 澄清设定', reviewOwnAnswer: '我有其他理解', reviewUseOptions: '返回选项', projectMsgRethink: '请按以下意见重新整理「{title}」，再单独询问我是否设置。{feedback}', amendProposal: '修改提案', projectApproveEdits: '批准修改后的提案', briefManage: '管理当前任务', briefPending: '待确认', briefArchived: '已归档', briefConfirmAll: '全部确认', briefCondense: '确认并精简上下文',
     briefConfirmedNote: '已确认。确认过的条目只有你能修改或删除。',
     briefCondenseNote: '已确认。模型下一次请求前，这些原话会换成任务卡替身，聊天里的原话不变。',
     briefCondenseHint: '核对无误后可精简上下文：原话移出模型上下文但不删除，未归档的原文会逐字保留。',
@@ -276,6 +276,8 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     projectProposalNew: "新建「{title}」",
     projectApprove: "批准",
     projectReject: "拒绝",
+    projectProposalApproved: "已批准",
+    projectProposalRejected: "已驳回",
     projectEmptyTitle: "还没有特点卡片",
     projectEmptyHint: "可以让模型先问你几个问题（技术栈、规范、约束、协作方式），再整理成卡片交给你批准；也可以自己新建。",
     projectBootstrap: "让模型引导建立",
@@ -444,7 +446,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     briefCondensed: 'Out of context', briefCondensedHint: "In the model's context this message is replaced by a stub pointing to the brief; the original stays in the chat and the log, and the model can read it back.",
     briefCondensing: 'Leaves context next step', briefRestoring: 'Restored next step', briefRestore: 'Restore original',
     briefCount: '{count} items', briefInferredCount: '{count} inferred to check', briefUnfiledCount: '{count} unfiled', briefCondensedCount: '{count} messages condensed',
-    briefAllConfirmed: 'All confirmed', briefConfirmAll: 'Confirm all', briefCondense: 'Confirm and condense',
+    briefAllConfirmed: 'All confirmed', briefRethink: 'Revisit interpretation', briefFeedback: 'Add a correction or ask for alternative interpretations.', briefAskOptions: 'Request clarification', briefReturned: 'Returned for clarification', briefContentQuestion: 'Include “{text}” in this task?', projectContentQuestion: 'How should “{title}” be set for this project?', versionPreview: 'Preview {label}', reviewSet: 'Yes, use this', reviewSkip: 'Do not set this card', reviewOther: 'Other: write my suggestion', reviewRewriteHint: 'Describe the change. The model will redraft and ask again.', briefSetQuestion: 'Set this task item?', projectSetQuestion: 'Set this project card?', briefClarify: 'Task brief · Clarification', projectClarify: 'Project card · Clarification', reviewOwnAnswer: 'Describe another interpretation', reviewUseOptions: 'Back to options', projectMsgRethink: 'Revise {title} using my feedback and ask me to approve the new draft. {feedback}', amendProposal: 'Edit proposal', projectApproveEdits: 'Approve edited proposal', briefManage: 'Manage current brief', briefPending: 'Awaiting review', briefArchived: 'Archived', briefConfirmAll: 'Confirm all', briefCondense: 'Confirm and condense',
     briefConfirmedNote: 'Confirmed. Only you can change or remove confirmed items.',
     briefCondenseNote: "Confirmed. Before the model's next request these messages are replaced by stubs; the chat keeps your words.",
     briefCondenseHint: "Once it is right, condense: your messages leave the model's context without being deleted, and unfiled text is kept verbatim.",
@@ -470,6 +472,8 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     projectProposalNew: "New “{title}”",
     projectApprove: "Approve",
     projectReject: "Reject",
+    projectProposalApproved: "Approved",
+    projectProposalRejected: "Rejected",
     projectEmptyTitle: "No project cards yet",
     projectEmptyHint: "Let the model ask you a few questions (stack, conventions, constraints, how you work) and turn the answers into cards for you to approve, or create one yourself.",
     projectBootstrap: "Set up with the model",
@@ -1039,7 +1043,14 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     return typeof localized === 'string' && localized !== '' && localized !== key ? localized : row.description;
   }
 
-  function SkillCard({ turn, useProjection, useChat, setSkill, setAll, t }) {
+  function ProjectSync({ sessionId, useProjection, form, refresh }) {
+    const deep = projectionValue(useProjection, 'agentPreset') === 'deep-ptc';
+    const enabled = useFormValue(form, 'projectCards') !== false;
+    React.useEffect(() => { if (deep && enabled) void refresh().catch(() => {}); }, [sessionId, deep, enabled]);
+    return null;
+  }
+
+  function SkillCard({ anchor, turn, useProjection, useChat, setSkill, setAll, t }) {
     const [busy, setBusy] = React.useState(false);
     const [expanded, setExpanded] = React.useState(false);
     // Projection failures are not caught: a silent null would make a broken card look like "no skills".
@@ -1047,16 +1058,16 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     const lastTurn = typeof useChat === 'function' ? useChat(snapshot => snapshot?.timeline?.turnOrder?.at?.(-1)) : undefined;
     const turnNumber = typeof turn === 'number' ? turn : turn?.turn;
     const latest = turnNumber === undefined || (lastTurn !== undefined ? lastTurn === turnNumber : state?.turn === turnNumber);
-    if (!state || state.phase !== 'idle' || !Array.isArray(state.skills) || state.skills.length === 0 || !latest) return null;
+    if (!state || String(state.anchor) !== anchor || !Array.isArray(state.skills) || state.skills.length === 0 || !latest) return null;
     async function run(action) {
       setBusy(true);
       try { await action(); } catch { /* the projection is authoritative */ } finally { setBusy(false); }
     }
     const closing = state.skills.filter(row => !row.enabled).length;
     const rows = expanded ? state.skills : state.skills.slice(0, SKILL_ROWS);
-    return h('section', { className: 'dpt-card dpt-skills', 'aria-label': t('skillTitle') },
+    return h('details', { className: 'dpt-card dpt-skills', 'aria-label': t('skillTitle') },
+      h('summary', { className: 'dpt-card-head' }, h(SkillIcon), t('skillTitle'), ' · ', state.skills.length),
       h('header', { className: 'dpt-card-head' },
-        h('span', { className: 'dpt-card-icon' }, h(SkillIcon)),
         h('div', { className: 'dpt-card-titles' },
           h('span', { className: 'dpt-card-title' }, t('skillTitle')),
           h('span', { className: 'dpt-card-sub' }, tf(t, 'skillLoaded', { count: state.skills.length }),
@@ -1123,6 +1134,30 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     const execute = child.remote?.commands?.execute;
     if (typeof execute !== 'function') return Promise.resolve({ ok: false, error: { message: 'unavailable' } });
     return execute(sessionId, `/${CARD_COMMAND_NAME} ` + JSON.stringify({ ...payload, codedReceipt: true }), []);
+  }
+
+  // Multiple SDK calls or a setup guide can publish proposals concurrently. Their event
+  // sequence numbers share one clock within the chat. Archives never compete for input.
+  function useCurrentReview(useProjection, form, sessionId) {
+    const brief = projectionValue(useProjection, 'deepPtcBrief');
+    const project = projectionValue(useProjection, 'deepPtcProject');
+    const cards = projectionValue(useProjection, 'deepPtcCards');
+    const briefOn = useFormValue(form, 'taskBrief') !== false;
+    const projectOn = useFormValue(form, 'projectCards') !== false;
+    const pending = [];
+    if (briefOn && !brief?.revising && brief?.items?.some(i => i.status === 'open' && i.basis !== 'confirmed')) {
+      pending.push({ id: 'brief', seq: brief.versions?.at(-1)?.askedSeq });
+    }
+    const proposal = projectOn && !project?.revising && project?.proposals?.find(row => (row.chat ?? row.session) === sessionId ||
+      (project.guide && row.session === project.guide.childId));
+    if (proposal) pending.push({ id: 'project:' + proposal.id, seq: proposal.reviewOrder ?? proposal.anchor });
+    const latest = new Map((cards?.versions ?? []).map(row => [row.id, row]));
+    for (const row of latest.values()) {
+      if (row.phase === 'open' && (row.review === 'brief' ? briefOn : row.review === 'project' && projectOn)) {
+        pending.push({ id: 'question:' + row.rev, seq: row.askedSeq });
+      }
+    }
+    return pending.sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0))[0]?.id;
   }
 
   // @client conversation-cards
@@ -2370,33 +2405,49 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
       }, props => h(LocalizedSlot, { ...props, component: CardCommandRow })));
     } catch { /* the host shows its generic command row */ }
     try {
-      // Cards render at the end of the latest turn, in the page flow, never over the composer.
-      ctx.inject?.(['remote', 'remote.commands'], child => {
-        child.slots.inject('conversation.chat.turnTail', () => child.slots.register({
-          name: 'conversation.chat.turnTail', id: 'deep-ptc-project-proposals', order: 22, locale: 'deep-ptc',
-          inject: sessionId => ({ sessionId, run: payload => runProjectCommand(child, sessionId, payload), reply: text => sendReply(child, sessionId, text) }),
-        }, props => h(LocalizedSlot, { ...props, form, component: ProjectChatProposals })));
-        child.slots.inject('conversation.chat.turnTail', () => child.slots.register({
-          name: 'conversation.chat.turnTail', id: 'deep-ptc-task-brief', order: 20, locale: 'deep-ptc',
-          inject: sessionId => ({ sessionId, run: payload => runBriefCommand(child, sessionId, payload) }),
-        }, props => h(LocalizedSlot, { ...props, form, component: BriefTail })));
-        // A running turn has no tail yet: its open cards dock above the composer until it ends.
-        child.slots.inject('conversation.input.dock', () => child.slots.register({
-          name: 'conversation.input.dock', id: 'deep-ptc-live-cards', order: 20, locale: 'deep-ptc',
-          inject: sessionId => ({
-            run: (id, action, extra) => runCardCommand(child, sessionId, { id, action, ...extra }),
-            reply: text => sendReply(child, sessionId, text),
-          }),
-        }, props => projectionValue(props.useProjection, 'agentPreset') === 'deep-ptc' ? h(LocalizedSlot, { ...props, form, component: LiveCards }) : null));
-        child.slots.inject('conversation.chat.turnTail', () => child.slots.register({
-          name: 'conversation.chat.turnTail', id: 'deep-ptc-cards', order: 21, locale: 'deep-ptc',
-          inject: sessionId => ({
-            run: (id, action, extra) => runCardCommand(child, sessionId, { id, action, ...extra }),
-            // A reply button sends the choice as the user's next message: it starts a turn when the agent
-            // is idle and steers the current task while it runs.
-            reply: text => sendReply(child, sessionId, text),
-          }),
-        }, props => h(LocalizedSlot, { ...props, form, component: CardTail })));
+      ctx.inject?.(['uiConversation', 'remote', 'remote.commands'], child => {
+        const prefix = 'plugin:dsh-deep-ptc-mode/';
+        function inline(kind, match, component, inject) {
+          child.uiConversation.events.register({
+            kind, target: 'chat', match,
+            start: (_context, match) => match, update: context => context.state,
+            buildViewNode(context) {
+              const first = context.start ?? context.matches[0];
+              if (!first) return null;
+              return { key: context.key, kind, id: context.id, target: 'chat', anchorSeq: first.event.seq,
+                location: first.location, visibility: 'visible', groupTree: 'turn', data: { anchor: context.id } };
+            },
+          });
+          child.slots.inject('conversation.chat.node', () => child.slots.register({
+            name: 'conversation.chat.node', key: kind, locale: 'deep-ptc', inject,
+          }, props => h(LocalizedSlot, { ...props, anchor: props.node.data.anchor, component, form })));
+        }
+        const start = id => ({ id: String(id), role: 'start' });
+        inline('deep-ptc-cards', { [prefix + 'cards']: event => {
+          const r = event.data;
+          if (r?.op === 'phase' && r.next) return start(r.next.rev);
+          return r?.op === 'show' ? start(r.group ?? r.rev) : r?.v === 1 ? start(event.seq) : null;
+        } }, ConversationCards, sessionId => ({
+          sessionId, run: (id, action, extra) => runCardCommand(child, sessionId, { id, action, ...extra }),
+          reply: text => sendReply(child, sessionId, text),
+        }));
+        inline('deep-ptc-task-brief', { [prefix + 'brief']: event => event.data?.rev ? start(event.data.anchor ?? event.data.rev) : null },
+          BriefInline, sessionId => ({ sessionId, run: payload => runBriefCommand(child, sessionId, payload) }));
+        inline('deep-ptc-project-proposals', {
+          [prefix + 'project']: event => event.data?.inlineNew !== false && event.data?.proposals?.length ? start(event.seq) : null,
+          [prefix + 'project-proposal']: event => start(event.data?.anchor ?? event.seq),
+        }, ProjectInline, sessionId => ({ sessionId, run: payload => runProjectCommand(child, sessionId, payload), reply: text => sendReply(child, sessionId, text) }));
+        const skillResult = event => {
+          const blocks = event.data?.message?.content ?? event.data?.content;
+          return Array.isArray(blocks) && blocks.some(row => row.type === 'text' && /^\s*<skill_content\s+name=/u.test(row.text)) ? start(event.seq) : null;
+        };
+        inline('deep-ptc-skills', { 'tool/result': skillResult, 'tool/ptc-dispatch': event => event.data?.name === 'skill' ? skillResult(event) : null },
+          SkillTail, sessionId => ({ setSkill: (name, enabled) => runSkillCommand(child, sessionId, { action: 'set', name, enabled }),
+            setAll: enabled => runSkillCommand(child, sessionId, { action: 'all', enabled }) }));
+        child.slots.inject('conversation.session.header.actions', () => child.slots.register({
+          name: 'conversation.session.header.actions', id: 'deep-ptc-project-sync',
+          inject: sessionId => ({ sessionId, refresh: () => runProjectCommand(child, sessionId, { op: 'refresh' }) }),
+        }, props => h(ProjectSync, { ...props, form })));
       });
     } catch { /* the conversation keeps working without the card */ }
     try {
@@ -2449,15 +2500,6 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     } catch { /* the conversation keeps working without the look */ }
     try {
       ctx.inject?.(['remote', 'remote.commands'], child => {
-        try {
-          child.slots.inject('conversation.chat.turnTail', () => child.slots.register({
-            name: 'conversation.chat.turnTail', id: 'deep-ptc-skills', order: 20, locale: 'deep-ptc',
-            inject: sessionId => ({
-              setSkill: (name, enabled) => runSkillCommand(child, sessionId, { action: 'set', name, enabled }),
-              setAll: enabled => runSkillCommand(child, sessionId, { action: 'all', enabled }),
-            }),
-          }, props => h(LocalizedSlot, { ...props, component: SkillTail })));
-        } catch { /* a broken card must not take the conversation with it */ }
         try {
           // The capsule renders in the composer's own dock, in the page flow.
           child.slots.inject('conversation.composer.dock', () => child.slots.register({

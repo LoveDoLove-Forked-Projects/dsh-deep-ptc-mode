@@ -3,9 +3,9 @@ import { readFileSync, writeFileSync } from 'node:fs';
 const root = new URL('../', import.meta.url);
 const read = path => readFileSync(new URL(path, root), 'utf8').replaceAll('\r\n', '\n');
 const modules = {
-  'conversation-cards': 'const { CardTail, LiveCards, commandError } = createConversationCards({ React, h, tf, commandText, commandCode, useFormValue });',
-  'project-cards': 'const { PROJECT_COMMAND_NAME, runProjectCommand, ProjectView, ProjectChatProposals } = createProjectCards({ React, h, tf, commandError, commandCode, stripCode, projectionValue, openTab: openConversationTab });',
-  'task-brief': 'const { BRIEF_COMMAND_NAME, runBriefCommand, BriefTail, BriefPanelSection } = createTaskBrief({ React, h, tf, commandError, projectionValue, useFormValue });',
+  'conversation-cards': 'const { ConversationCards, DecisionCard, commandError } = createConversationCards({ React, h, tf, useCurrentReview, commandText, commandCode, useFormValue });',
+  'project-cards': 'const { PROJECT_COMMAND_NAME, runProjectCommand, ProjectView, ProjectInline } = createProjectCards({ React, h, tf, useCurrentReview, DecisionCard, commandError, commandCode, stripCode, projectionValue, useFormValue, openTab: openConversationTab });',
+  'task-brief': 'const { BRIEF_COMMAND_NAME, runBriefCommand, BriefInline, BriefPanelSection } = createTaskBrief({ React, h, tf, useCurrentReview, DecisionCard, commandError, projectionValue, useFormValue });',
   styles: '',
 };
 

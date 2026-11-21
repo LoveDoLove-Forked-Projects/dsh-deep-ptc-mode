@@ -1,4 +1,4 @@
-export function createConversationCards({ React, h, tf, commandText, commandCode, useFormValue }) {
+export function createConversationCards({ React, h, tf, useCurrentReview, commandText, commandCode, useFormValue }) {
   const CARD_PHASES = { stopping: 'cardStopping', stopped: 'cardStopped', failed: 'cardFailed', dismissed: 'cardDismissed' };
   // Built-in card layout. The model chooses blocks (lib/card-blocks.mjs); each block has one renderer
   // here, so every card shares one typography, spacing and colour system. Charts carry one series in
@@ -176,7 +176,7 @@ export function createConversationCards({ React, h, tf, commandText, commandCode
       block.label ? h('p', { className: 'dpt-cc-cap' }, h('span', null, block.label)) : null,
       h('div', { className: 'dpt-cc-options' }, ...block.options.map(option => {
         const on = picked.includes(option.value);
-        return h('button', { key: option.value, type: 'button', className: 'dpt-cc-option', disabled,
+        return h('button', { key: typeof option.value === 'symbol' ? ':custom answer' : option.value, type: 'button', className: 'dpt-cc-option', disabled,
           role: block.multiple ? 'checkbox' : 'radio', 'aria-checked': on, 'data-multiple': block.multiple ? '' : undefined,
           onClick: () => toggle(option.value) },
           h('span', { className: 'dpt-cc-option-mark', 'aria-hidden': 'true' }),
@@ -266,11 +266,14 @@ export function createConversationCards({ React, h, tf, commandText, commandCode
     return outcome?.kind === 'error' ? commandText(outcome.text, t) : undefined;
   }
 
+  const needsDecision = card => card.phase === 'open' && !card.result &&
+    (card.kind === 'question' || !!card.actions?.length);
+
   // Why a version cannot take clicks, mirroring archivedReason() in lib/card-state.mjs.
   function archivedReason(state, version, latest) {
     if (latest.get(version.id)?.rev !== version.rev) return 'superseded';
     if (version.phase === 'dismissed') return 'dismissed';
-    if (version.turn !== state.turn) return 'earlier-turn';
+    if (version.turn !== state.turn && !needsDecision(version)) return 'earlier-turn';
     if (version.phase !== 'open') return 'settled';
     return undefined;
   }
@@ -348,6 +351,7 @@ export function createConversationCards({ React, h, tf, commandText, commandCode
   function initialAnswers(card) {
     if (card.result?.answers) return card.result.answers;
     const answers = {};
+    if (card.review) return answers;
     for (const question of card.questions ?? []) if (question.recommended !== undefined) answers[question.id] = question.recommended;
     return answers;
   }
@@ -357,14 +361,15 @@ export function createConversationCards({ React, h, tf, commandText, commandCode
     const lines = (card.questions ?? []).map((question, index) => {
       const answer = answers[question.id];
       const shown = answer === undefined || answer === '' || (Array.isArray(answer) && answer.length === 0) ? t('questionSkipped')
-        : question.type === 'text' ? answer
-          : (Array.isArray(answer) ? answer : [answer]).map(value => question.options.find(option => option.value === value)?.label ?? value).join('、');
+        : answer?.custom ?? (question.type === 'text' ? answer
+          : (Array.isArray(answer) ? answer : [answer]).map(value => question.options.find(option => option.value === value)?.label ?? value).join('、'));
       return `${index + 1}. ${question.prompt}\n   → ${shown}`;
     });
     return `${tf(t, 'questionReplyHead', { title: card.title })}\n${lines.join('\n')}`;
   }
 
-  function QuestionField({ question, value, setValue, disabled, answered }) {
+  const CUSTOM = Symbol('custom answer');
+  function QuestionField({ question, value, setValue, disabled, answered, review, t }) {
     if (question.type === 'text') {
       if (answered) return h('p', { className: 'dpt-cq-answer' }, value || '—');
       return h('textarea', { className: 'dpt-cq-text', rows: 2, value: value ?? '', placeholder: question.placeholder, disabled,
@@ -372,23 +377,41 @@ export function createConversationCards({ React, h, tf, commandText, commandCode
     }
     const block = { name: question.id, options: question.options, multiple: question.type === 'multi' };
     if (answered) {
+      if (value?.custom !== undefined) return h('p', { className: 'dpt-cq-answer' }, value.custom);
       // An answered question shows only what was chosen.
       const picked = new Set(Array.isArray(value) ? value : value === undefined ? [] : [value]);
       return h('div', { className: 'dpt-cc-tags' }, ...question.options.filter(option => picked.has(option.value))
         .map(option => h('span', { key: option.value, className: 'dpt-cc-tag', 'data-tone': 'success' }, option.label)));
     }
-    return h(ChoiceBlock, { block, value, setValue, disabled });
+    if (!review) return h(ChoiceBlock, { block, value, setValue, disabled });
+    const custom = value?.custom !== undefined;
+    const options = [...block.options, { value: CUSTOM, label: t('reviewOther') }];
+    return h(React.Fragment, null,
+      h(ChoiceBlock, { block: { ...block, options }, value: custom ? CUSTOM : value, disabled,
+        setValue: next => {
+          if (next === CUSTOM || (Array.isArray(next) && next.includes(CUSTOM) && !custom)) setValue({ custom: value?.custom ?? '' });
+          else setValue(Array.isArray(next) ? next.filter(v => v !== CUSTOM) : next);
+        } }),
+      custom ? h('textarea', { className: 'dpt-cq-text', autoFocus: true, rows: 2, value: value.custom, maxLength: 1000, disabled,
+        placeholder: t('reviewRewriteHint'), 'aria-label': question.prompt, onChange: e => setValue({ custom: e.target.value }) }) : null);
   }
 
-  function QuestionCard({ card, archived, run, reply, pending, t }) {
-    const [answers, setAnswers] = React.useState(() => initialAnswers(card));
+  function QuestionCard({ card, archived, run, reply, pending, t, onAnswer, kicker, children }) {
+    const [draft, setAnswers] = React.useState(() => initialAnswers(card));
+    const answers = card.result?.answers ?? draft;
     const [message, setMessage] = React.useState();
     const live = archived === undefined;
     const answered = card.phase === 'answered';
-    const missing = (card.questions ?? []).filter(question => question.optional !== true && !present(answers[question.id]));
+    const questions = live && card.review ? card.questions.slice(0, 1) : card.questions ?? [];
+    const missing = questions.filter(question => question.optional !== true && !present(answers[question.id]?.custom?.trim() ?? answers[question.id]));
     async function submit(event) {
       event?.preventDefault?.();
       setMessage(undefined);
+      if (!live || pending || missing.length) return;
+      if (onAnswer) {
+        try { setMessage(await onAnswer(answers.decision)); } catch (error) { setMessage(String(error?.message ?? error)); }
+        return;
+      }
       const result = await run('answer', { answers });
       const error = commandError(result, t);
       if (error !== undefined) { setMessage(error); return; }
@@ -403,20 +426,40 @@ export function createConversationCards({ React, h, tf, commandText, commandCode
       h('header', { className: 'dpt-cc-head' },
         h('span', { className: 'dpt-cc-icon dpt-cq-icon' }, h(QuestionIcon)),
         h('div', { className: 'dpt-cc-titles' },
-          h('span', { className: 'dpt-cq-kicker' }, t('questionKicker')),
+          h('span', { className: 'dpt-cq-kicker' }, t(kicker ?? (card.review === 'brief' ? 'briefClarify' : card.review === 'project' ? 'projectClarify' : 'questionKicker'))),
           h('span', { className: 'dpt-cc-title' }, card.title),
           card.subtitle ? h('span', { className: 'dpt-cc-sub' }, card.subtitle) : null),
         h('span', { className: 'dpt-cc-pill', 'data-phase': status.phase, role: 'status' }, status.text)),
-      h('ol', { className: 'dpt-cq-list' }, ...(card.questions ?? []).map((question, index) => h('li', { key: question.id, className: 'dpt-cq-item' },
-        h('p', { className: 'dpt-cq-prompt' }, h('span', { className: 'dpt-cq-num' }, index + 1), question.prompt,
+      h('ol', { className: 'dpt-cq-list' }, ...questions.map((question, index) => h('li', { key: question.id, className: 'dpt-cq-item' },
+        card.title === question.prompt && onAnswer ? null : h('p', { className: 'dpt-cq-prompt' }, h('span', { className: 'dpt-cq-num' }, index + 1), question.prompt,
           question.optional ? h('span', { className: 'dpt-cq-optional' }, t('questionOptional')) : null),
-        h(QuestionField, { question, value: answers[question.id], answered: answered || (!live && card.result?.answers !== undefined),
-          disabled: pending || !live, setValue: value => { setAnswers(current => ({ ...current, [question.id]: value })); setMessage(undefined); } })))),
+        children,
+        h(QuestionField, { question, value: answers[question.id], answered, disabled: pending || !live, review: card.review, t,
+          setValue: value => { setAnswers({ ...answers, [question.id]: value }); setMessage(undefined); } })))),
       message ? h('p', { className: 'dpt-cc-errors', role: 'alert' }, message) : null,
       live ? h('footer', { className: 'dpt-cc-foot' },
         h('p', { className: 'dpt-cc-note' }, missing.length > 0 ? tf(t, 'questionRemaining', { count: missing.length }) : t('questionReady')),
         h('div', { className: 'dpt-cc-actions' },
           h('button', { type: 'submit', className: 'dpt-cc-btn', 'data-primary': '', disabled: pending || missing.length > 0, 'aria-busy': pending }, t('questionSubmit')))) : null);
+  }
+
+  function DecisionCard({ kind, title, text, review, selected, children, onDecide, outcome, feedback, allowYes = true, t }) {
+    const [busy, setBusy] = React.useState(false);
+    const variants = review?.options;
+    const candidates = variants?.map(option => ({ value: option.value, label: option.label,
+      hint: [option.text !== option.label ? option.text : '', option.hint].filter(Boolean).join(' · ') })) ??
+      [{ value: 'yes', label: text }];
+    const question = { id: 'decision', type: 'single', prompt: review?.question ?? title,
+      options: [...(allowYes ? candidates : []), { value: 'no', label: t('reviewSkip') }] };
+    const value = outcome === 'returned' ? { custom: feedback } : outcome === 'declined' ? 'no' : selected ?? 'yes';
+    const card = { title: question.prompt, review: kind, questions: [question], phase: outcome ? 'answered' : 'open',
+      ...(outcome ? { result: { answers: { decision: value } } } : {}) };
+    async function submit(answer) {
+      setBusy(true);
+      try { return await onDecide(answer); } finally { setBusy(false); }
+    }
+    return h(QuestionCard, { card, archived: outcome, kicker: kind === 'brief' ? 'briefTitle' : 'projectTab',
+      onAnswer: submit, pending: busy, t }, children);
   }
 
   // Inputs restart from the card's own values whenever the model posts a new version.
@@ -468,16 +511,19 @@ export function createConversationCards({ React, h, tf, commandText, commandCode
   }
 
   // Each turn draws the card versions posted in it; only the newest version in the latest turn is live.
-  function CardTail({ turn, useProjection, run, reply, form, t }) {
+  function ConversationCards({ anchor, sessionId, useProjection, run, reply, form, t }) {
+    const current = useCurrentReview(useProjection, form, sessionId);
     const state = useProjection('deepPtcCards');
-    const enabled = useFormValue(form, 'conversationCards') !== false;
+    const cardsOn = useFormValue(form, 'conversationCards') !== false;
+    const briefOn = useFormValue(form, 'taskBrief') !== false;
+    const projectOn = useFormValue(form, 'projectCards') !== false;
     const [busy, setBusy] = React.useState();
-    const turnNumber = typeof turn === 'number' ? turn : turn?.turn;
-    const versions = Array.isArray(state?.versions) ? state.versions : [];
-    const mine = versions.filter(version => turnNumber === undefined ? version.turn === state.turn : version.turn === turnNumber);
-    if (!enabled || mine.length === 0) return null;
-    const latest = new Map();
-    for (const version of versions) if ((latest.get(version.id)?.rev ?? 0) < version.rev) latest.set(version.id, version);
+    const versions = state?.versions ?? [];
+    const latest = new Map(versions.map(version => [version.id, version]));
+    const mine = versions.filter(version => String(version.anchor ?? version.rev) === anchor &&
+      (!version.review || version.phase !== 'open' || current === 'question:' + version.rev) &&
+      (version.review === 'brief' ? briefOn : version.review === 'project' ? projectOn : cardsOn));
+    if (!mine.length) return null;
     const guarded = version => async (action, extra) => {
       setBusy(versionKey(version));
       try { return await run(version.id, action, { rev: version.rev, ...extra }); } catch (error) { return { ok: false, error }; } finally { setBusy(undefined); }
@@ -492,21 +538,5 @@ export function createConversationCards({ React, h, tf, commandText, commandCode
         return h(version.kind === 'question' ? QuestionCard : CardView, props);
       }));
   }
-  // Cards of a running turn, docked above the composer (conversation.input.dock). The host draws a
-  // turn's tail only after the turn ends, so without this a question asked mid-turn stays out of sight
-  // while the model keeps working. Once the turn ends the dock empties and the tail shows the cards.
-  function LiveCards({ useProjection, run, reply, form, t }) {
-    const state = typeof useProjection === 'function' ? useProjection('deepPtcCards') : undefined;
-    const enabled = useFormValue(form, 'conversationCards') !== false;
-    if (!enabled || !state || state.turn === 0 || state.ended === state.turn) return null;
-    const versions = Array.isArray(state.versions) ? state.versions : [];
-    const mine = versions.filter(version => version.turn === state.turn && version.phase !== 'dismissed');
-    if (mine.length === 0) return null;
-    // Every card of the running turn shows at once, laid out as the turn tail will lay it out.
-    const waiting = mine.some(version => version.kind === 'question' && version.phase === 'open');
-    return h('section', { className: 'dpt-cards-live', 'aria-label': t('cardLiveLabel') },
-      waiting ? h('p', { className: 'dpt-cards-live-note', role: 'status' }, t('cardLiveNote')) : null,
-      h(CardTail, { turn: state.turn, useProjection, run, reply, form, t }));
-  }
-  return { CardTail, LiveCards, commandError, layoutSizes };
+  return { ConversationCards, DecisionCard, commandError, layoutSizes };
 }

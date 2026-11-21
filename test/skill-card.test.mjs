@@ -30,7 +30,7 @@ test('skill results and catalog descriptions become a card row', () => {
   assert.equal(state.skills.length, 1);
   assert.deepEqual(state.skills[0], { name: 'office', description: 'Create Office files.', enabled: true, loadedTurn: 1, source: 'tool', callId: 'call-1', seqs: [2] });
   state = foldSkillState(state, turnEnd(1));
-  assert.deepEqual(skillCardView(state), { v: 1, turn: 1, phase: 'idle', skills: [
+  assert.deepEqual(skillCardView(state), { v: 1, anchor: 2, turn: 1, phase: 'idle', skills: [
     { name: 'office', description: 'Create Office files.', enabled: true, loadedTurn: 1 },
   ] });
 });

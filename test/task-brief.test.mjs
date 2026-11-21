@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { installCardWait } from '../lib/card-wait.mjs';
 import { BRIEF_GUIDANCE, applyUpdate, applyUserEdit, blankBrief, coverage, promptText, stateText, stubText, substantive } from '../lib/task-brief.mjs';
 import { BRIEF_COMMAND, BRIEF_EVENT, briefContextText, briefRuntime, cardAnswerText, briefToolDefinition, briefView, foldBrief, install, reminderText,
   sectionText, settleCondensing } from '../lib/brief-context.mjs';
@@ -203,4 +204,139 @@ test('records carry the brief and marks, never the message text', () => {
     items: [{ id: 'G1', section: 'goal', text: '保持原有行为', basis: 'user', quote: '保持原有行为', from: 'm7', status: 'open' }], marks: { m7: { condensed: true, stubSeq: 8 } } } });
   assert.equal(state.messages[0].text, '保持原有行为');
   assert.equal(state.messages[0].condensed, true);
+});
+
+test('brief snapshots replace drafts and retain decisions across turns', () => {
+  const item = basis => ({ id: 'G1', section: 'goal', text: 'Keep this behavior', basis, quote: 'Keep this behavior', from: 'm7', status: 'open' });
+  const record = (rev, turn, items) => ({ type: BRIEF_EVENT, data: { v: 1, rev, updatedTurn: turn, next: { G: 2, C: 1, A: 1, K: 1, O: 1 }, items, marks: {} } });
+  let state = foldBrief(blankBrief(), { type: 'turn/start', data: { turn: 2 } });
+  state = foldBrief(state, record(1, 2, [item('user')]));
+  assert.equal(state.versions.length, 1);
+  assert.equal(state.versions[0].turn, 2);
+  assert.deepEqual(state.versions[0].items.map(row => row.basis), ['user']);
+  assert.deepEqual(state.versions[0].messages, []);
+  // A confirmation adds its own version of the same turn; the tail renders the newest one.
+  state = foldBrief(state, record(2, 2, [item('confirmed')]));
+  assert.deepEqual(state.versions.map(row => row.rev), [2]);
+  assert.equal(state.versions.at(-1).items[0].basis, 'confirmed');
+  // Replaying the same record never duplicates a version.
+  state = foldBrief(state, record(2, 2, [item('confirmed')]));
+  assert.equal(state.versions.length, 1);
+  for (let rev = 3; rev <= 20; rev++) state = foldBrief(state, record(rev, 2 + rev, [item('confirmed')]));
+  assert.equal(state.versions.length, 19, 'the first settled approval remains in history');
+  assert.equal(state.versions.at(-1).rev, 20);
+  assert.equal(briefView(state).versions.length, 19, 'the view carries the history');
+});
+
+test('the root SDK call waits for every brief item and partial edits keep it paused', async () => {
+  const host = fakeHost();
+  const waits = installCardWait(host.ctx, () => () => {});
+  await install(host.ctx, host.records, { waits });
+  const agent = { session: host.session('brief-approval') };
+  const session = agent.session;
+  session.append('turn/start', { turn: 1 });
+  const root = { agent, callId: 'root', signal: AbortSignal.timeout(2000) };
+  const nested = { ...root, callId: 'nested', rootCallId: root.callId, parent: {} };
+  const tool = briefToolDefinition();
+  await tool.execute({ action: 'update', items: ['first', 'second'].map(text => ({ section: 'goal', inferred: true, text })) }, nested);
+  const post = host.listeners.get('tools/post-execute');
+  const pre = host.listeners.get('tools/pre-execute');
+  assert.equal((await pre(nested, () => ({ kind: 'allow' }))).kind, 'deny');
+  assert.equal(await post(nested, {}, () => 'posted'), 'posted');
+  let resumed = false;
+  const posted = post(root, {}, () => { resumed = true; });
+  const confirm = ids => host.handlers.get(BRIEF_COMMAND)({ agent, rawInput: JSON.stringify({ op: 'confirm', ids }) });
+  assert.equal((await confirm(['G1'])).kind, 'success');
+  assert.equal(resumed, false);
+  assert.equal((await confirm(['G2'])).kind, 'success');
+  await posted;
+  assert.equal(resumed, true);
+  assert.equal(host.state(session).versions.length, 2);
+  assert.equal(host.state(session).versions[0].settled, true);
+  await tool.execute({ action: 'update', items: [{ section: 'constraint', inferred: true, text: 'third' }] }, nested);
+  const stop = new AbortController();
+  const interrupted = post({ ...root, signal: stop.signal }, {}, () => 'aborted');
+  stop.abort();
+  assert.equal(await interrupted, 'aborted');
+  assert.equal(host.state(session).items.at(-1).basis, 'inferred', 'cancellation grants no approval');
+  await confirm(['C1']);
+  assert.deepEqual(host.state(session).versions.map(v => v.items[0].id), ['G1', 'G2', 'C1']);
+  assert.deepEqual(host.state(session).versions.map(v => v.anchor), [1, 2, 4]);
+});
+
+test('returning a draft releases its wait and preserves the original review and correction', async () => {
+  const host = fakeHost(), session = host.session('rethink');
+  const messages = [];
+  const agent = { session, steer: msg => messages.push(msg) };
+  await install(host.ctx, host.records);
+  session.append('turn/start', { turn: 1 });
+  const file = text => briefToolDefinition().execute({ action: 'update', items: [{ text, section: 'goal', inferred: true }] }, { agent });
+  await file('First interpretation');
+  const cmd = host.handlers.get(BRIEF_COMMAND);
+  await cmd({ agent, rawInput: JSON.stringify({ op: 'rethink', rev: 1, feedback: 'Which subset?' }) });
+  const returned = host.state(session);
+  assert.equal(returned.items.length, 0);
+  assert.equal(returned.versions[0].feedback, 'Which subset?');
+  assert.equal(returned.versions[0].items[0].text, 'First interpretation');
+  assert.match(messages[0].content[0].text, /task_brief update.*[\s\S]*Which subset\?/u);
+  await file('Corrected interpretation');
+  assert.deepEqual(host.state(session).versions.map(row => row.anchor), [1, 3]);
+});
+
+test('a custom response pauses the queue until the corrected item is presented and decided separately', async () => {
+  const host = fakeHost(), session = host.session('single-reviews');
+  const notices = [];
+  const agent = { session, steer: msg => { notices.push(msg); } };
+  await install(host.ctx, host.records);
+  session.append('turn/start', { turn: 1 });
+  const tool = briefToolDefinition();
+  const update = items => tool.execute({ action: 'update', items }, { agent });
+  const run = payload => host.handlers.get(BRIEF_COMMAND)({ agent, rawInput: JSON.stringify(payload) });
+  await update(['first', 'second', 'third'].map(text => ({ section: 'goal', inferred: true, text })));
+  assert.deepEqual(host.state(session).versions.map(v => v.items.map(i => i.id)), [['G1']]);
+  assert.equal((await run({ op: 'confirm', ids: ['G1', 'G2'] })).kind, 'error');
+  await run({ op: 'rethink', id: 'G1', feedback: 'Across all pages', rev: 1 });
+  assert.deepEqual(host.state(session).items.map(i => i.id), ['G2', 'G3']);
+  assert.equal(host.state(session).versions.at(-1).outcome, 'returned');
+  assert.equal((await run({ op: 'confirm', ids: ['G2'] })).kind, 'error');
+  session.append('user/message', notices.at(-1));
+  await update([{ id: 'G1', text: 'Use all pages', quote: 'Across all pages' }]);
+  const revised = host.state(session).versions.at(-1);
+  assert.equal(revised.anchor, 3);
+  assert.equal(revised.items[0].id, 'G1');
+  assert.notEqual(revised.items[0].basis, 'confirmed');
+  assert.equal((await run({ op: 'confirm', ids: ['G1'], rev: 1 })).kind, 'error');
+  await run({ op: 'confirm', ids: ['G1'], rev: 3 });
+  await run({ op: 'remove', id: 'G2', rev: 4 });
+  await run({ op: 'confirm', ids: ['G3'], rev: 5 });
+  const state = host.state(session);
+  assert.deepEqual(state.versions.map(v => [v.items[0].id, v.outcome]), [
+    ['G1', 'returned'], ['G1', 'confirmed'], ['G2', 'declined'], ['G3', 'confirmed']]);
+  assert.deepEqual(state.items.map(i => i.id), ['G1', 'G3']);
+});
+
+test('task review commits only the explicitly selected wording and preserves the selected version in history', async () => {
+  const host = fakeHost(), session = host.session('wording');
+  const messages = [], agent = { session, steer: m => messages.push(m) };
+  await install(host.ctx, host.records);
+  session.append('turn/start', { turn: 1 });
+  const question = '谁应该收到日报？';
+  const versions = [{ label: '负责人', text: '每日只通知任务负责人。' }, { label: '整个小组', text: '每日通知小组所有成员。', hint: '适合共同跟进' }];
+  const tool = briefToolDefinition();
+  const update = v => tool.execute({ action: 'update', items: [{ section: 'constraint', inferred: true, text: '日报接收范围', question, versions: v }] }, { agent });
+  const cmd = data => host.handlers.get(BRIEF_COMMAND)({ agent, rawInput: JSON.stringify(data) });
+  const invalid = await update([versions[0], versions[0]]);
+  assert.match(invalid.rejected[0], /distinct/u);
+  assert.equal(host.state(session).rev, 0);
+  await update(versions);
+  for (const payload of [{}, { choice: 'unknown' }, { choice: 'v2', rev: 0 }]) {
+    assert.equal((await cmd({ op: 'confirm', ids: ['C1'], rev: 1, ...payload })).kind, 'error');
+  }
+  assert.equal((await cmd({ op: 'confirm', ids: ['C1'], choice: 'v2', rev: 1 })).kind, 'success');
+  const state = host.state(session);
+  assert.equal(state.items[0].text, versions[1].text);
+  assert.equal(state.items[0].basis, 'confirmed');
+  assert.equal(state.versions[0].items[0].review.question, question);
+  assert.equal(state.versions[0].items[0].selected, 'v2');
+  assert.match(messages[0].content[0].text, /整个小组.*每日通知小组所有成员/u);
 });

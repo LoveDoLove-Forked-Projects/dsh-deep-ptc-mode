@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { installCardWait } from '../lib/card-wait.mjs';
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PROJECT_FILE, blankDoc, mergeProposal, ordered, diffItems, parseDoc, promptCards, promptText, removeCard, serializeDoc, writeCard } from '../lib/project-cards.mjs';
 import { createProjectStore } from '../lib/project-store.mjs';
-import { cardsContextText, command, install, projectToolDefinition, sectionText, PROJECT_COMMAND, PROJECT_TOOL } from '../lib/project-context.mjs';
+import { blankProject, cardsContextText, command, foldProject, install, projectToolDefinition, sectionText, PROJECT_COMMAND, PROJECT_EVENT, PROPOSAL_EVENT, PROJECT_TOOL } from '../lib/project-context.mjs';
 import { apply as applyProjectTool } from '../lib/project-tool.mjs';
 import { deriveDeepPtc } from '../lib/model.mjs';
 import snapshot from '../lib/preset.json' with { type: 'json' };
@@ -22,6 +23,25 @@ test('guide progress text retains running status until the host ends its turn', 
   state = fold(state, 'running');
   assert.equal(state.guide.pending, true);
   assert.equal(fold(state, 'reset').guide, undefined);
+});
+
+test('a settled proposal keeps its turn and survives later workspace snapshots', () => {
+  const record = { v: 1, id: 'P1', card: 'c1', title: 'Runtime', outcome: 'approved', created: false, change: 'v2 · c1 · ~R1',
+    before: [{ id: 'R1', text: 'Node 22' }], after: [{ id: 'R1', text: 'Node 24' }] };
+  let state = foldProject(blankProject(), { type: 'turn/start', data: { turn: 4 } });
+  state = foldProject(state, { type: PROPOSAL_EVENT, data: record });
+  assert.equal(state.settled.length, 1);
+  assert.equal(state.settled[0].turn, 4, 'the approval is stamped with the turn it happened in');
+  state = foldProject(state, { type: PROJECT_EVENT, data: { v: 1, cards: [], path: 'PROJECT-CARDS.md' } });
+  assert.equal(state.turn, 4);
+  assert.equal(state.settled.length, 1, 'a workspace snapshot keeps the archived approval');
+  assert.equal(foldProject(state, { type: PROPOSAL_EVENT, data: { v: 1, id: 'PX', outcome: 'unknown' } }), state,
+    'a malformed record changes nothing');
+  for (let index = 2; index <= 30; index++) {
+    state = foldProject(state, { type: PROPOSAL_EVENT, data: { ...record, id: 'P' + index, outcome: 'rejected' } });
+  }
+  assert.equal(state.settled.length, 30, 'the earliest receipt remains in history');
+  assert.equal(state.settled.at(-1).id, 'P30');
 });
 
 test('competing proposals stay independent, can rebase and require fresh approval', async () => {
@@ -148,14 +168,19 @@ function fakeHost(deep = true) {
   const state = new Map();
   const handlers = new Map();
   const tools = new Map();
+  let projection;
   const ctx = {
     logger: { warn() {} }, effect(register) { const dispose = register(); return () => dispose?.(); },
     get: name => name === 'agentPresets' ? { presetForSession: () => deep ? 'deep-ptc' : 'standard' } : undefined,
-    sessionProjections: { async register(definition) { return { stateOf: session => state.get(session), dispose() {} }; } },
+    sessionProjections: { async register(definition) { projection = definition; return { stateOf: session => state.get(session), dispose() {} }; } },
     commands: { register(definition) { handlers.set(definition.name, definition.handler); } },
     tools: { register(definition) { tools.set(definition.name, definition); return () => tools.delete(definition.name); } },
   };
-  const records = async () => (session, _type, value) => { JSON.stringify(value); state.set(session, value); };
+  // Fold records the way the host does, so a settled approval stays beside the latest workspace snapshot.
+  const records = async () => (session, type, value) => {
+    const current = state.get(session) ?? projection.init();
+    state.set(session, projection.apply(current, { type, data: value }));
+  };
   return { ctx, state, handlers, tools, records };
 }
 
@@ -369,4 +394,80 @@ test('project cards and conversation cards are not capped at a small number', ()
     doc = result.doc;
   }
   assert.equal(doc.cards.length, 120);
+});
+
+test('an approval from another project view wakes its author and archives the preview in the originating conversation', async () => {
+  const { project, store } = workspace();
+  const host = fakeHost();
+  const hooks = new Map();
+  host.ctx.on = (name, fn) => hooks.set(name, fn);
+  const waits = installCardWait(host.ctx, () => () => {});
+  const messages = [];
+  const author = { session: { id: 'author', header: { cwd: project } }, steer: m => messages.push(m) };
+  const reviewer = { session: { id: 'reviewer', header: { cwd: project } }, steer() {} };
+  const registry = { list: () => [author, reviewer], get: id => [author, reviewer].find(a => a.session.id === id) };
+  const get = host.ctx.get;
+  host.ctx.get = name => name === 'agents' ? registry : get(name);
+  await install(host.ctx, host.records, { waits, store });
+  host.state.set(author.session, { ...blankProject(), turn: 3 });
+  host.state.set(reviewer.session, { ...blankProject(), turn: 8 });
+  for (const op of ['reject', 'approve']) {
+    const exec = { agent: author, callId: op, signal: AbortSignal.timeout(2000) };
+    const { proposal } = await projectToolDefinition().execute({ action: 'propose', title: 'Runtime', items: ['Node'] }, exec);
+    let resumed = false;
+    const wait = hooks.get('tools/post-execute')(exec, {}, () => { resumed = true; });
+    await Promise.resolve();
+    assert.equal(resumed, false);
+    const applied = await host.handlers.get(PROJECT_COMMAND)({ agent: reviewer, rawInput: JSON.stringify({ op, proposal, serverNotice: true }) });
+    assert.equal(applied.kind, 'success');
+    await wait;
+    const row = host.state.get(author.session).settled.at(-1);
+    assert.deepEqual([row.turn, row.id, row.after[0].id], [3, proposal, 'R1']);
+    assert.equal(host.state.get(reviewer.session).settled.length, 0);
+    assert.match(messages.at(-1).content[0].text, new RegExp(op));
+  }
+});
+
+test('approving an edited proposal writes exactly the edited rows and keeps them in its receipt', async () => {
+  const { project, store } = workspace(), host = fakeHost();
+  await install(host.ctx, host.records, { store });
+  const session = { id: 'edit', header: { cwd: project } }, agent = { session };
+  const { proposal } = await projectToolDefinition().execute({ action: 'propose', title: 'Draft', items: ['Original'] }, { agent });
+  const edit = { title: 'Revised', category: 'workflow', items: [{ text: 'Selected records only' }] };
+  const result = await host.handlers.get(PROJECT_COMMAND)({ agent, rawInput: JSON.stringify({ op: 'approve', proposal, edit }) });
+  assert.equal(result.kind, 'success');
+  const saved = store.read(store.target(project)).doc.cards[0];
+  assert.equal(saved.title, edit.title);
+  assert.equal(saved.items[0].text, edit.items[0].text);
+  assert.deepEqual(host.state.get(session).settled[0].after, saved.items);
+});
+
+test('each project version rebases from the same original card and only the reviewed delta is written', async () => {
+  const { project, store } = workspace(), host = fakeHost();
+  await install(host.ctx, host.records, { store });
+  const path = store.target(project), session = { id: 'versions', header: { cwd: project } }, agent = { session };
+  const run = data => host.handlers.get(PROJECT_COMMAND)({ agent, rawInput: JSON.stringify({ path, baseVersion: host.state.get(session)?.fileVersion ?? null, ...data }) });
+  await run({ op: 'submit', title: 'Report', items: ['Daily', 'Keep source'] });
+  const card = store.read(path).doc.cards[0].id;
+  const question = 'Which report schedule should we keep?';
+  const { proposal } = await projectToolDefinition().execute({ action: 'propose', card, question, versions: [
+    { label: 'Hourly', items: [{ id: 'R1', text: 'Every hour' }] },
+    { label: 'Weekly', hint: 'Include a weekly digest', title: 'Digest', category: 'workflow', items: [{ id: 'R1', text: 'Every Friday' }], remove: ['R2'] },
+  ] }, { agent });
+  assert.equal((await run({ op: 'approve', proposal })).kind, 'error');
+  assert.equal((await run({ op: 'approve', proposal, choice: 'v3' })).kind, 'error');
+  await run({ op: 'submit', card, title: 'Report', baseRev: 1, items: [{ id: 'R1', text: 'Daily' }, { id: 'R2', text: 'Keep source' }, { text: 'Preserve links' }] });
+  assert.equal((await run({ op: 'approve', proposal, choice: 'v2' })).kind, 'error');
+  assert.equal((await run({ op: 'rebase', proposal })).kind, 'success');
+  const rebased = store.proposals(path)[0];
+  assert.deepEqual(rebased.review.options.map(o => o.preview.map(i => i.text)), [
+    ['Every hour', 'Keep source', 'Preserve links'], ['Every Friday', 'Preserve links'] ]);
+  assert.equal((await run({ op: 'approve', proposal: rebased.id, choice: 'v2' })).kind, 'success');
+  const saved = store.read(path).doc.cards[0];
+  assert.equal(saved.title, 'Digest');
+  assert.equal(saved.category, 'workflow');
+  assert.deepEqual(saved.items.map(i => i.text), ['Every Friday', 'Preserve links']);
+  const receipt = host.state.get(session).settled.at(-1);
+  assert.equal(receipt.review.question, question);
+  assert.equal(receipt.selected, 'v2');
 });

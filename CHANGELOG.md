@@ -1,5 +1,31 @@
 # Changelog
 
+## 2.3.4 — 2026-11-21
+
+- 任务条目与项目提案支持模型拟定的问题和多个候选版本。每个选项带有独立内容与可选说明，用户提交后只采用选中的版本，也可自填意见让模型重拟。
+- Task and project reviews support model-authored questions and selectable candidate drafts. The chosen version is applied and recorded in its original conversation card.
+
+## 2.3.3 — 2026-11-21
+
+- 本次任务逐条询问，特点卡片逐张询问。选择「按此设置」「不设置」或最后一项「其他：填写我的想法」。自填意见退回模型重拟，修订稿另起一张提问卡确认，保留每次决定。任务与项目的多题澄清依次显示。
+- Task items and project proposals are reviewed individually in the transcript. Custom input requests a revision and fresh approval. Each decision keeps its own record.
+
+## 2.3.2 — 2026-11-21
+
+- 展示卡、提问卡、任务卡和特点提案在产生时插入对话正文，随消息滚动。处理结果在原位置留档。任务卡的逐项操作常显，支持退回并请模型列出可能的理解。任务和项目设定有歧义时可以直接询问具体选项，接受自定义解释，再整理草案。特点提案支持修改后批准。
+- Cards render inline at their original conversation event. Task and project clarification cards support concrete alternatives and custom answers. Task reviews expose per-item actions and a request for clarification. Project proposals can be edited before approval.
+
+## 2.3.1 — 2026-11-21
+
+- 审批卡进入主对话：任务卡和特点卡片提案在运行中一创建就停靠在输入框上方，不必打开侧边面板或特点卡片页。
+- 审批完成后卡片不消失：任务卡确认后、提案批准或驳回后转为只读归档卡，留在该轮对话里，刷新和重开仍在；同轮多次确认分别保留。
+- 提问、按钮选择和审批在当前工具调用结束前等待结果。中断后未处理的请求仍在主对话可操作，纯展示卡继续直接返回。
+- 侧栏「本次任务」仍是信息展示，「特点卡片」页仍是汇总与编辑补充。
+
+- Approval cards move into the main conversation: the task brief and project card proposals dock above the composer as soon as they exist, without opening the side panel or the Project cards view.
+- Settled cards stay: a confirmed brief and an approved or rejected proposal become read-only archived cards in that turn, still there after a refresh or restart; successive approvals within one turn keep separate receipts.
+- The Task brief section stays informational, and the Project cards view stays the summary and editing supplement.
+
 ## 2.3.0 — 2026-11-20
 
 - 深度创造模式在侧栏有了独立分区，新增「虚拟 DSH 环境」：一键启动与当前宿主版本、插件、Skill 和设置一致的全新 DSH，不含会话、工作区和记忆，在右侧栏打开。启动进度显示在卡片里，可随时停止。登录凭据在启动时从当前 DSH 复制，停止时最先删除；临时目录在停止时清理，残留在下次启动时清除。
