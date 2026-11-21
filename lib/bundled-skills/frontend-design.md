@@ -13,4 +13,4 @@
 
 将同一套数据做成两种页面时：后台列表优先把名称和状态放一行，数值列用等宽数字，筛选放在列表上方；公开展示页先决定访客要理解的主张与代表图，再确定行动按钮的位置。可在浏览器用 375px 与 1280px 宽度检查主操作和焦点顺序。
 
-本篇针对 Deep PTC 编写，视觉设计参考 [Anthropic 官方 frontend-design](https://github.com/anthropics/skills/blob/main/skills/frontend-design/SKILL.md)。
+配色、字体、间距和明暗主题等视觉方向加载 `deep-ptc-ui-visual-design`。本篇针对 Deep PTC 编写，视觉设计参考 [Anthropic 官方 frontend-design](https://github.com/anthropics/skills/blob/main/skills/frontend-design/SKILL.md)。

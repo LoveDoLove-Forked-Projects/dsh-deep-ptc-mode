@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.4.1 — 2026-11-21
+
+- 侧栏不再忽上忽下：子代理区块常驻，空时一行写「无」；后台任务只列出运行超过 1.5 秒的任务（实测一个会话里六成命令在 1.5 秒内结束），结束后原位停留几秒再离开，宿主提前移除的任务也一样；运行中与已结束的数量写在标题行，点击查看最近结束的任务。命令只显示第一行，时间列宽度固定，执行环境按钮按文字宽度排布。
+- 新增内置 Skill `ui-visual-design`（界面视觉设计），附可运行的明暗变量与组件示例页；`frontend-design` 指向它。
+- 中文 README 开头改为介绍 2.4 的任务流程。
+
+- A steady side panel: Subagents is always present, one line while empty; background jobs list only jobs running longer than 1.5 s (60% of commands in a measured session finished sooner), finished rows stay briefly in place even when the host drops them at once, and the header carries running and finished counts that open the recently finished list. Commands show their first line, the time column keeps its width, and the environment switch sizes buttons by label.
+- New built-in skill `ui-visual-design` with a runnable light/dark variables and components page; `frontend-design` points to it.
+- The Chinese README opens with the 2.4 task flow.
+
 ## 2.4.0 — 2026-11-21
 
 - 本次任务有了完整的生命周期：一次整理出的条目在同一张卡里逐条确认，确定后下一条立刻出现在原位置，也可以「其余全部按此设置」一次确认；审批结束后卡片折叠成一行摘要。确认后的任务显示在输入框上方、与计划同一位置，一行写明当前任务和验收进度，展开即是可勾选的规划；侧边面板不再显示本次任务。

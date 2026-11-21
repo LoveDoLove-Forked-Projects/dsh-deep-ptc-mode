@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>变量与组件示例</title>
+<style>
+/* One set of variables; components below only read them. Light on :root, dark re-assigns the same names. */
+:root {
+  --bg: #f6f7f9; --surface: #ffffff; --line: #e3e6ec;
+  --ink: #141a24; --ink-2: #4b5565; --ink-3: #6b7486;
+  --accent: #2f6fdb; --accent-ink: #ffffff;
+  --good: #11804a; --warn: #a85f00; --bad: #c3362b;
+  --radius: 10px; --gap: 12px;
+  --font: "Inter", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1216; --surface: #171b21; --line: #2a303a;
+  --ink: #e7eaf0; --ink-2: #b2b9c6; --ink-3: #8a93a3;
+  --accent: #6a9cf2; --accent-ink: #0f1216;
+  --good: #3fbf7f; --warn: #e0a040; --bad: #ef6a5f; color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --bg: #0f1216; --surface: #171b21; --line: #2a303a;
+  --ink: #e7eaf0; --ink-2: #b2b9c6; --ink-3: #8a93a3;
+  --accent: #6a9cf2; --accent-ink: #0f1216;
+  --good: #3fbf7f; --warn: #e0a040; --bad: #ef6a5f; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px max(16px, env(safe-area-inset-left)); background: var(--bg); color: var(--ink); font: 14px/1.65 var(--font); }
+main { max-width: 760px; margin: 0 auto; display: grid; gap: 20px; }
+header { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+h1 { margin: 0; font-size: 24px; line-height: 1.3; }
+h2 { margin: 0 0 8px; font-size: 13px; letter-spacing: .04em; color: var(--ink-3); font-weight: 600; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+.scale { display: grid; gap: 4px; }
+.scale span { color: var(--ink-2); }
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.swatch { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; font-size: 12px; }
+.swatch i { display: block; height: 36px; }
+.swatch b { display: block; padding: 4px 8px; font-weight: 500; color: var(--ink-2); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+button { font: inherit; font-size: 13px; height: 32px; padding: 0 14px; border-radius: 8px; cursor: pointer; transition: background-color 150ms cubic-bezier(.22,1,.36,1); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.primary { border: 0; background: var(--accent); color: var(--accent-ink); }
+.secondary { border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+.quiet { border: 0; background: transparent; color: var(--ink-3); }
+.status { display: grid; gap: 6px; }
+.status li { display: flex; align-items: center; gap: 8px; min-height: 28px; list-style: none; }
+.status ul { margin: 0; padding: 0; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); flex: none; }
+.dot[data-s="good"] { background: var(--good); } .dot[data-s="warn"] { background: var(--warn); } .dot[data-s="bad"] { background: var(--bad); }
+.name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono); font-size: 12.5px; }
+.time { min-width: 4.5em; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-3); font-size: 12px; }
+.toggle { display: inline-flex; gap: 2px; padding: 2px; border-radius: 9px; background: var(--line); }
+.toggle button { height: 26px; padding: 0 10px; border: 0; background: transparent; color: var(--ink-2); }
+.toggle button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>变量与组件示例</h1>
+    <div class="toggle" role="group" aria-label="主题">
+      <button type="button" data-mode="auto" aria-pressed="true">跟随系统</button>
+      <button type="button" data-mode="light" aria-pressed="false">浅色</button>
+      <button type="button" data-mode="dark" aria-pressed="false">深色</button>
+    </div>
+  </header>
+
+  <section class="panel">
+    <h2>颜色：底色、表面、三级文字、分隔线、强调色；语义色单独</h2>
+    <div class="swatches">
+      <div class="swatch"><i style="background:var(--bg)"></i><b>--bg</b></div>
+      <div class="swatch"><i style="background:var(--surface)"></i><b>--surface</b></div>
+      <div class="swatch"><i style="background:var(--ink)"></i><b>--ink</b></div>
+      <div class="swatch"><i style="background:var(--ink-3)"></i><b>--ink-3</b></div>
+      <div class="swatch"><i style="background:var(--accent)"></i><b>--accent</b></div>
+      <div class="swatch"><i style="background:var(--good)"></i><b>--good</b></div>
+      <div class="swatch"><i style="background:var(--warn)"></i><b>--warn</b></div>
+      <div class="swatch"><i style="background:var(--bad)"></i><b>--bad</b></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>字号阶梯：一页只用这几档</h2>
+    <div class="scale">
+      <div style="font-size:24px;line-height:1.3">24 · 页面标题</div>
+      <div style="font-size:16px">16 · 区块标题</div>
+      <div style="font-size:14px">14 · 正文 <span>行高 1.65，约 65 字一行</span></div>
+      <div style="font-size:12px;color:var(--ink-3)">12 · 注释与次要信息</div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>按钮层级：一个主操作</h2>
+    <div class="row">
+      <button type="button" class="primary">保存修改</button>
+      <button type="button" class="secondary">预览</button>
+      <button type="button" class="quiet">取消</button>
+    </div>
+  </section>
+
+  <section class="panel status">
+    <h2>稳定的状态行：固定行高，时间列等宽且有最小宽度</h2>
+    <ul>
+      <li><span class="dot" data-s="good"></span><span class="name">npm run build</span><span class="time" id="t1">12 秒</span></li>
+      <li><span class="dot" data-s="warn"></span><span class="name">pytest -k slow_suite --maxfail=1</span><span class="time" id="t2">1 分 05 秒</span></li>
+      <li><span class="dot" data-s="bad"></span><span class="name">deploy staging</span><span class="time">失败</span></li>
+    </ul>
+  </section>
+</main>
+<script>
+// Theme toggle: "auto" removes the attribute so prefers-color-scheme decides.
+for (const button of document.querySelectorAll('.toggle button')) {
+  button.addEventListener('click', () => {
+    const mode = button.dataset.mode;
+    if (mode === 'auto') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', mode);
+    for (const other of document.querySelectorAll('.toggle button')) other.setAttribute('aria-pressed', String(other === button));
+  });
+}
+// Ticking durations: the column keeps its width while the digits change.
+let seconds = 12;
+setInterval(() => {
+  seconds += 1;
+  document.getElementById('t1').textContent = seconds + ' 秒';
+  document.getElementById('t2').textContent = '1 分 ' + String((5 + seconds - 12) % 60).padStart(2, '0') + ' 秒';
+}, 1000);
+</script>
+</body>
+</html>

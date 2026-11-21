@@ -1,5 +1,13 @@
 # Deep PTC 测试报告 / Test report
 
+## 2.4.1 · 2026-11-21
+
+- Windows、Node 24：328 项自动化测试通过，`npm run check` 通过。后台任务测试改为覆盖：不足 1.5 秒的任务不显示、首次看到时已结束的任务不弹出、按开始时间排序、超过 4 条时的「另有」行、标题行计数与失败数、点击查看最近结束的任务，以及宿主在运行中移除的任务以「已结束」原位停留。
+- DSH 桌面版 0.2.2-rc.5：让模型依次运行三条 echo 与 sleep 4/6/8。快速命令不再出现在列表里；运行较久的任务在 1.5 秒后出现，结束后变为「已完成」或「已结束」停留约 4 秒再离开；标题行始终是一行；点击「已结束」展开最近任务。执行环境四个按钮完整显示。
+
+- Windows and Node 24: 328 automated tests and `npm run check` pass. The background job tests now cover hiding jobs under 1.5 s, not popping in jobs already finished when first seen, start order, the overflow line past 4 rows, header and failure counts, the recently finished list, and a job the host drops while running staying briefly as ended.
+- DSH desktop 0.2.2-rc.5 with three echo commands and sleep 4/6/8: quick commands no longer appear; longer jobs appear after 1.5 s, turn completed or ended and stay about 4 s before leaving; the header stays one line; clicking the finished count opens the recent jobs. All four environment buttons show in full.
+
 ## 2.4.0 · 2026-11-21
 
 - Windows、Node 24：328 项自动化测试通过，`npm run check` 通过。新增测试覆盖展示卡分组（回复文字、交互卡和新一轮会断开分组）、同一张卡内逐条审批、退回后原卡等待重拟、「其余全部按此设置」、完成与放弃归档、模型在验收未勾完时不能归档、归档后原话不再参与覆盖检查、T 编号记录的读写与只给模型最近 8 条，以及输入框上方的任务条。
