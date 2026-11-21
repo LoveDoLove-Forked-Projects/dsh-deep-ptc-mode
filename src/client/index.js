@@ -194,8 +194,8 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
   }
   Object.assign(dictionaries.zh, {
     visualEffects: '界面特效', visualEffectsHint: '使用外部主题或 UI 插件时，建议关闭此开关。',
-    jobsTitle: '后台任务', jobsEmpty: '本会话暂无后台任务。', jobsMore: '另有 {count} 个任务',
-    jobRunning: '运行中', jobStopping: '正在停止', jobCompleted: '已完成', jobKilled: '已取消', jobFailed: '已失败',
+    jobsTitle: '后台任务', jobsEmpty: '本会话暂无后台任务。', jobsMore: '另有 {count} 个在运行', jobsRunningCount: '{count} 运行中', jobsDoneCount: '{count} 已结束', jobsFailedCount: '{count} 失败', jobsShowRecent: '查看最近结束的任务', jobsHideRecent: '收起最近结束的任务',
+    jobRunning: '运行中', jobStopping: '正在停止', jobCompleted: '已完成', jobEnded: '已结束', jobKilled: '已取消', jobFailed: '已失败',
     toolReset: '重载所有工具状态', toolResetShort: '重载', toolsOk: '正常', sideNone: '无', sshNone: '未配置', toolResetBusy: '正在重载…', toolResetDone: '本对话工具状态已重载。',
     toolResetFailed: '未能重载工具状态。', toolResetUnavailable: '当前会话无法调用工具重载命令。',
     commandNoSession: '当前没有活动对话。', commandWrongMode: '该功能仅在深度 PTC 会话中可用。', commandInvalidSkill: '无效的 Skill 卡片操作。',
@@ -204,8 +204,8 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
   });
   Object.assign(dictionaries.en, {
     visualEffects: 'Visual effects', visualEffectsHint: 'Keep this off when using an external theme or UI plugin.',
-    jobsTitle: 'Background jobs', jobsEmpty: 'No background jobs in this conversation.', jobsMore: '{count} more jobs',
-    jobRunning: 'Running', jobStopping: 'Stopping', jobCompleted: 'Completed', jobKilled: 'Canceled', jobFailed: 'Failed',
+    jobsTitle: 'Background jobs', jobsEmpty: 'No background jobs in this conversation.', jobsMore: '{count} more running', jobsRunningCount: '{count} running', jobsDoneCount: '{count} finished', jobsFailedCount: '{count} failed', jobsShowRecent: 'Show recently finished jobs', jobsHideRecent: 'Hide recently finished jobs',
+    jobRunning: 'Running', jobStopping: 'Stopping', jobCompleted: 'Completed', jobEnded: 'Ended', jobKilled: 'Canceled', jobFailed: 'Failed',
     toolReset: 'Reload all tool states', toolResetShort: 'Reload', toolsOk: 'OK', sideNone: 'None', sshNone: 'None configured', toolResetBusy: 'Reloading…', toolResetDone: 'Tool states reloaded for this conversation.',
     toolResetFailed: 'Could not reload tool states.', toolResetUnavailable: 'The reload command is unavailable in this conversation.',
     commandNoSession: 'No active conversation.', commandWrongMode: 'This command is available in Deep PTC sessions only.', commandInvalidSkill: 'Invalid skill card command.',
@@ -223,6 +223,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     'skillDesc:deep-ptc-dsh-operations': 'DSH 与深度 PTC 操作导航：选工具、Skill、卡片和任务状态，哪些卡片要等你回答，审批与失效工具。',
     'skillDesc:deep-ptc-local-web-testing': '在真实浏览器里验证本地网页交互：定位控件、触发操作、核对可见结果和请求次数。',
     'skillDesc:deep-ptc-frontend-design': '实现前端页面和可靠的交互状态：排版、响应式、表单和过期请求，附可运行示例。',
+    'skillDesc:deep-ptc-ui-visual-design': '界面视觉设计：沿用已有设计系统，定颜色、字体、间距与明暗变量，理清层级，避免布局跳动和模板味，附可运行的变量与组件示例。',
     'skillDesc:deep-ptc-primary-source-research': '用原始资料核验主张、数据、版本和出处，附网页段落定位器。',
     'skillDesc:deep-ptc-office-delivery': '交付可编辑的办公文件并跨文件对账，附 CSV 转 Excel 和 Word 月报生成器。',
     'skillDesc:deep-ptc-scientific-figures': '把实验数据做成科学图、统计表和结果卡片，处理单位、误差和缺失值。',
@@ -392,7 +393,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     locationHint: "「侧边栏」把整个深度 PTC 面板放进右侧栏的页签，点胶囊即打开；「对话区侧边」保持面板贴在对话旁边。",
     locationBetter: "已检测到 dsh-better-sidebar：面板作为它的页面打开，也可以放进它的底部工作台。",
     cardTotal: '合计', cardStep_done: '已完成', cardStep_active: '进行中', cardStep_todo: '待办', cardStep_failed: '失败',
-    agentsTitle: '子代理',
+    agentsTitle: '子代理', agentsCount: '共 {count} 个',
     agentRunning: '运行中', agentCompleted: '已完成', agentIdle: '空闲', agentExternal: '外部',
     agentOpen: '在右侧栏打开这个子代理的对话',
     sideTitle: '深度 PTC', toolsSection: '工具状态', envAuto: '自动', envForNew: '新会话生效', envThisSession: '本会话保持创建时的环境。',
@@ -431,6 +432,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     'skillDesc:deep-ptc-dsh-operations': 'Navigate DSH and Deep PTC: tools, skills, cards and task state; which cards wait for you; approvals and quarantined tools.',
     'skillDesc:deep-ptc-local-web-testing': 'Verify a local web interaction in a real browser: find controls, act, check what you see and how many requests ran.',
     'skillDesc:deep-ptc-frontend-design': 'Build frontend pages with reliable interaction states: layout, responsive design, forms and stale requests, with a runnable example.',
+    'skillDesc:deep-ptc-ui-visual-design': 'Interface visual design: reuse the existing system, define colour, type, spacing and light/dark variables, set hierarchy, keep layouts steady and avoid template looks, with a runnable example.',
     'skillDesc:deep-ptc-primary-source-research': 'Check claims, numbers, versions and citations against primary sources, with a web passage locator.',
     'skillDesc:deep-ptc-office-delivery': 'Deliver editable Office files with cross-file reconciliation, with a CSV to Excel and Word report generator.',
     'skillDesc:deep-ptc-scientific-figures': 'Turn experimental data into scientific figures, statistics tables and result cards, with units, error bars and missing values.',
@@ -599,7 +601,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     locationHint: "Sidebar puts the whole Deep PTC panel in a right-sidebar tab that the capsule opens; Beside conversation keeps it next to the chat.",
     locationBetter: " dsh-better-sidebar is loaded: the panel opens as one of its pages and can also go in its bottom workbench.",
     cardTotal: 'Total', cardStep_done: 'Done', cardStep_active: 'In progress', cardStep_todo: 'To do', cardStep_failed: 'Failed',
-    agentsTitle: 'Subagents',
+    agentsTitle: 'Subagents', agentsCount: '{count} total',
     agentRunning: 'Running', agentCompleted: 'Done', agentIdle: 'Idle', agentExternal: 'External',
     agentOpen: 'Open this subagent in the right sidebar',
     sideTitle: 'Deep PTC', toolsSection: 'Tool state', envAuto: 'Auto', envForNew: 'for new sessions', envThisSession: 'This session keeps the environment it was created with.',
@@ -1461,48 +1463,108 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
       note ? h('p', { className: 'dpt-side-note', role: 'status', 'data-tone': message?.tone }, note) : null);
   }
 
+  // Most jobs are commands that settle in well under a second (half of them in a real session took
+  // under 0.5 s). Listing each one made the panel jump on every command, so the list holds only jobs
+  // that run long enough to matter, keeps a finished row briefly in place, and leaves the counts to
+  // the section header, which never changes height.
+  const JOB_SHOW_AFTER = 1500;
+  const JOB_LINGER = 4000;
+  const JOB_ROWS = 4;
+  const JOB_MEMORY = 40;
+  const LIVE_JOB = new Set(['running', 'stopping']);
   const JOB_STATUS = new Map([
     ['running', 'jobRunning'], ['stopping', 'jobStopping'], ['completed', 'jobCompleted'],
-    ['killed', 'jobKilled'], ['failed', 'jobFailed'],
+    ['killed', 'jobKilled'], ['failed', 'jobFailed'], ['ended', 'jobEnded'],
   ]);
-  const JOB_PREVIEW_LIMIT = 6;
-  const ACTIVE_JOB_LIMIT = 5;
-  const FINISHED_JOB_LIMIT = 3;
 
-  function BackgroundJobs({ jobs, t }) {
-    const active = [];
-    const finished = [];
-    for (const job of jobs ?? []) {
-      if (job.status === 'running' || job.status === 'stopping') active.push(job);
-      else if (JOB_STATUS.has(job.status)) finished.push(job);
+  /**
+   * What one panel view knows about this session's jobs. The desktop roster drops a job the moment it
+   * settles, and its timestamps come from another clock, so the view keeps its own record:
+   *   jobs   the last row of every job seen (a live job that leaves the roster becomes `ended`);
+   *   ended  when this view saw a live job stop running, on the view's clock;
+   *   shown  the jobs that already had a row, which keep it until they leave.
+   */
+  function jobMemory() {
+    return { jobs: new Map(), ended: new Map(), shown: new Set() };
+  }
+
+  function rememberJobs(memory, roster, now) {
+    const incoming = new Set();
+    for (const job of roster ?? []) {
+      incoming.add(job.id);
+      const before = memory.jobs.get(job.id);
+      if (!LIVE_JOB.has(job.status) && before !== undefined && LIVE_JOB.has(before.status)) memory.ended.set(job.id, now);
+      memory.jobs.set(job.id, job);
     }
-    active.sort((left, right) => left.startedAt - right.startedAt);
-    finished.sort((left, right) =>
-      (right.finishedAt ?? right.startedAt) - (left.finishedAt ?? left.startedAt) || left.startedAt - right.startedAt);
+    for (const [id, job] of memory.jobs) {
+      if (incoming.has(id) || !LIVE_JOB.has(job.status)) continue;
+      memory.jobs.set(id, { ...job, status: 'ended' });
+      memory.ended.set(id, now);
+    }
+    const settled = [...memory.jobs.values()].filter(job => !LIVE_JOB.has(job.status));
+    for (const job of settled.slice(0, Math.max(0, settled.length - JOB_MEMORY))) {
+      memory.ended.delete(job.id); memory.jobs.delete(job.id); memory.shown.delete(job.id);
+    }
+    return [...memory.jobs.values()];
+  }
 
-    const eligible = [...active.slice(0, ACTIVE_JOB_LIMIT), ...finished.slice(0, FINISHED_JOB_LIMIT)];
-    const total = active.length + finished.length;
-    // Overflow itself occupies one of the six positions, including overflow from either status cap.
-    const hasOverflow = total > eligible.length || total > JOB_PREVIEW_LIMIT;
-    const visibleLimit = hasOverflow ? JOB_PREVIEW_LIMIT - 1 : JOB_PREVIEW_LIMIT;
-    const visible = eligible.slice(0, visibleLimit);
-    const hidden = visible.length < total ? [...active, ...finished].filter(job => !visible.includes(job)) : [];
+  /** The jobs to list, in start order so rows keep their place, and the counts for the header. */
+  function jobRows(memory, now) {
+    const known = [...memory.jobs.values()].filter(job => JOB_STATUS.has(job.status));
+    const live = known.filter(job => LIVE_JOB.has(job.status));
+    const settled = known.filter(job => !LIVE_JOB.has(job.status));
+    const endedAt = job => memory.ended.get(job.id) ?? job.finishedAt ?? 0;
+    const lingering = job => memory.ended.has(job.id) && now - memory.ended.get(job.id) < JOB_LINGER;
+    const long = job => job.status === 'stopping' || now - job.startedAt >= JOB_SHOW_AFTER;
+    const shown = [...live.filter(job => memory.shown.has(job.id) || long(job)),
+      ...settled.filter(job => memory.shown.has(job.id) && lingering(job))].sort((left, right) => left.startedAt - right.startedAt);
+    const recent = [...settled].sort((left, right) => endedAt(right) - endedAt(left));
+    // The clock runs while a job is live or a finished row is still in place.
+    const ticking = live.length > 0 || settled.some(job => memory.shown.has(job.id) && lingering(job));
+    return { live, settled, failed: settled.filter(job => job.status === 'failed').length, shown, recent, ticking };
+  }
+
+  function useClock(active, interval = 500) {
+    const [now, setNow] = React.useState(() => Date.now());
+    React.useEffect(() => {
+      if (!active) return undefined;
+      setNow(Date.now());
+      const timer = setInterval(() => setNow(Date.now()), interval);
+      return () => clearInterval(timer);
+    }, [active, interval]);
+    return now;
+  }
+
+  function BackgroundJobs({ jobs: roster, t }) {
+    const [open, setOpen] = React.useState(false);
+    const memory = React.useRef(null);
+    memory.current ??= jobMemory();
+    rememberJobs(memory.current, roster, Date.now());
+    // A first look at the current time decides whether the clock needs to run at all.
+    const now = useClock(jobRows(memory.current, Date.now()).ticking);
+    const { live, settled, failed, shown, recent } = jobRows(memory.current, now);
+    for (const job of shown) memory.current.shown.add(job.id);
     const row = job => {
-      const label = job.label || job.kind || job.id;
+      const label = String(job.label || job.kind || job.id).split('\n')[0];
       return h('li', { key: job.id, className: 'dpt-job', 'data-state': job.status },
         h('span', { className: 'dpt-agent-dot', 'aria-hidden': 'true' }),
-        h('span', { className: 'dpt-agent-main' },
-          h('span', { className: 'dpt-agent-name', title: label }, label),
-          h('span', { className: 'dpt-agent-meta' }, t(JOB_STATUS.get(job.status)))));
+        h('span', { className: 'dpt-agent-name', title: job.label || label }, label),
+        h('span', { className: 'dpt-agent-duration' }, t(JOB_STATUS.get(job.status))));
     };
     const title = t('jobsTitle');
-    return h('section', { className: 'dpt-side-section', 'aria-label': title, 'data-compact': total ? undefined : '' },
+    const counts = [live.length ? tf(t, 'jobsRunningCount', { count: live.length }) : '', settled.length ? tf(t, 'jobsDoneCount', { count: settled.length }) : '']
+      .filter(Boolean).join(' · ');
+    const visible = shown.slice(0, JOB_ROWS);
+    return h('section', { className: 'dpt-side-section dpt-side-jobs', 'aria-label': title, 'data-compact': visible.length || open ? undefined : '' },
       h('div', { className: 'dpt-side-label' }, h('span', null, title),
-        h('span', { className: 'dpt-side-hint', title: total ? undefined : t('jobsEmpty') }, total ? String(total) : t('sideNone'))),
-      total ? h('ul', { className: 'dpt-jobs-list' }, ...visible.map(row),
-        hidden.length ? h('li', { className: 'dpt-jobs-more' },
-          h('details', null, h('summary', null, tf(t, 'jobsMore', { count: hidden.length })),
-            h('ul', { className: 'dpt-jobs-list' }, ...hidden.map(row)))) : null) : null);
+        h('span', { className: 'dpt-side-tail' },
+          failed ? h('span', { className: 'dpt-side-hint', 'data-tone': 'warn' }, tf(t, 'jobsFailedCount', { count: failed })) : null,
+          settled.length ? h('button', { type: 'button', className: 'dpt-link dpt-side-count', 'aria-expanded': open, title: t(open ? 'jobsHideRecent' : 'jobsShowRecent'),
+            onClick: () => setOpen(!open) }, counts)
+            : h('span', { className: 'dpt-side-hint', title: counts ? undefined : t('jobsEmpty') }, counts || t('sideNone')))),
+      visible.length ? h('ul', { className: 'dpt-jobs-list' }, ...visible.map(row),
+        shown.length > visible.length ? h('li', { className: 'dpt-jobs-more' }, tf(t, 'jobsMore', { count: shown.length - visible.length })) : null) : null,
+      open && recent.length ? h('ul', { className: 'dpt-jobs-list dpt-jobs-recent', 'aria-label': t('jobsShowRecent') }, ...recent.slice(0, 6).map(row)) : null);
   }
 
   // Desktop RCs expose the jobs roster through a dedicated service. Other hosts include it in sessions.
@@ -1759,15 +1821,19 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
         { key: 'environment', label: t('environment'), node: form ? h(EnvironmentSection, { form, t }) : null },
         { key: 'creative', label: t('creativeSwitch'), node: deep && form ? h(CreativeSection, { form, runVirtual, useProjection, t }) : null },
         { key: 'project', label: t('projectTab'), node: deep && formValue(form, 'projectCards') !== false ? h(ProjectSection, { sessionId, useProjection, reply, runProject, form, t }) : null },
-        { key: 'agents', label: t('agentsTitle'), node: deep && rows.length ? h('section', { className: 'dpt-side-section dpt-side-agents', 'aria-label': t('agentsTitle') },
-          h('div', { className: 'dpt-side-label' }, h('span', null, t('agentsTitle'))),
-          h('ol', { className: 'dpt-agents-list' }, ...rows.map(row =>
+        // Always present in Deep PTC, one line while empty: a first subagent fills the section instead
+        // of inserting it and pushing the sections below down.
+        { key: 'agents', label: t('agentsTitle'), node: deep ? h('section', { className: 'dpt-side-section dpt-side-agents', 'aria-label': t('agentsTitle'), 'data-compact': rows.length ? undefined : '' },
+          h('div', { className: 'dpt-side-label' }, h('span', null, t('agentsTitle')),
+            h('span', { className: 'dpt-side-hint' }, rows.length === 0 ? t('sideNone')
+              : [running ? tf(t, 'jobsRunningCount', { count: running }) : '', tf(t, 'agentsCount', { count: rows.length })].filter(Boolean).join(' · '))),
+          rows.length ? h('ol', { className: 'dpt-agents-list' }, ...rows.map(row =>
             h('li', { key: row.id }, h('button', { type: 'button', className: 'dpt-agent', 'data-state': row.state,
               'aria-label': `${row.label} · ${stateText(row)}`, style: { '--dpt-depth': row.depth },
               disabled: row.state === 'external', title: t('agentOpen'), onClick: () => openSubagent(row) },
               h('span', { className: 'dpt-agent-dot', 'aria-hidden': 'true' }),
               h('span', { className: 'dpt-agent-name', title: row.label }, row.label),
-              row.duration !== undefined ? h('span', { className: 'dpt-agent-duration' }, formatDuration(row.duration, t)) : null))))) : null },
+              row.duration !== undefined ? h('span', { className: 'dpt-agent-duration' }, formatDuration(row.duration, t)) : null)))) : null) : null },
         { key: 'jobs', label: t('jobsTitle'), node: deep ? (typeof useJobs === 'function' && typeof watchJobs === 'function'
           ? h(LiveBackgroundJobs, { key: `jobs:${sessionId}`, sessionId, useJobs, watchJobs, t })
           : h(BackgroundJobs, { key: `jobs:${sessionId}`, jobs: sessions?.jobsBySession?.[sessionId], t })) : null },

@@ -44,7 +44,7 @@ ${DARK} .dpt-card{--dpt-card-fill:var(--dsw-static-neutral-850,#1a1f29)}
 .dpt-side-label{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:6px;font-size:12px;line-height:18px;font-weight:600;color:var(--dsw-alias-label-secondary,#4a5565)}
 .dpt-side-hint{min-width:0;font-size:11px;font-weight:400;color:var(--dsw-alias-label-tertiary,#667085);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dpt-seg{display:flex;gap:2px;padding:2px;border-radius:10px;background:color-mix(in srgb,var(--dpt-accent) 9%,transparent)}
-.dpt-seg-btn{flex:1;min-width:0;height:26px;padding:0 6px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary,#4a5565);font:inherit;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;transition:background-color 120ms,color 120ms,box-shadow 120ms}
+.dpt-seg-btn{flex:1 1 auto;min-width:0;height:26px;padding:0 8px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary,#4a5565);font:inherit;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;transition:background-color 120ms,color 120ms,box-shadow 120ms}
 .dpt-seg-btn:hover:not(:disabled):not([aria-checked="true"]){color:var(--dsw-alias-label-primary,#101828)}
 .dpt-seg-btn[aria-checked="true"]{background:var(--dsw-alias-bg-base,#fff);color:var(--dsw-alias-label-primary,#101828);font-weight:600;box-shadow:0 1px 3px color-mix(in srgb,var(--dpt-accent) 25%,transparent),0 0 0 1px color-mix(in srgb,var(--dpt-accent) 35%,transparent)}
 .dpt-seg-btn:disabled{cursor:default}
@@ -73,16 +73,25 @@ ${ON} .dpt-capsule[data-state="running"] .dpt-agent-dot,${ON} .dpt-agent[data-st
 .dpt-job[data-state="failed"] .dpt-agent-dot{background:var(--dsw-alias-state-error-primary,#c4321f)}
 .dpt-side-effects .dpt-side-label{align-items:center}
 .dpt-jobs-list{display:grid;gap:4px;list-style:none;padding:0;margin:0}
-.dpt-job,.dpt-jobs-more{padding:5px 6px;border-radius:6px;background:var(--dpt-surface-soft,var(--dsw-alias-fill-secondary,transparent))}
-.dpt-job{display:flex;align-items:flex-start;gap:7px}
-.dpt-jobs-more summary{cursor:pointer;font-size:11px;line-height:16px}
-.dpt-jobs-more .dpt-jobs-list{margin-top:4px}
+.dpt-job{display:flex;align-items:center;gap:8px;min-height:26px;padding:0 6px;border-radius:6px;font-size:12px;animation:dpt-row-in 180ms var(--dpt-ease,ease) both}
+.dpt-job .dpt-agent-dot{margin-top:0}
+.dpt-job .dpt-agent-name{flex:1;min-width:0;font-family:var(--ds-font-family-code,ui-monospace,Consolas,monospace);font-size:11.5px;font-weight:400}
+.dpt-job:hover{background:color-mix(in srgb,var(--dpt-accent) 6%,transparent)}
+.dpt-jobs-more{padding:2px 6px 0;font-size:11px;line-height:16px;color:var(--dsw-alias-label-tertiary,#667085)}
+.dpt-jobs-recent{margin-top:4px;padding-top:4px;border-top:1px dashed var(--dpt-line)}
+.dpt-jobs-recent .dpt-job{animation:none}
+.dpt-side-count{font-size:11px;font-weight:400;line-height:18px;color:var(--dsw-alias-label-tertiary,#667085)}
+.dpt-side-count:hover,.dpt-side-count[aria-expanded="true"]{color:var(--dpt-accent,#3370ff)}
+.dpt-agent{animation:dpt-row-in 180ms var(--dpt-ease,ease) both}
+@keyframes dpt-row-in{from{opacity:0}to{opacity:1}}
 .dpt-agent-main{flex:1;min-width:0;display:flex;flex-direction:column}
 .dpt-agent-name{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dpt-side-agents .dpt-agent{align-items:center}
 .dpt-side-agents .dpt-agent-dot{margin-top:0}
 .dpt-side-agents .dpt-agent-name{flex:1;min-width:0}
-.dpt-agent-duration{flex:none;margin-left:auto;font-size:11px;color:var(--dsw-alias-label-tertiary,#667085);font-variant-numeric:tabular-nums;white-space:nowrap}
+.dpt-agent-duration{flex:none;min-width:4.2em;margin-left:auto;font-size:11px;text-align:right;color:var(--dsw-alias-label-tertiary,#667085);font-variant-numeric:tabular-nums;white-space:nowrap}
+.dpt-job[data-state="completed"] .dpt-agent-duration{color:var(--dsw-alias-state-success-primary,#0f7a4f)}
+.dpt-job[data-state="failed"] .dpt-agent-duration{color:var(--dsw-alias-state-error-primary,#c4321f)}
 .dpt-agent-meta{font-size:11px;line-height:16px;color:var(--dsw-alias-label-tertiary,#667085);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dpt-capsule-row{display:flex;flex-direction:column;align-items:flex-end;padding:4px 2px 0}
 .dpt-capsule{display:inline-flex;align-items:center;gap:8px;max-width:100%;height:26px;padding:0 11px;box-sizing:border-box;border-radius:999px;border:1px solid var(--dpt-line);background:var(--dsw-alias-bg-base,#fff);color:var(--dsw-alias-label-secondary,#4a5565);font:inherit;font-size:12px;cursor:pointer;transition:border-color 120ms,color 120ms}
@@ -130,7 +139,7 @@ body[data-dpt-resizing],body[data-dpt-resizing] *{cursor:col-resize!important;us
 [data-chat-flow-kind="command"]:has([data-dpt-hidden-command]){display:none!important}
 .dpt-command-error{padding:4px 2px;font-size:12px;line-height:18px;color:var(--dsw-alias-state-error-primary,#c4321f)}
 @keyframes dpt-rise{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){.dpt-card,.dpt-panel,.dpt-capsule,.dpt-agent-dot,.dpt-switch,.dpt-switch-thumb{animation:none!important;transition:none!important}}
+@media (prefers-reduced-motion:reduce){.dpt-card,.dpt-panel,.dpt-capsule,.dpt-agent-dot,.dpt-switch,.dpt-switch-thumb,.dpt-job,.dpt-agent{animation:none!important;transition:none!important}}
 `;
   // The effects restyle a few host elements only. Toggling them never touches a design token, font or
   // inherited value, so switching conversations restyles those elements and not the whole page (#17).

@@ -1,12 +1,17 @@
 # Deep PTC mode
 
-[中文](README.zh.md) · MIT · **2.4.0**
+[中文](README.zh.md) · MIT · **2.4.1**
 
 [Changelog](CHANGELOG.md) · [Test report](TEST_REPORT.md) · [Plugin workflows and verification](COMPATIBILITY.md)
 
 Deep PTC is a DeepSeek Harness agent mode with progress reports, clarifying questions, task-size planning, and interruptible background work. It builds on the installed official PTC preset with selectable shells, on-demand tools and skills, and a two-layer preset identity adapter for third-party plugins. Cards face both you and the model: you see a clear card, the model reads precise context with ids, sources and states; the task brief files the goals, constraints and acceptance criteria in your messages and, once you confirm, can take the raw messages out of the model's context.
 
 The panel sits beside the conversation and shows the environment, Deep creative mode with the virtual DSH, subagents, jobs, output files, SSH connections and tool state. The panel width can be dragged. The capsule expands or collapses it; it sits below the composer by default and can move into the toolbar or be hidden. Deep PTC also has its own settings page. Visual effects are lightweight and start off when an appearance plugin is installed.
+
+## Changes in 2.4.1
+
+- **A steady side panel**: the Subagents section is always there, one line while empty. Background jobs list only jobs that run longer than 1.5 s, and a finished row stays in place for a few seconds before it leaves; running and finished counts sit in the header, which opens the recently finished jobs. Commands show their first line and the time column keeps its width. The environment switch sizes its buttons by their labels, so PowerShell is no longer cut off.
+- **New built-in skill `ui-visual-design`**: reuse the existing design system, define colour, type, spacing and light/dark variables, set hierarchy, keep layouts from jumping, avoid template looks and self-check before delivery, with a runnable variables and components page.
 
 ## Changes in 2.4.0
 
@@ -133,7 +138,7 @@ The model posts cards in the chat transcript with the `ui_card` tool. Cards are 
 
 Three card skills cover the interface (`deep-ptc-cards`), development templates (`deep-ptc-card-examples`), and project settings and proposals (`deep-ptc-project-cards`).
 
-Deep PTC sessions add ten on-demand skills: DSH operations, local web testing, frontend design, primary-source research, Office delivery, scientific figures, Windows and WSL, DSH plugin development, virtual DSH testing and tool evaluation. Frontend design, primary-source research, Office delivery and scientific figures include a working HTML form, a source passage locator, an Excel/Word report generator, and a measurement-to-SVG and card generator. The skill loader supplies the directory containing their examples.
+Deep PTC sessions add eleven on-demand skills: DSH operations, local web testing, frontend design, interface visual design, primary-source research, Office delivery, scientific figures, Windows and WSL, DSH plugin development, virtual DSH testing and tool evaluation. Frontend design, visual design, primary-source research, Office delivery and scientific figures include a working HTML form, a light/dark variables and components page, a source passage locator, an Excel/Word report generator, and a measurement-to-SVG and card generator. The skill loader supplies the directory containing their examples.
 
 ## Project cards (1.9.9)
 

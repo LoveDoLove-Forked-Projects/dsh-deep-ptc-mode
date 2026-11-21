@@ -62,7 +62,7 @@ function fixture({ snapshot, mutate = async () => true, outcome = { ok: true, va
     localStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value) },
     ...browser,
   });
-  const templated = ['jobsMore', 'outputsMore', 'outputTurn', 'sshUsed', 'sshFailed'];
+  const templated = ['jobsMore', 'jobsRunningCount', 'jobsDoneCount', 'jobsFailedCount', 'agentsCount', 'outputsMore', 'outputTurn', 'sshUsed', 'sshFailed'];
   const ctx = { locale: {
       bind: () => key => dictionaries?.[localeId]?.[key] ?? (templated.includes(key) ? `${key} {count}{turn}` : key),
       register(_, value) { dictionaries = value; },
@@ -146,7 +146,7 @@ test('the panel holds the environment switch, outputs, SSH and tool state', asyn
     assert.equal(checked(view), 'PowerShell');
     assert.match(text(view), /envForNew/u, 'the switch applies to new sessions');
     assert.ok(view.root.findAllByType('button').some(node => node.props['aria-label'] === 'toolReset'));
-    assert.deepEqual(sections(view), ['environment', 'creativeSwitch', 'projectTab', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
+    assert.deepEqual(sections(view), ['environment', 'creativeSwitch', 'projectTab', 'agentsTitle', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
     assert.equal(view.root.findAllByProps({ role: 'switch', 'aria-label': 'visualEffects' }).length, 0, 'the effects switch lives in settings');
     assert.ok(view.root.findAll(node => node.props.title === 'outputsEmpty').length > 0);
     assert.ok(view.root.findAll(node => node.props.title === 'sshEmpty').length > 0);
@@ -481,7 +481,8 @@ test('an appearance plugin turns effects off by default, but an explicit choice 
 test('the desktop jobs service is watched for this session and pushes running-to-finished updates', async () => {
   const listeners = new Set();
   const watched = new Set();
-  let state = { rows: { deep: jobs(1, 'running'), other: jobs(1, 'failed') } };
+  const started = Date.now() - 5000;
+  let state = { rows: { deep: [{ id: 'build', label: 'npm run build\nnpm test', status: 'running', startedAt: started }], other: jobs(1, 'failed') } };
   const jobsService = {
     state: { subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); }, getState: () => state },
     watchRows(id) { watched.add(id); return () => watched.delete(id); },
@@ -491,38 +492,63 @@ test('the desktop jobs service is watched for this session and pushes running-to
     assert.deepEqual([...watched], ['deep']);
     const row = () => view.root.findByProps({ className: 'dpt-job' });
     assert.equal(row().props['data-state'], 'running');
+    const name = row().findByProps({ className: 'dpt-agent-name' });
+    assert.equal(name.props.children, 'npm run build', 'a multi-line command shows its first line');
+    assert.equal(name.props.title, 'npm run build\nnpm test', 'the whole command stays in the tooltip');
     await act(async () => {
-      state = { rows: { ...state.rows, deep: [{ ...state.rows.deep[0], status: 'completed', finishedAt: 100 }] } };
+      state = { rows: { ...state.rows, deep: [{ ...state.rows.deep[0], status: 'completed', finishedAt: Date.now() }] } };
       for (const listener of listeners) listener();
     });
-    assert.equal(row().props['data-state'], 'completed');
+    assert.equal(row().props['data-state'], 'completed', 'a finished job stays in place for a moment');
+    await act(async () => {
+      state = { rows: { ...state.rows, deep: [{ id: 'serve', label: 'serve', status: 'running', startedAt: Date.now() - 9000 }] } };
+      for (const listener of listeners) listener();
+    });
+    await act(async () => {
+      state = { rows: { ...state.rows, deep: [] } };
+      for (const listener of listeners) listener();
+    });
+    const left = view.root.findAllByProps({ className: 'dpt-job' }).find(node => node.props['data-state'] === 'ended');
+    assert.ok(left, 'a job the roster drops while running stays briefly as ended');
+    assert.match(text(view), /jobsDoneCount 2/u, 'and counts as finished');
     assert.doesNotMatch(text(view), /failed-0/u);
   });
   assert.equal(watched.size, 0);
 });
 
-test('background jobs share six positions and reserve one for overflow from either cap', async () => {
-  const cases = [
-    { running: 0, completed: 4, active: 0, finished: 3, hidden: 1 },
-    { running: 3, completed: 3, active: 3, finished: 3, hidden: 0 },
-    { running: 4, completed: 3, active: 4, finished: 1, hidden: 2 },
-    { running: 5, completed: 1, active: 5, finished: 1, hidden: 0 },
-    { running: 5, completed: 2, active: 5, finished: 0, hidden: 2 },
-    { running: 6, completed: 0, active: 5, finished: 0, hidden: 1 },
+test('background jobs list only jobs long enough to matter, in start order, with counts in a one-line header', async () => {
+  const now = Date.now();
+  const job = (id, status, startedAgo, finishedAgo) => ({ id, label: id, status, startedAt: now - startedAgo, ...finishedAgo === undefined ? {} : { finishedAt: now - finishedAgo } });
+  const deep = [
+    job('flash', 'running', 300),
+    job('quick-done', 'completed', 900, 600),
+    job('old-done', 'completed', 60_000, 50_000),
+    job('broke', 'failed', 40_000, 30_000),
+    job('server', 'running', 20_000),
+    job('just-done', 'completed', 8_000, 1_000),
+    job('build', 'running', 10_000),
   ];
   const f = fixture({ snapshot: windows() });
-  for (const { running, completed, active, finished, hidden } of cases) {
-    const sessions = { jobsBySession: { deep: [...jobs(completed, 'completed'), ...jobs(running, 'running')], other: jobs(1, 'failed') } };
-    await withPanel(f, { sessions }, async view => {
-      const card = view.root.findByProps({ 'aria-label': 'jobsTitle' });
-      const list = card.findAllByType('ul')[0];
-      assert.deepEqual(list.children.map(node => node.props['data-state'] ?? 'overflow'), [
-        ...Array(active).fill('running'), ...Array(finished).fill('completed'), ...(hidden ? ['overflow'] : []),
-      ], `${running} running, ${completed} completed`);
-      if (hidden) assert.match(card.findByType('summary').props.children, new RegExp(`jobsMore ${hidden}`, 'u'));
-      else assert.equal(card.findAllByType('details').length, 0);
-    });
-  }
+  await withPanel(f, { sessions: { jobsBySession: { deep } } }, async view => {
+    const card = view.root.findByProps({ 'aria-label': 'jobsTitle' });
+    const listed = () => card.findAllByProps({ className: 'dpt-job' }).map(node => node.props.children[1].props.children);
+    assert.deepEqual(listed(), ['server', 'build'], 'start order; sub-second jobs and jobs already finished when first seen stay out');
+    assert.match(text(view), /jobsRunningCount 3.*jobsDoneCount 4/u);
+    assert.match(text(view), /jobsFailedCount 1/u);
+    const count = card.findByProps({ className: 'dpt-link dpt-side-count' });
+    await act(async () => count.props.onClick());
+    assert.deepEqual(listed().slice(2), ['quick-done', 'just-done', 'broke', 'old-done'], 'recently finished on request, newest first');
+  });
+  const many = Array.from({ length: 6 }, (_, index) => job('long-' + index, 'running', 10_000 + index));
+  await withPanel(f, { sessions: { jobsBySession: { deep: many } } }, async view => {
+    const card = view.root.findByProps({ 'aria-label': 'jobsTitle' });
+    assert.equal(card.findAllByProps({ className: 'dpt-job' }).length, 4);
+    assert.match(text(view), /jobsMore 2/u);
+  });
+  await withPanel(f, { sessions: { jobsBySession: { deep: [job('flash', 'completed', 400, 100)] } } }, async view => {
+    const card = view.root.findByProps({ 'aria-label': 'jobsTitle' });
+    assert.equal(card.props['data-compact'], '', 'only sub-second jobs: the section stays one line');
+  });
 });
 
 test('the reload button resets only the current conversation through the host command and lists failed tools', async () => {
@@ -815,22 +841,22 @@ test('panel sections reorder by drag or keyboard, and the order is remembered', 
       assert.equal(view.root.findAll(node => node.props?.className === 'dpt-sortable' && node.props['data-drop']).length, 1, 'a drop line shows');
       await act(async () => gripOf(key).props.onPointerUp({ clientX: 0, clientY }));
     };
-    assert.deepEqual(order(), ['environment', 'creativeSwitch', 'projectTab', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
+    assert.deepEqual(order(), ['environment', 'creativeSwitch', 'projectTab', 'agentsTitle', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
     // Drag SSH onto the upper half of the environment section: it moves to the top.
     await drag('ssh', 10);
-    assert.deepEqual(order(), ['sshTitle', 'environment', 'creativeSwitch', 'projectTab', 'jobsTitle', 'outputsTitle', 'toolsSection']);
+    assert.deepEqual(order(), ['sshTitle', 'environment', 'creativeSwitch', 'projectTab', 'agentsTitle', 'jobsTitle', 'outputsTitle', 'toolsSection']);
     // Drag SSH onto the lower half of output files: it lands after them.
     under = { key: 'outputs', top: 0 };
     await drag('ssh', 90);
-    assert.deepEqual(order(), ['environment', 'creativeSwitch', 'projectTab', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
+    assert.deepEqual(order(), ['environment', 'creativeSwitch', 'projectTab', 'agentsTitle', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
     under = { key: 'environment', top: 0 };
     await drag('ssh', 10);
-    assert.deepEqual(order(), ['sshTitle', 'environment', 'creativeSwitch', 'projectTab', 'jobsTitle', 'outputsTitle', 'toolsSection']);
+    assert.deepEqual(order(), ['sshTitle', 'environment', 'creativeSwitch', 'projectTab', 'agentsTitle', 'jobsTitle', 'outputsTitle', 'toolsSection']);
     // Keyboard: the tool state section moves up one place.
-    await act(async () => grips()[6].props.onKeyDown({ key: 'ArrowUp', preventDefault() {} }));
-    assert.deepEqual(order(), ['sshTitle', 'environment', 'creativeSwitch', 'projectTab', 'jobsTitle', 'toolsSection', 'outputsTitle']);
+    await act(async () => grips()[7].props.onKeyDown({ key: 'ArrowUp', preventDefault() {} }));
+    assert.deepEqual(order(), ['sshTitle', 'environment', 'creativeSwitch', 'projectTab', 'agentsTitle', 'jobsTitle', 'toolsSection', 'outputsTitle']);
     await act(async () => grips()[0].props.onKeyDown({ key: 'ArrowDown', preventDefault() {} }));
-    assert.deepEqual(order(), ['environment', 'sshTitle', 'creativeSwitch', 'projectTab', 'jobsTitle', 'toolsSection', 'outputsTitle']);
+    assert.deepEqual(order(), ['environment', 'sshTitle', 'creativeSwitch', 'projectTab', 'agentsTitle', 'jobsTitle', 'toolsSection', 'outputsTitle']);
   });
   assert.deepEqual(JSON.parse(storage.get('dsh-deep-ptc-mode:panel-order')), ['environment', 'ssh', 'creative', 'project', 'agents', 'jobs', 'tools', 'outputs'], 'hidden sections keep a place too');
 });
