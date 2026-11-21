@@ -15,7 +15,7 @@ function fixture({ commandResult = { ok: true }, prompt = true } = {}) {
   vm.runInNewContext(readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8'), {
     window: { __ModuleLoader__: { load: definition => { plugin = definition.factory(() => React); } } },
   });
-  const ctx = { locale: { bind: () => key => key, register() {} }, effect: fn => fn(),
+  const ctx = { uiConversation: { events: { register() {} } }, locale: { bind: () => key => key, register() {} }, effect: fn => fn(),
     configForms: { get() {}, whileServed: () => () => {} },
     remote: {
       commands: { async execute(...args) { calls.push(args); return commandResult; } },
@@ -25,7 +25,7 @@ function fixture({ commandResult = { ok: true }, prompt = true } = {}) {
   };
   ctx.inject = (deps, callback) => callback(ctx);
   plugin.apply(ctx);
-  return { cards: slots.get('deep-ptc-cards'), live: slots.get('deep-ptc-live-cards'), calls, prompts };
+  return { cards: slots.get('deep-ptc-cards'), live: slots.get('deep-ptc-cards'), calls, prompts };
 }
 
 // The built-in samples, as the tool would store them.
@@ -38,11 +38,11 @@ const sample = id => samples().find(card => card.id === id);
 
 // Cards as versions posted in turn 1 (the current turn) unless a version says otherwise.
 const stateOf = (cards, turn = 1) => ({ v: 2, seq: cards.length, turn,
-  versions: cards.map((card, index) => ({ rev: index + 1, turn: 1, ...card })) });
+  versions: cards.map((card, index) => ({ rev: index + 1, turn: 1, anchor: 1, ...card })) });
 async function render(f, cards, extra = {}) {
-  const injected = f.cards.slot.inject('session-A');
+  const injected = f.live.slot.inject('session-A');
   let view;
-  await act(async () => { view = Renderer.create(React.createElement(f.cards.render, { ...injected,
+  await act(async () => { view = Renderer.create(React.createElement(f.live.render, { ...injected, node: { data: { anchor: '1' } },
     turn: { turn: 1 }, useProjection: key => key === 'deepPtcCards' ? stateOf(cards) : undefined, ...extra })); });
   return view;
 }
@@ -74,11 +74,11 @@ test('cards stay in the history: earlier versions render archived, the newest in
   const state = { v: 2, seq: 3, turn: 2, versions: [
     { ...card, rev: 1, turn: 1, subtitle: '启动中' },
     { ...card, rev: 2, turn: 2 },
-    { id: 'gone', rev: 3, turn: 1, title: '旧通知', subtitle: 's', phase: 'dismissed' }] };
+    { id: 'gone', rev: 3, anchor: 1, turn: 1, title: '旧通知', subtitle: 's', phase: 'dismissed' }] };
   const mount = async turn => {
     let view;
     await act(async () => { view = Renderer.create(React.createElement(f.cards.render, { ...f.cards.slot.inject('session-A'),
-      turn: { turn }, useProjection: key => key === 'deepPtcCards' ? state : undefined })); });
+      node: { data: { anchor: String(turn) } }, turn: { turn }, useProjection: key => key === 'deepPtcCards' ? state : undefined })); });
     return view;
   };
   const earlier = await mount(1);
@@ -92,7 +92,7 @@ test('cards stay in the history: earlier versions render archived, the newest in
     await act(async () => stub.props.onClick());
     assert.equal(byClass(earlier, 'dpt-cc').length, 2, 'the closed card can be read again');
   } finally { await act(async () => earlier.unmount()); }
-  const latest = await mount(2);
+  const latest = await render(f, [], { node: { data: { anchor: '2' } }, useProjection: key => key === 'deepPtcCards' ? state : undefined });
   try {
     assert.equal(byClass(latest, 'dpt-cc')[0].props['data-archived'], undefined);
     assert.equal(button(latest, '停止').props.disabled, false);
@@ -233,25 +233,41 @@ test('the layout pairs compact cards, puts three tiny ones in a row and never le
   assert.deepEqual(await sizes([rows('a', 6), rows('b', 2)]), ['full', 'full'], 'long rows are wide content');
 });
 
-test('cards posted mid-turn show above the composer at once, until the turn ends', async () => {
+test('cards posted mid-turn show at their transcript position immediately', async () => {
   const f = fixture();
   const question = { id: 'pick', kind: 'question', title: '选目录', phase: 'open', questions: [{ id: 'folder', prompt: '哪个目录？', type: 'single',
     options: [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }] }] };
   const display = { id: 'stats', title: '结果', phase: 'open', blocks: [{ type: 'text', text: 'ok' }] };
   const mount = async state => {
     let view;
-    await act(async () => { view = Renderer.create(React.createElement(f.live.render, { ...f.live.slot.inject('session-A'),
+    await act(async () => { view = Renderer.create(React.createElement(f.live.render, { ...f.live.slot.inject('session-A'), node: { data: { anchor: '1' } },
       useProjection: key => key === 'deepPtcCards' ? state : key === 'agentPreset' ? 'deep-ptc' : undefined })); });
     return view;
   };
   const running = await mount({ ...stateOf([question, display]), ended: 0 });
   try {
     const text = JSON.stringify(running.toJSON());
-    assert.match(text, /cardLiveNote/u, 'the dock says the model is waiting');
+    assert.equal(running.root.findAllByType('form').length, 1);
     assert.match(text, /选目录/u, 'the question shows while the turn runs');
     assert.match(text, /结果/u, 'every card of the running turn shows at once, display cards too');
   } finally { await act(async () => running.unmount()); }
   const ended = await mount({ ...stateOf([question]), ended: 1 });
-  try { assert.equal(ended.toJSON(), null, 'after the turn the tail shows the cards; the dock is empty'); }
+  try { assert.equal(ended.root.findAllByType('form').length, 1, 'an unanswered question stays in the transcript'); }
   finally { await act(async () => ended.unmount()); }
+});
+
+test('a brief clarification accepts a free interpretation without choosing one of the suggested answers', async () => {
+  const f = fixture();
+  const card = { id: 'scope', kind: 'question', review: 'brief', title: 'Export scope', phase: 'open',
+    questions: [{ id: 'scope', prompt: 'Which records?', type: 'single', recommended: 'page',
+      options: [{ value: 'one', label: 'One' }, { value: 'page', label: 'Page' }, { value: 'all', label: 'All' }] }] };
+  const view = await render(f, [card]);
+  try {
+    assert.equal(button(view, 'questionSubmit').props.disabled, true);
+    assert.equal(view.root.findAllByProps({ role: 'radio' }).length, 4);
+    await act(async () => view.root.findAllByProps({ role: 'radio' }).at(-1).props.onClick());
+    await act(async () => view.root.findByType('textarea').props.onChange({ target: { value: 'Checked rows across pages' } }));
+    await act(async () => view.root.findByType('form').props.onSubmit({ preventDefault() {} }));
+    assert.deepEqual(JSON.parse(f.calls.at(-1)[1].slice('/deep-ptc-card-act '.length)).answers, { scope: { custom: 'Checked rows across pages' } });
+  } finally { await act(async () => view.unmount()); }
 });

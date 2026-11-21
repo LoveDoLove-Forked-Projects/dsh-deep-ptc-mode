@@ -1,4 +1,4 @@
-export function createProjectCards({ React, h, tf, commandError, commandCode = () => undefined, stripCode = text => text, projectionValue, openTab = () => false }) {
+export function createProjectCards({ React, h, tf, useCurrentReview, DecisionCard, commandError, commandCode = () => undefined, stripCode = text => text, projectionValue, useFormValue, openTab = () => false }) {
   const PROJECT_COMMAND_NAME = 'deep-ptc-project';
   async function runProjectCommand(child, sessionId, payload) {
     const execute = child.remote?.commands?.execute;
@@ -23,7 +23,7 @@ export function createProjectCards({ React, h, tf, commandError, commandCode = (
   const STATUS_LABEL = { active: 'projectStatusActive', done: 'projectStatusDone', superseded: 'projectStatusSuperseded' };
   const shortDate = value => typeof value === 'string' && value.length >= 10 ? value.slice(5, 10).replace('-', '/') : '';
   const PROJECT_CATEGORIES = ['stack', 'conventions', 'constraints', 'workflow', 'product', 'other'];
-  const draftOf = card => ({ title: card?.title ?? '', category: card?.category ?? 'other', items: (card?.items ?? []).map(item => ({ id: item.id, text: item.text })) });
+  const draftOf = card => ({ title: card?.title ?? '', category: card?.category ?? 'other', items: (card?.items ?? []).map(item => typeof item === 'string' ? { text: item } : { id: item.id, text: item.text }) });
 
   function ItemRows({ card, t, onQuestion }) {
     const [asking, setAsking] = React.useState();
@@ -85,7 +85,7 @@ export function createProjectCards({ React, h, tf, commandError, commandCode = (
 
   const newDraftId = () => `d-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 
-  function CardEditor({ initial, latest, file, busy, suggestions = [], t, onSubmit, onCancel, onDelete, onPolish, onDismissPolish }) {
+  function CardEditor({ initial, latest, file, busy, suggestions = [], t, onSubmit, onCancel, onDelete, onPolish, onDismissPolish, submitLabel }) {
     const [base, setBase] = React.useState(initial);
     const card = base.card;
     const [draft, setDraft] = React.useState(() => card ? draftOf(card) : { ...draftOf(card), items: [{ text: '' }] });
@@ -143,16 +143,16 @@ export function createProjectCards({ React, h, tf, commandError, commandCode = (
         h('button', { type: 'button', className: 'dpt-pv-link', onClick: () => onDismissPolish(draftId) }, t('projectClose'))) : null,
       suggestion?.state === 'ready' ? h(PolishReview, { key: suggestion.at, suggestion, draft, t, onApply: applySuggestion, onDismiss: () => onDismissPolish(draftId) }) : null,
       h('div', { className: 'dpt-pv-editor-foot' },
-        h('div', { className: 'dpt-pv-polish' },
+        onPolish ? h('div', { className: 'dpt-pv-polish' },
           h('button', { type: 'button', className: 'dpt-cc-btn', disabled: busy || polishing || !polishable || suggestion?.state === 'ready',
             onClick: () => { void onPolish(base, draft, polishBy, draftId); } }, t('projectPolishNow')),
           h('div', { className: 'dpt-seg', role: 'radiogroup', 'aria-label': t('polishBy') }, ...['subagent', 'chat'].map(by =>
             h('button', { key: by, type: 'button', role: 'radio', className: 'dpt-seg-btn', 'aria-checked': polishBy === by, disabled: polishing,
-              title: t(by === 'chat' ? 'polishByChatHint' : 'polishBySubagentHint'), onClick: () => setPolishBy(by) }, t(by === 'chat' ? 'polishByChat' : 'polishBySubagent'))))),
+              title: t(by === 'chat' ? 'polishByChatHint' : 'polishBySubagentHint'), onClick: () => setPolishBy(by) }, t(by === 'chat' ? 'polishByChat' : 'polishBySubagent'))))) : null,
         h('div', { className: 'dpt-cc-actions' },
-          card ? h('button', { type: 'button', className: 'dpt-cc-btn', 'data-danger': '', disabled: busy || changed, onClick: () => onDelete(base) }, t('projectDelete')) : null,
+          card && onDelete ? h('button', { type: 'button', className: 'dpt-cc-btn', 'data-danger': '', disabled: busy || changed, onClick: () => onDelete(base) }, t('projectDelete')) : null,
           h('button', { type: 'button', className: 'dpt-cc-btn', 'data-ghost': '', disabled: busy, onClick: onCancel }, t('projectCancel')),
-          h('button', { type: 'submit', className: 'dpt-cc-btn', 'data-primary': '', disabled: busy || !usable || polishing }, t('projectSubmit')))));
+          h('button', { type: 'submit', className: 'dpt-cc-btn', 'data-primary': '', disabled: busy || !usable || polishing }, t(submitLabel ?? 'projectSubmit')))));
   }
 
   function HistoryPanel({ card, versions, busy, t, onRollback, onClose }) {
@@ -183,18 +183,29 @@ export function createProjectCards({ React, h, tf, commandError, commandCode = (
         : h(ItemRows, { card, t, onQuestion: userOwned ? undefined : (item, question) => { void act.question(card, item, question); } }));
   }
 
-  function ProposalRow({ proposal, card, busy, act, t }) {
-    const preview = Array.isArray(proposal.preview) ? proposal.preview : [];
-    const removed = (card?.items ?? []).filter(item => !preview.some(row => row.id === item.id));
-    const before = new Map((card?.items ?? []).map(item => [item.id, item.text]));
+  function ProposalRow({ proposal, card, busy, act, t, settled, previewOnly }) {
+    const [editing, setEditing] = React.useState(false);
+    const [feedback, setFeedback] = React.useState(null);
+    const outcome = settled ? proposal.outcome : undefined;
+    const beforeItems = settled ? (Array.isArray(proposal.before) ? proposal.before : []) : (card?.items ?? []);
+    const preview = settled ? (Array.isArray(proposal.after) ? proposal.after : []) : (Array.isArray(proposal.preview) ? proposal.preview : []);
+    const removed = beforeItems.filter(item => !preview.some(row => row.id === item.id));
+    const before = new Map(beforeItems.map(item => [item.id, item.text]));
     const title = proposal.title ?? card?.title ?? '';
-    return h('article', { className: 'dpt-pv-proposal' },
+    const created = settled ? proposal.created === true : card === undefined;
+    if (editing && !settled && !proposal.stale) {
+      return h(CardEditor, { initial: { card: { title, category: proposal.category, items: proposal.items ?? preview } }, file: {}, t, busy,
+        submitLabel: 'projectApproveEdits', onCancel: () => setEditing(false),
+        onSubmit: (_base, draft) => act({ op: 'approve', proposal: proposal.id, edit: draft }, 'projectMsgApprove', { id: proposal.id, title: draft.title }) });
+    }
+    return h('article', { className: 'dpt-pv-proposal', 'data-outcome': outcome },
       h('header', { className: 'dpt-pv-card-head' },
         h('div', { className: 'dpt-pv-card-titles' },
-          h('span', { className: 'dpt-pv-card-title' }, card ? tf(t, 'projectProposalChange', { title }) : tf(t, 'projectProposalNew', { title })),
-          proposal.reason ? h('span', { className: 'dpt-pv-meta' }, proposal.reason) : null),
-        h('span', { className: 'dpt-pv-meta' }, [proposal.id, proposal.source === 'guide' ? t('projectGuide') : t('projectChatSource'), proposal.session].filter(Boolean).join(' · '))),
-      proposal.stale ? h('p', { role: 'status' }, t('projectProposalStale')) : null,
+          h('span', { className: 'dpt-pv-card-title' }, created ? tf(t, 'projectProposalNew', { title }) : tf(t, 'projectProposalChange', { title })),
+          proposal.reason ? h('span', { className: 'dpt-pv-meta' }, proposal.reason) : null,
+          settled ? h('span', { className: 'dpt-cc-pill', 'data-phase': 'archived' }, t(outcome === 'approved' ? 'projectProposalApproved' : outcome === 'returned' ? 'briefReturned' : 'projectProposalRejected')) : null),
+        h('span', { className: 'dpt-pv-meta' }, [proposal.id, ...(settled ? [] : [proposal.source === 'guide' ? t('projectGuide') : t('projectChatSource'), proposal.session])].filter(Boolean).join(' · '))),
+      !settled && proposal.stale ? h('p', { role: 'status' }, t('projectProposalStale')) : null,
       h('ol', { className: 'dpt-pv-items' },
         ...preview.map(item => {
           const old = before.get(item.id);
@@ -207,23 +218,56 @@ export function createProjectCards({ React, h, tf, commandError, commandCode = (
         }),
         ...removed.map(item => h('li', { key: item.id, className: 'dpt-pv-item', 'data-diff': 'removed' },
           h('span', { className: 'dpt-pv-id' }, item.id), h('del', { className: 'dpt-pv-item-text' }, item.text)))),
-      h('div', { className: 'dpt-cc-actions' },
+      settled && proposal.feedback ? h('p', { className: 'dpt-cc-note' }, proposal.feedback) : null,
+      !settled && feedback !== null ? h('form', { className: 'dpt-tb-edit', onSubmit: event => {
+        event.preventDefault(); void act({ op: 'rethink', proposal: proposal.id, feedback }, 'projectMsgRethink', { title, feedback });
+      } }, h('textarea', { className: 'dpt-cq-text', autoFocus: true, value: feedback, maxLength: 1000,
+        placeholder: t('briefFeedback'), 'aria-label': t('briefFeedback'), onChange: event => setFeedback(event.target.value) }),
+        h('button', { type: 'submit', className: 'dpt-cc-btn', disabled: busy }, t('briefAskOptions'))) : null,
+      settled || previewOnly ? null : h('div', { className: 'dpt-cc-actions' },
         h('button', { type: 'button', className: 'dpt-cc-btn', 'data-ghost': '', disabled: busy,
           onClick: () => { void act({ op: 'reject', proposal: proposal.id }, 'projectMsgReject', { id: proposal.id, title }); } }, t('projectReject')),
+        h('button', { type: 'button', className: 'dpt-cc-btn', disabled: busy, 'aria-expanded': feedback !== null,
+          onClick: () => setFeedback(feedback === null ? '' : null) }, t('briefRethink')),
+        !proposal.stale ? h('button', { type: 'button', className: 'dpt-cc-btn', disabled: busy,
+          onClick: () => setEditing(true) }, t('amendProposal')) : null,
         proposal.stale ? h('button', { type: 'button', className: 'dpt-cc-btn', disabled: busy || !card || !proposal.delta,
           onClick: () => { void act({ op: 'rebase', proposal: proposal.id }); } }, t('projectReviewMerge')) :
         h('button', { type: 'button', className: 'dpt-cc-btn', 'data-primary': '', disabled: busy,
           onClick: () => { void act({ op: 'approve', proposal: proposal.id }, 'projectMsgApprove', { id: proposal.id, title }); } }, t('projectApprove'))));
   }
 
-  function ProjectChatProposals({ sessionId, useProjection, useChat, turn, run, reply, form, t }) {
+  function ProjectDecision({ proposal, card, act, busy, t }) {
+    const choose = answer => {
+      const op = answer?.custom ? 'rethink' : answer === 'no' ? 'reject' : 'approve';
+      const key = { rethink: 'projectMsgRethink', approve: 'projectMsgApprove', reject: 'projectMsgReject' }[op];
+      const chosen = proposal.review?.options?.find(option => option.value === answer);
+      return act({ op, proposal: proposal.id, ...(chosen ? { choice: chosen.value } : {}), ...(answer?.custom ? { feedback: answer.custom } : {}) },
+        key, { id: proposal.id, title: chosen?.title ?? proposal.title, feedback: answer?.custom ?? '' });
+    };
+    return h(DecisionCard, { kind: 'project', title: tf(t, 'projectContentQuestion', { title: proposal.title }), text: proposal.title, review: proposal.review,
+      allowYes: !proposal.stale, t, onDecide: choose },
+      proposal.review?.options ? proposal.review.options.map(option => h('details', { key: option.value },
+        h('summary', null, tf(t, 'versionPreview', { label: option.label })),
+        h('p', { className: 'dpt-cc-note' }, t('projectCat_' + option.category)),
+        h(ProposalRow, { proposal: { ...proposal, ...option }, card, previewOnly: true, t })))
+        : h(ProposalRow, { proposal, card, previewOnly: true, t }),
+      proposal.stale && proposal.delta ? h('button', { type: 'button', className: 'dpt-cc-btn', disabled: busy,
+        onClick: () => { void act({ op: 'rebase', proposal: proposal.id }); } }, t('projectReviewMerge')) : null);
+  }
+
+  function ProjectInline({ sessionId, useProjection, anchor, run, reply, form, t }) {
     const state = projectionValue(useProjection, 'deepPtcProject');
-    const latest = useChat?.(view => view?.timeline?.turnOrder?.at(-1));
+    const enabled = useFormValue(form, 'projectCards') !== false;
     const [message, setMessage] = React.useState('');
     const [busy, setBusy] = React.useState(false);
-    const number = typeof turn === 'number' ? turn : turn?.turn;
-    const proposals = state?.proposals?.filter(row => row.session === sessionId) ?? [];
-    if ((!proposals.length && !message) || (latest !== undefined && number !== undefined && number !== latest) || form?.getSnapshot?.()?.value?.projectCards === false) return null;
+    const selected = useCurrentReview(useProjection, form, sessionId);
+    if (!enabled) return null;
+    const settledRows = (state?.settled ?? []).filter(row => String(row.anchor) === anchor);
+    const first = (state?.proposals ?? []).find(row =>
+      (row.chat ?? row.session) === sessionId || (state.guide && row.session === state.guide.childId));
+    const pending = first && selected === 'project:' + first.id && String(first.anchor) === anchor ? first : undefined;
+    if (!pending && !settledRows.length && !message) return null;
     const act = async (payload, key, values) => {
       setBusy(true);
       try {
@@ -233,7 +277,10 @@ export function createProjectCards({ React, h, tf, commandError, commandCode = (
       } catch (error) { setMessage(String(error?.message ?? error)); } finally { setBusy(false); }
     };
     return h('section', { className: 'dpt-pv-group', 'aria-label': t('projectProposals') },
-      ...proposals.map(proposal => h(ProposalRow, { key: proposal.id, proposal, card: state.cards.find(row => row.id === proposal.card), act, busy, t })),
+      ...settledRows.map(row => h(DecisionCard, { key: row.id, kind: 'project', title: tf(t, 'projectContentQuestion', { title: row.title }), text: row.title, review: row.review, selected: row.selected,
+        outcome: row.outcome === 'rejected' ? 'declined' : row.outcome, feedback: row.feedback, t },
+        h(ProposalRow, { proposal: row, settled: true, t }))),
+      pending ? h(ProjectDecision, { key: pending.id, proposal: pending, card: state.cards.find(row => row.id === pending.card), act, busy, t }) : null,
       message ? h('p', { role: 'alert' }, message) : null);
   }
 
@@ -337,7 +384,7 @@ export function createProjectCards({ React, h, tf, commandError, commandCode = (
       (state?.warnings ?? []).length > 0 ? h('p', { className: 'dpt-pv-warn' }, tf(t, 'projectWarnings', { count: state.warnings.length })) : null,
       proposals.length > 0 ? h('section', { className: 'dpt-pv-group', 'aria-label': t('projectProposals') },
         h('h3', { className: 'dpt-pv-group-title' }, t('projectProposals'), h('span', { className: 'dpt-pv-count' }, proposals.length)),
-        ...proposals.map(proposal => h(ProposalRow, { key: proposal.id, proposal, card: cards.find(card => card.id === proposal.card), busy, act, t }))) : null,
+        ...proposals.map(proposal => h(proposal.review ? ProjectDecision : ProposalRow, { key: proposal.id, proposal, card: cards.find(card => card.id === proposal.card), busy, act, t }))) : null,
       editing ? h('section', { className: 'dpt-pv-card', 'data-kind': 'setting' },
         h(CardEditor, { initial: editing, latest: cards.find(card => card.id === editing.card?.id), file: fileBasis, busy, t,
           suggestions: Array.isArray(state?.suggestions) ? state.suggestions : [], onPolish: polish, onDismissPolish: dismissPolish,
@@ -360,5 +407,5 @@ export function createProjectCards({ React, h, tf, commandError, commandCode = (
           h('div', { className: 'dpt-pv-grid' }, ...group.cards.map(card => h(ProjectCard, { key: card.id, card, onEdit: beginEdit, file: fileBasis,
             versions: Array.isArray(state?.history?.[card.id]) ? state.history[card.id] : [], busy: busy || editing !== undefined, act, t }))))));
   }
-  return { PROJECT_COMMAND_NAME, runProjectCommand, ProjectView, ProjectChatProposals };
+  return { PROJECT_COMMAND_NAME, runProjectCommand, ProjectView, ProjectInline };
 }

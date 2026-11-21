@@ -1,5 +1,13 @@
 # Deep PTC 测试报告 / Test report
 
+## 2.3.4 · 2026-11-21
+
+- Windows、Node 24：322 项自动化测试通过。测试覆盖候选版本选择、过期审批、提案合并、退回重拟和逐张询问。
+- 使用 DSH 0.2.2-rc.5 的 Web 界面与预设候选内容实测：分别选择第二个任务版本和第二个项目版本，核对任务条目与 PROJECT-CARDS.md 的实际内容，刷新后所选答案仍在原位。自填意见后的修订稿单独询问。
+
+- Windows and Node 24: 322 automated tests passed, covering candidate selection, stale approvals, rebasing proposals, revisions and sequential review.
+- Browser checks on DSH 0.2.2-rc.5 used fixture-authored drafts. Selecting the second task and project options wrote the corresponding content and kept the decisions visible after reload. Custom feedback led to a separate review of the revised draft.
+
 ## 2.3.0 · 2026-11-20
 
 - Windows、Node 24，306 项自动化测试通过，`npm run check` 通过。新增测试覆盖环境复制（不含会话与记忆）、残留目录清理、启动参数、桌面版 CLI 查找、侧栏命令、`virtual_dsh` 工具与审批（每个对话一次）、状态推送和对话记录摘要。

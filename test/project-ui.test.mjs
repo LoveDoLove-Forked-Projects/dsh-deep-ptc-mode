@@ -26,7 +26,7 @@ function fixture({ formValue = {}, commandText = 'v2 · stack · +R3 ~R1' } = {}
   vm.runInNewContext(readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8'), {
     window: { __ModuleLoader__: { load: definition => { plugin = definition.factory(() => React); } } },
   });
-  const ctx = { locale: { bind: () => (key, values) => values ? `${key}${JSON.stringify(values)}` : key, register() {} }, effect: fn => fn(),
+  const ctx = { uiConversation: { events: { register() {} } }, locale: { bind: () => (key, values) => values ? `${key}${JSON.stringify(values)}` : key, register() {} }, effect: fn => fn(),
     configForms: { get: () => form, whileServed: (names, fn) => fn() },
     remote: {
       commands: { async execute(...args) { calls.push(args); return { ok: true, value: { result: { kind: 'success', text: commandText } } }; } },
@@ -49,7 +49,7 @@ const project = () => ({ v: 1, hash: 'h', fileVersion: 'alpha', path: 'D:\\repo\
     { id: 'features', kind: 'features', title: '已实现功能', rev: 2, updated: '2026-11-17T12:00:00.000Z', items: [{ id: 'F1', text: '卡片接口' }] },
     { id: 'requirements', kind: 'requirements', title: '用户要求', rev: 1, updated: '-', items: [{ id: 'Q1', text: '版本 1.9.9', status: 'active' }, { id: 'Q2', text: '旧', status: 'superseded', by: 'Q1' }] },
   ],
-  proposals: [{ id: 'P1', card: 'stack', title: '技术栈', reason: '润色', baseRev: 1, preview: [{ id: 'R1', text: 'React 18（函数组件）' }, { id: 'R3', text: 'TypeScript 严格模式' }] }],
+  proposals: [{ id: 'P1', anchor: 7, card: 'stack', title: '技术栈', reason: '润色', baseRev: 1, preview: [{ id: 'R1', text: 'React 18（函数组件）' }, { id: 'R3', text: 'TypeScript 严格模式' }] }],
   history: { stack: [{ rev: 0, title: '技术栈', items: [{ id: 'R1', text: 'React' }], updated: '2026-11-16T00:00:00.000Z' }] } });
 
 async function renderView(f, state = project()) {
@@ -67,21 +67,23 @@ async function renderView(f, state = project()) {
 }
 const buttons = (view, label) => view.root.findAll(node => node.type === 'button' && JSON.stringify(node.props.children ?? '').includes(label));
 
-test('chat-origin proposals can be approved in chat and panel-origin proposals stay in the panel', async () => {
+test('the inline proposal group includes its guide proposals and excludes unrelated chats', async () => {
   const f = fixture();
-  const tail = f.slots.get('conversation.chat.turnTail#deep-ptc-project-proposals');
+  const tail = f.slots.get('conversation.chat.node#deep-ptc-project-proposals');
   const state = project();
+  state.guide = { childId: 'guide-child' };
   state.proposals[0].session = 'chat';
-  state.proposals.push({ ...state.proposals[0], id: 'P2', session: 'guide-child' });
+  state.proposals.push({ ...state.proposals[0], id: 'P2', session: 'guide-child' }, { ...state.proposals[0], id: 'P3', session: 'other' });
   let view;
   await act(async () => { view = Renderer.create(React.createElement(tail.render, {
-    ...tail.slot.inject('chat'), useProjection: () => state, turn: 2, useChat: select => select({ timeline: { turnOrder: [1, 2] } }),
+    ...tail.slot.inject('chat'), node: { data: { anchor: '7' } }, useProjection: key => key === 'deepPtcProject' ? state : key === 'agentPreset' ? 'deep-ptc' : undefined, turn: 2, useChat: select => select({ timeline: { turnOrder: [1, 2] } }),
   })); });
   try {
-    assert.equal(buttons(view, 'projectApprove').length, 1);
-    await act(async () => buttons(view, 'projectApprove')[0].props.onClick());
-    assert.equal(f.calls[0][0], 'chat');
-    assert.match(f.calls[0][1], /"proposal":"P1"/u);
+    assert.equal(view.root.findAllByType('form').length, 1, 'only one proposal asks at a time');
+    await act(async () => view.root.findAllByProps({ role: 'radio' })[0].props.onClick());
+    await act(async () => view.root.findByType('form').props.onSubmit({ preventDefault() {} }));
+    assert.equal(f.calls.at(-1)[0], 'chat');
+    assert.match(f.calls.at(-1)[1], /"proposal":"P1"/u);
     assert.equal(f.prompts[0].mode, 'steer');
   } finally { await act(async () => view.unmount()); }
 });
@@ -196,15 +198,15 @@ test('an incoming edit preserves the draft and merges untouched rows on request'
 
 test('cards take their grid width, and the conversation cards switch hides them', async () => {
   const f = fixture();
-  const tail = f.slots.get('conversation.chat.turnTail#deep-ptc-cards');
+  const tail = f.slots.get('conversation.chat.node#deep-ptc-cards');
   const cards = [
     { id: 'a', title: 'A', subtitle: 's', phase: 'open', size: 'half' },
     { id: 'b', title: 'B', subtitle: 's', phase: 'open', size: 'half' },
     { id: 'c', title: 'C', subtitle: 's', phase: 'open' },
   ];
   let view;
-  await act(async () => { view = Renderer.create(React.createElement(tail.render, { ...tail.slot.inject('s'),
-    turn: { turn: 1 }, useProjection: key => key === 'deepPtcCards' ? { v: 2, seq: 3, turn: 1, versions: cards.map((card, index) => ({ rev: index + 1, turn: 1, ...card })) } : undefined })); });
+  await act(async () => { view = Renderer.create(React.createElement(tail.render, { ...tail.slot.inject('s'), node: { data: { anchor: '7' } },
+    turn: { turn: 1 }, useProjection: key => key === 'deepPtcCards' ? { v: 2, seq: 3, turn: 1, versions: cards.map((card, index) => ({ rev: index + 1, anchor: 7, turn: 1, ...card })) } : undefined })); });
   assert.deepEqual(view.root.findAll(node => node.props?.className === 'dpt-cc').map(node => node.props['data-size']), ['half', 'half', undefined]);
   await act(async () => { await f.form.mutate([{ op: 'set', path: ['conversationCards'], value: false }]); });
   assert.equal(view.toJSON(), null);
@@ -221,5 +223,55 @@ test('the settings page has both card switches', async () => {
     assert.deepEqual(switches.map(node => node.props['aria-checked']), [true, true]);
     await act(async () => switches[1].props.onClick());
     assert.equal(f.form.getSnapshot().value.projectCards, false);
+  } finally { await act(async () => view.unmount()); }
+});
+
+test('a proposal appears inline and stays as a read-only card after approval', async () => {
+  const f = fixture();
+  const live = f.slots.get('conversation.chat.node#deep-ptc-project-proposals');
+  assert.ok(live, 'the live approval slot is registered');
+  const state = project();
+  state.proposals[0].session = 'chat';
+  state.turn = 2;
+  state.settled = [];
+  const injected = live.slot.inject('chat');
+  const projectionFor = value => key => key === 'agentPreset' ? 'deep-ptc'
+    : key === 'deepPtcCards' ? { v: 2, seq: 1, turn: 2, versions: [] }
+    : key === 'deepPtcProject' ? value : undefined;
+  let view;
+  await act(async () => { view = Renderer.create(React.createElement(live.render, { ...injected, node: { data: { anchor: '7' } }, useProjection: projectionFor(state) })); });
+  try {
+    assert.equal(view.root.findAllByProps({ role: 'radio' }).length, 3);
+    await act(async () => view.root.findAllByProps({ role: 'radio' })[0].props.onClick());
+    await act(async () => view.root.findByType('form').props.onSubmit({ preventDefault() {} }));
+    assert.match(f.calls.at(-1)[1], /"op":"approve"/u);
+    const settled = { ...state, proposals: [], settled: [{ v: 1, id: 'P1', anchor: 7, card: 'stack', title: '技术栈', outcome: 'approved',
+      created: false, change: 'v2 · stack · +R3 ~R1', turn: 2,
+      before: [{ id: 'R1', text: 'React 18' }, { id: 'R2', text: 'Vite' }],
+      after: [{ id: 'R1', text: 'React 18（函数组件）' }, { id: 'R3', text: 'TypeScript 严格模式' }] }] };
+    await act(async () => { view.update(React.createElement(live.render, { ...injected, node: { data: { anchor: '7' } }, useProjection: projectionFor(settled) })); });
+    assert.equal(view.root.findAllByProps({ role: 'radio' }).length, 0);
+    const shown = JSON.stringify(view.toJSON());
+    assert.match(shown, /projectProposalApproved/u);
+    assert.match(shown, /TypeScript/u);
+    assert.match(shown, /R2/u, 'removed entries stay visible in the record');
+  } finally { await act(async () => view.unmount()); }
+});
+
+test('a settled proposal stays in its turn as a read-only history card', async () => {
+  const f = fixture();
+  const tail = f.slots.get('conversation.chat.node#deep-ptc-project-proposals');
+  const state = { ...project(), proposals: [], settled: [{ v: 1, id: 'P9', anchor: 7, card: 'stack', title: '技术栈', outcome: 'rejected',
+    created: false, turn: 2, before: [{ id: 'R1', text: 'React 18' }], after: [{ id: 'R1', text: 'React 19' }] }] };
+  let view;
+  await act(async () => { view = Renderer.create(React.createElement(tail.render, { ...tail.slot.inject('deep'), node: { data: { anchor: '7' } },
+    turn: 2, useProjection: key => key === 'deepPtcProject' ? state : undefined,
+    useChat: select => select({ timeline: { turnOrder: [1, 2] } }) })); });
+  try {
+    assert.equal(view.root.findAllByProps({ role: 'radio' }).length, 0);
+    const shown = JSON.stringify(view.toJSON());
+    assert.match(shown, /projectProposalRejected/u);
+    assert.match(shown, /React 18/u);
+    assert.match(shown, /React 19/u);
   } finally { await act(async () => view.unmount()); }
 });

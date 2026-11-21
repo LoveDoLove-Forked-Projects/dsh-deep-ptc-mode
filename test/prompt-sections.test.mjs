@@ -41,6 +41,6 @@ test('the persona names no question tool of its own; reachability names the one 
   // The two constraints that stay as they were.
   assert.match(persona, /## Spend an unlimited budget on the work/u);
   assert.match(persona, /## Work visibly/u);
-  assert.match(reachabilityText({ foregroundSeconds: 30, maxQuestionSeconds: 300, maxPollsPerProgram: 3, questionCards: true }), /ask_user posts a question card and never waits/u);
+  assert.match(reachabilityText({ foregroundSeconds: 30, maxQuestionSeconds: 300, maxPollsPerProgram: 3, questionCards: true }), /enclosing call waits for the answer/u);
   assert.match(reachabilityText({ foregroundSeconds: 30, maxQuestionSeconds: 300, maxPollsPerProgram: 3 }), /ask_user_question waits at most 300 s/u);
 });

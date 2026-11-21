@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { apply as applyCards, cardsRuntime, install, questionToolDefinition, QUESTION_TOOL } from '../lib/cards-context.mjs';
+import { briefToolDefinition } from '../lib/brief-context.mjs';
 import { CARD_COMMAND, CARD_TOOL, ANSWERED, OPEN, STOPPED, DISMISSED } from '../lib/cards.mjs';
 import { latestOf } from '../lib/card-state.mjs';
 import { apply as applyQuestionTool } from '../lib/question-tool.mjs';
@@ -63,9 +64,9 @@ test('the tool posts a card and its button really runs', async () => {
     actions: [{ id: 'stop', label: '停止提醒', style: 'danger', run: { schedules: ['schedule-a', 'schedule-b'] } }] }, { agent: { session } });
   assert.deepEqual([created.id, created.rev, created.turn, created.phase], ['loop', 1, 1, OPEN]);
   assert.deepEqual(created.cards[0], { id: 'loop', rev: 1, turn: 1, kind: 'card', title: '每小时提醒', phase: OPEN, interactive: true });
-  assert.match(created.next, /^A display card: continue/u, 'a card with only run buttons does not wait');
+  assert.match(created.next, /turn waits here/u, 'a run button also asks for an interaction');
   const asking = await tool.execute({ action: 'show', id: 'pick', title: '选方案', note: '二选一', actions: [{ id: 'a', label: 'A', reply: true }] }, { agent: { session } });
-  assert.match(asking.next, /asks the user to decide: .* end your turn/u, 'a reply button means waiting for the choice');
+  assert.match(asking.next, /turn waits here/u, 'a reply button means waiting for the choice');
 
   await host.run(session, { id: 'loop', action: 'act', key: 'stop' });
   const card = await settle(host, session, 'loop', version => version.phase === STOPPED);
@@ -74,7 +75,7 @@ test('the tool posts a card and its button really runs', async () => {
   assert.deepEqual(host.schedule.calls.map(call => call.actor), ['session-1', 'session-1']);
 });
 
-test('cards stay in the history: a new version archives the old one, a new turn archives both', async () => {
+test('cards stay in the history: a new version archives the old one, the outstanding decision survives a turn change', async () => {
   const host = fakeHost();
   await install(host.ctx, host.records);
   const tool = host.registered.get(CARD_TOOL);
@@ -87,7 +88,7 @@ test('cards stay in the history: a new version archives the old one, a new turn 
   assert.equal(host.state(session).versions.length, 2, 'the first version is kept, not replaced');
   assert.match(host.run(session, { id: 'decision', rev: first.rev, action: 'act', key: 'pick' }).text, /newer version/u);
   host.turn(session, 2);
-  assert.match(host.run(session, { id: 'decision', action: 'act', key: 'pick' }).text, /earlier turn/u);
+  assert.equal((await host.run(session, { id: 'decision', action: 'act', key: 'pick' })).kind, 'success');
   // Showing it again in the new turn makes it usable again.
   await show('Again');
   assert.equal((await host.run(session, { id: 'decision', action: 'act', key: 'pick' })).kind, 'success');
@@ -166,10 +167,10 @@ test('ask_user posts a question card that returns at once and takes one valid an
   assert.deepEqual(answered.result.answers, { plan: 'k8s', note: '尽快' });
   assert.match(host.run(session, { id: 'deploy', action: 'answer', answers: { plan: 'vps' } }).text, /already handled/u);
   await assert.rejects(() => ask.execute({ title: 'x', questions: [] }, { agent: { session } }), /1-5/u);
-  // A question from an earlier turn is archived: the user answered in chat instead.
+  // A pending question still takes an answer after an interrupted turn.
   await ask.execute({ id: 'later', title: 'Later', questions: [{ prompt: 'p?' }] }, { agent: { session } });
   host.turn(session, 4);
-  assert.match(host.run(session, { id: 'later', action: 'answer', answers: { q1: 'x' } }).text, /earlier turn/u);
+  assert.equal((await host.run(session, { id: 'later', action: 'answer', answers: { q1: 'x' } })).kind, 'success');
   cardsRuntime.enabled = () => false;
   await assert.rejects(() => questionToolDefinition().execute({ title: 'x', questions: [{ prompt: 'p' }] }, { agent: { session } }), /turned off/u);
   cardsRuntime.enabled = () => true;
@@ -184,5 +185,45 @@ test('the card rules live in a protected system prompt section, never in compact
   await applyCards(ctx, {});
   const guidance = sections.find(section => section.name === 'deep-ptc:conversation-cards');
   const text = guidance.text({ agent: { session: {} } });
-  for (const rule of [/ask_user/u, /returns at once/u, /newest version in the current turn/u, /Never ask the same question again/u]) assert.match(text, rule);
+  for (const rule of [/ask_user/u, /returns at once/u, /newest version takes clicks/u, /Never ask the same question again/u]) assert.match(text, rule);
+});
+
+test('an ambiguous task posts alternatives before filing; a custom interpretation reaches the model verbatim', async () => {
+  const host = fakeHost();
+  await install(host.ctx, host.records, { enabled: () => false, reviewEnabled: kind => kind === 'brief' });
+  const session = { id: 'ambiguous' };
+  host.turn(session, 1);
+  const brief = briefToolDefinition({ api: { enabled: () => true, read: () => ({}) } });
+  const posted = await brief.execute({ action: 'update', title: '导出哪些数据？', items: [{ text: '未经确认的解释' }],
+    questions: [{ id: 'scope', prompt: '导出范围', options: ['当前行', '当前页', '全部结果'] }] }, { agent: { session } });
+  const card = latestOf(host.state(session), posted.id);
+  assert.equal(card.review, 'brief');
+  assert.equal(card.questions[0].options.length, 3);
+  const answered = await host.run(session, { id: card.id, action: 'answer', answers: { scope: { custom: '只导出勾选的行' } } });
+  assert.equal(answered.kind, 'success');
+  assert.equal(latestOf(host.state(session), card.id).result.answers.scope.custom, '只导出勾选的行');
+  assert.match(host.delivered.at(-1).content[0].text, /只导出勾选的行/u);
+});
+
+test('review questions advance atomically one answer at a time, and free input returns to the model for a fresh proposal', async () => {
+  const host = fakeHost();
+  let waiting;
+  await install(host.ctx, host.records, { waits: { add(_exec, check) { waiting = check; }, delivering() { return () => {}; } } });
+  const session = { id: 'sequential-questions' };
+  host.turn(session, 1);
+  const brief = briefToolDefinition({ api: { enabled: () => true, read: () => ({}) } });
+  const ask = await brief.execute({ action: 'clarify', questions: ['Scope?', 'Format?', 'Location?'].map((prompt, i) => ({
+    id: 'q' + i, prompt, options: [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }] })) }, { agent: { session } });
+  const first = latestOf(host.state(session), ask.id);
+  assert.ok(waiting());
+  await host.run(session, { id: first.id, rev: first.rev, action: 'answer', answers: { q0: 'a' } });
+  const second = host.state(session).versions.at(-1);
+  assert.equal(second.questions[0].prompt, 'Format?');
+  assert.notEqual(first.anchor, second.anchor);
+  assert.ok(waiting());
+  assert.equal(host.state(session).versions[0].questions.length, 1);
+  await host.run(session, { id: second.id, rev: second.rev, action: 'answer', answers: { q1: { custom: 'A different format' } } });
+  assert.equal(waiting(), false);
+  assert.equal(host.state(session).versions.length, 2);
+  assert.match(host.delivered.at(-1).content[0].text, /fresh approval[\s\S]*Location\?|Reorganize[\s\S]*Location\?/u);
 });

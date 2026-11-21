@@ -1,12 +1,18 @@
 # Deep PTC mode
 
-[中文](README.zh.md) · MIT · **2.3.0**
+[中文](README.zh.md) · MIT · **2.3.4**
 
 [Changelog](CHANGELOG.md) · [Test report](TEST_REPORT.md) · [Plugin workflows and verification](COMPATIBILITY.md)
 
 Deep PTC is a DeepSeek Harness agent mode with progress reports, clarifying questions, task-size planning, and interruptible background work. It builds on the installed official PTC preset with selectable shells, on-demand tools and skills, and a two-layer preset identity adapter for third-party plugins. Cards face both you and the model: you see a clear card, the model reads precise context with ids, sources and states; the task brief files the goals, constraints and acceptance criteria in your messages and, once you confirm, can take the raw messages out of the model's context.
 
 The panel sits beside the conversation and shows the environment, Deep creative mode with the virtual DSH, subagents, jobs, output files, SSH connections and tool state. The panel width can be dragged. The capsule expands or collapses it; it sits below the composer by default and can move into the toolbar or be hidden. Deep PTC also has its own settings page. Visual effects are lightweight and start off when an appearance plugin is installed.
+
+## Changes in 2.3.4
+
+Each task item and each project proposal has its own question. The model can write the prompt and offer multiple concrete versions in the same card. Submitting a version applies its exact task text or project changes. Choosing Other requests a redraft and fresh approval. When a request has multiple plausible interpretations, the task brief and project tools can ask for a choice or a custom interpretation before drafting. Both reviews can be returned with feedback, and project proposals can be edited inline before approval.
+
+- Approval cards appear in the main conversation: the task brief and project card proposals appear in the chat transcript as soon as they exist, and they settle into read-only records at the same position. Confirmed briefs and approved or rejected proposals stay in the conversation as archived cards.
 
 ## Changes in 2.3.0
 
@@ -19,7 +25,7 @@ The panel sits beside the conversation and shows the environment, Deep creative 
 
 - Enable Deep creative mode in the side panel for new conversations. Test plugin archives in a separate DSH Web process with its own home and profile.
 - Six on-demand skills cover DSH operations, local web testing, frontend implementation, primary-source research, Office delivery and scientific figures. Four include runnable examples. The figure generator produces an SVG, a statistical summary and a conversation card from the same measurements.
-- Cards appear above the composer during a running turn. Project cards use a runtime snapshot with a 16,000-character budget including omitted titles. Delivery receipts handle mixed client versions, and project setup follows the active question-tool settings.
+- Cards appear in the chat transcript during a running turn. Project cards use a runtime snapshot with a 16,000-character budget including omitted titles. Delivery receipts handle mixed client versions, and project setup follows the active question-tool settings.
 
 ## Changes in 2.1.0
 
@@ -38,8 +44,8 @@ The panel sits beside the conversation and shows the environment, Deep creative 
 
 2.0.1 focuses on stability and fills in cards, questions and the panel from user feedback.
 
-- **Conversation cards stay in the history**: each version draws at the turn it appeared in; only cards in the latest turn are clickable, older versions and earlier turns are read-only archives, and closed cards fold into one line.
-- **Question cards replace the official question tool**: with conversation cards on, the model asks with `ask_user` (single choice, multiple choice, text, optional recommended answers). Asking never blocks; your answer arrives as your next message and the card keeps the answered result.
+- **Conversation cards stay in the history**: each version draws at the turn it appeared in; outstanding decisions stay in the chat transcript until handled, then their records are read-only, and closed cards fold into one line.
+- **Question cards replace the official question tool**: with conversation cards on, the model asks with `ask_user` (single choice, multiple choice, text, optional recommended answers). The current turn waits for your answer and the card keeps the answered result.
 - **Automatic card layout**: without an explicit `size`, narrow cards pair up or sit three in a row and wide cards take the full row.
 - **Project cards are modular prompt constraints**: each card is one self-contained module of a protected system prompt section, with its title, revision and item IDs. Every create, edit, delete and polish reaches the model at once as a steer message, even mid-task. Over the size limit whole later cards are left out and named instead of cutting a card in half.
 - **You decide on polishing**: polish with a subagent or the current conversation, review the result side by side, and adopt or discard it.
@@ -89,7 +95,7 @@ Third-party plugins that query `composedPreset` share the same compatibility rul
 
 ### 6. Leaner skill and tool loading
 
-Each turn ends with a skill context card that lists only the skills still loaded and not closed, so the user decides what stays for the next turn.
+The transcript includes a collapsible skill context card that lists only the skills still loaded and not closed, so the user decides what stays for the next turn.
 
 Search summaries first, then load full schemas: six entries per page by default (maximum eight), up to six schemas within a 16 KB budget per load, and up to twelve recent selections. Quarantine persists with the conversation: clear unavailability blocks immediately; temporary failures need three in a row and a success clears the count; wrong arguments, denial and normal business failures are not tool failures; one reset clears only the current conversation. Skills load in two stages: discovery reads metadata and invocation permission only; the official `skill` tool loads the body.
 
@@ -97,19 +103,19 @@ Install the plugin, choose an environment under **Settings → Deep PTC**, and s
 
 ## Skill context card (1.8.5)
 
-After each turn, a card at the end of that turn in the conversation (where official plan cards appear) lists only the skills that are **still in context and not closed** — not the whole skill catalog. Each row shows the name, description and a switch, on by default; the card also offers **Keep all / Close all** and says how many skills leave after the next message. More than four rows fold behind “Show all”. Only the latest turn shows the card.
+A collapsible card in the chat transcript lists only the skills that are **still in context and not closed** — not the whole skill catalog. Each row shows the name, description and a switch, on by default; the card also offers **Keep all / Close all** and says how many skills leave after the next message. More than four rows fold behind “Show all”. Only the latest turn shows the card.
 
 - A switch changes the next turn only. It is fixed when you send the next message and applied before the first model step of that turn.
 - A kept skill stays in context without a reload; a closed skill has its tool-result body replaced with a short marker, while the durable log and human transcript keep the original text.
 - A closed skill disappears from later cards until the model loads it again.
-- If a new task really needs it, the model calls `skill` again and the card lists it after that turn.
+- If a new task really needs it, the model calls `skill` again and the card lists it immediately.
 - The state is registered at the plugin root, so an existing Deep PTC session also rebuilds it from history after an upgrade; no new session is required.
 - The card tracks skills loaded directly through the official `skill` tool and skills loaded by a PTC inner call inside `run_code`. The latter usually reach the program rather than the model context, so closing one only removes it from the card, not from program output. `/name` injections are not covered yet.
 - A switch leaves no command row in the conversation (the session log still records it); only a failed switch shows a short error line in place.
 
 ## Conversation cards (1.9.9)
 
-The model leaves cards at the end of the conversation with the `ui_card` tool. Cards are **composed**, not picked from fixed templates: a header (title, subtitle, icon, state tone), up to 6 blocks, a note and up to 4 buttons. Any combination is valid, so the model can create a new card for any situation.
+The model posts cards in the chat transcript with the `ui_card` tool. Cards are **composed**, not picked from fixed templates: a header (title, subtitle, icon, state tone), up to 6 blocks, a note and up to 4 buttons. Any combination is valid, so the model can create a new card for any situation.
 
 - **Display blocks**: `stats` tiles, `rows`, `progress`, `bars`, `line` (with a hover tooltip), `donut`, `steps` (checklist or timeline), `table`, `tags`, `text`, `callout`.
 - **Interactive blocks**: `choice` (single or multiple, with a preselected recommendation) and `field` (time, date or number).
@@ -117,7 +123,7 @@ The model leaves cards at the end of the conversation with the `ui_card` tool. C
 - **Buttons**: `run` really runs on the host (deletes scheduled tasks, or runs one command in **your selected execution environment**); `reply` sends the user's choice to the model as their next message; a button can do both. `keep` leaves the card usable after a press (restart, snooze, rerun).
 - **Safety**: `{name}` placeholders in a command are filled only from times, dates, numbers and option values the card declared, so free text never reaches a shell; the server validates them again. Destructive buttons use the `danger` style.
 - **Model view**: answers and button choices reach the model as `[Card answer: id «title»]` followed by `question id = value «the words you saw»`; tool results carry no presentation fields such as size or tone.
-- **Design**: one type scale, spacing and colour system that follows the host's light and dark themes; the chart palette is validated for colour-vision deficiency and every value is printed, so colour never carries meaning alone. Cards draw once, after the latest turn.
+- **Design**: one type scale, spacing and colour system that follows the host's light and dark themes; the chart palette is validated for colour-vision deficiency and every value is printed, so colour never carries meaning alone. Interactive cards appear as soon as they are requested.
 
 Three card skills cover the interface (`deep-ptc-cards`), development templates (`deep-ptc-card-examples`), and project settings and proposals (`deep-ptc-project-cards`).
 
@@ -133,7 +139,7 @@ The project's standing rules and records, kept in `PROJECT-CARDS.md` at the work
   - **Implemented features** (F): the model records verified behavior, its entry point and relevant checks. Before changing related code, it reads these entries and retests existing behavior affected by the change. Users can question records for the model to verify and correct.
   - **User requirements** (Q ids) record the lasting requirements you have stated, with their status (active / done / superseded). The model checks new requests against them and asks you first when they conflict.
 - **The Project cards view** sits next to Chat / Trajectory / Stats in Deep PTC sessions. You can browse cards by group, edit and submit them, or tick a box to have the model polish your edit first (it comes back as a proposal for you to approve). You can also browse history and roll back, approve or reject proposals, and question the model's records. Each submit, approval and rollback sends the model a message.
-- **Getting started**: when project cards are enabled and a project has no setting cards, the model should initiate setup in its first visible reply with a specific question or grounded draft. Setup started in chat offers approval in that chat. Starting setup in the Project cards panel opens a dedicated subagent there for questions, replies and proposals. A reply steers its current task.
+- **Getting started**: when project cards are enabled and a project has no setting cards, the model should initiate setup in its first visible reply with a specific question or grounded draft. Setup started in chat offers approval in that chat. Starting setup in the Project cards panel opens the main chat. Proposals from an existing setup guide also appear there. A reply steers its current task.
 - **Edit protection**. Submit, delete and rollback check the file version from when the edit began. On a conflict, the editor keeps the draft and offers to merge it with the current content. Writes preserve Markdown outside the managed lines. History and proposals live in `$DSH_HOME/storages/deep-ptc-project-cards.json`.
 - Under **Settings → Deep PTC → Cards** you can switch off conversation cards and project cards separately (both on by default).
 
@@ -157,7 +163,7 @@ People write the way they talk: goals, limits, background and pleasantries in on
   - A1 [confirmed] 给一张按时间排好的表格
   ```
 
-- The card shows at the end of the turn that last changed it, and Task brief in the side panel is always there. Switch it off under Settings → Deep PTC → Cards.
+- Review the brief in the chat transcript. The sidebar shows its current state and the conversation keeps the settled version. Switch it off under Settings → Deep PTC → Cards.
 
 ## Panel, settings page and visual effects
 
@@ -178,7 +184,7 @@ The Deep PTC mode label, settings, and conversation UI switch between Chinese an
 - **Panel location**: choose Beside conversation or Sidebar under Settings → Deep PTC → Appearance. In Sidebar mode the whole panel lives in the Deep PTC tab of the right sidebar and the capsule opens it; with dsh-better-sidebar installed it opens as one of its pages and can also go in its bottom workbench.
 - **Panel width**: drag the panel's left edge, or focus it and use the arrow keys (Shift for larger steps) or Home/End; a double click restores 280px. The width is remembered, from 240 to 640px, and a docked panel leaves at least 540px for the conversation.
 
-Visual effects apply **only while the conversation on screen is a Deep PTC session**, and only on the composer, send button, message bubbles, reply typography and session rows. They never rewrite the host's colour tokens or fonts, so switching conversations does not restyle the whole page: a hairline on the focused composer, a blue gradient send button, soft blue user bubbles, pointer spotlight, click ripple, a magnetic send button; while running, a glowing composer, a send-button ring and sparks rising above the composer.
+Visual effects apply **only while the conversation on screen is a Deep PTC session**, and only on the composer, send button, message bubbles, reply typography and session rows. They never rewrite the host's colour tokens or fonts, so switching conversations does not restyle the whole page: a hairline on the focused composer, a blue gradient send button, soft blue user bubbles, pointer spotlight, click ripple, a magnetic send button; while running, a glowing composer, a send-button ring and sparks rising in the chat transcript.
 
 - Light rendering: effect styles target DSH's own stable attributes instead of measuring elements every frame; looping animations change only opacity or transforms; the spark canvas covers only the area around the composer at no more than 1.5 device pixels per CSS pixel and stops drawing when nothing moves or the window is hidden.
 - With an appearance plugin such as dsh-claude-style or dsh-refined-ui installed, effects start off; turning them on keeps your choice. The standalone dsh-refined-ui is never drawn twice.
@@ -228,7 +234,7 @@ From 1.5.0, "don't sleep or wait" is enforced by plugin code, not just requested
 | `job_output` waits on a job | Capped at 30 s, ends early when you send a message, and waiting again while your message is unread is refused |
 | The model writes `sleep 60`, `Start-Sleep 30` or `timeout /t 20` | Foreground pauses over 5 s are refused (`run_in_background` commands are exempt); short readiness loops such as `sleep 1` still work |
 | `setTimeout`, `setInterval` or `time.sleep` in a `run_code` program | Known waits over 5 s are refused; unresolved durations pass through; polling one running job more than 3 times in one program is refused |
-| `ask_user_question` | Replaced by non-blocking `ask_user` question cards while conversation cards are on (the answer arrives as your next message); with cards off it runs in timed mode: 120 s by default, at most 300 s, `-1` refused. An unanswered question becomes pending and your later answer arrives as a message; typing a reply instead of using the card ends the wait at once |
+| `ask_user_question` | Replaced by immediate `ask_user` question cards while conversation cards are on (the current turn waits for your answer); with cards off it runs in timed mode: 120 s by default, at most 300 s, `-1` refused. An unanswered question becomes pending and your later answer arrives as a message; typing a reply instead of using the card ends the wait at once |
 
 These rules apply only to Deep PTC sessions. They rely on the desktop "busy Enter" setting being **steer**; with **queue**, messages wait for the whole turn to end.
 
@@ -344,10 +350,10 @@ A prompt changes the model's working tendency, not the real token limit or billi
 Requires Node `>=24` and DSH `>=0.2.2-rc.1`. The installer rejects the current package on DSH `0.2.1-rc.5` based on its manifest. macOS/Zsh checks cover configuration, argv and tool mounting.
 
 ```js
-plugin_manager({ action: "install_bundle", target: "dsh-deep-ptc-mode@2.3.0" })
+plugin_manager({ action: "install_bundle", target: "dsh-deep-ptc-mode@2.3.4" })
 // Or from a local checkout or archive:
 plugin_manager({ action: "install_bundle", target: "C:\\path\\to\\dsh-deep-ptc-mode" })
-// Or target: "C:\\path\\to\\dsh-deep-ptc-mode-2.3.0.tgz"
+// Or target: "C:\\path\\to\\dsh-deep-ptc-mode-2.3.4.tgz"
 ```
 
 Repository locator: `github:lishize20040802-rgb/dsh-deep-ptc-mode`. It installs content actually published there; a local upgrade does not publish to GitHub or npm.
