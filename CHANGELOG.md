@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.4.3 — 2026-11-22
+
+- 卡片待决不再卡死整个回合：用户不回答卡片、改用一条消息回复时，等待立即结束，回合继续推进，卡片仍留在对话里可后补点击。待决期间只有卡片类工具（ui_card、ask_user、task_brief、project_cards）被拒绝，读文件、跑命令等无关调用不再报 “Awaiting a card decision”（#40）。
+- 带选项的提问卡永远多一个「其他：填写我的想法」：选项不合适时直接写自己的答案，模型收到的就是这段文字。审批卡原本就有，现在所有提问卡都有。ui_card 的选项块在不被按钮命令引用时也带「其他」；会被 {name} 拼进命令的选项保持原样，自由文本永不进入命令。
+- A pending card no longer freezes the turn: when the user writes a message instead of answering, the wait ends at once and the turn continues, with the card still answerable. Only card tools (ui_card, ask_user, task_brief, project_cards) are refused while a card waits, so unrelated calls no longer fail with “Awaiting a card decision” (#40).
+- Every option question now ends with 「其他」: write your own answer and the model receives that text. Review cards already had it; now every question card does. A ui_card choice offers it too when no button command substitutes its value; where a command reads the value the options stay as listed, so free text never reaches a command.
+
 ## 2.4.2 — 2026-11-21
 
 - 主代理用 `task_brief assign` 向直属的可继续子代理下发任务卡。两个代理可在执行中通过 `send_message` 双向沟通。子代理自行处理可逆细节，将阻塞任务的决定与建议报给主代理。

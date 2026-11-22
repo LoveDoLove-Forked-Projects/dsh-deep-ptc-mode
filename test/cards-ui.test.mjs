@@ -131,6 +131,27 @@ test('a question card collects every answer and sends it as one message', async 
     assert.equal(answered.root.findAll(node => node.type === 'button' && node.props.type === 'submit').length, 0);
   } finally { await act(async () => answered.unmount()); }
 });
+
+test('every option question offers 其他 and sends the written answer', async () => {
+  const f = fixture();
+  const question = { id: 'pick', kind: 'question', title: '选择方案', phase: 'open', questions: [
+    { id: 'plan', prompt: '用哪种方案？', type: 'single', options: [{ value: 'vps', label: 'VPS' }, { value: 'k8s', label: 'K8s' }] }] };
+  const view = await render(f, [question]);
+  try {
+    const radios = view.root.findAll(node => node.type === 'button' && node.props?.role === 'radio');
+    assert.equal(radios.length, 3, 'two options plus 其他');
+    const submit = () => view.root.find(node => node.type === 'button' && node.props.type === 'submit');
+    assert.equal(submit().props.disabled, true, 'choosing 其他 alone is not an answer');
+    await act(async () => radios[2].props.onClick());
+    await act(async () => view.root.find(node => node.type === 'textarea').props.onChange({ target: { value: '自建机房' } }));
+    assert.equal(submit().props.disabled, false, 'the written answer completes the question');
+    await act(async () => view.root.find(node => node.type === 'form').props.onSubmit({ preventDefault() {} }));
+    const payload = JSON.parse(f.calls.at(-1)[1].slice('/deep-ptc-card-act '.length));
+    assert.deepEqual(payload.answers, { plan: { custom: '自建机房' } });
+    assert.ok(f.prompts[0].content[0].text.includes('自建机房'), 'the model reads the written answer');
+  } finally { await act(async () => view.unmount()); }
+});
+
 test('the line chart shows a tooltip for the nearest point', async () => {
   const f = fixture();
   const view = await render(f, [{ id: 'l', title: 'L', phase: 'open', blocks: [{ type: 'line', unit: 's', points: [1, 5, 3], labels: ['a', 'b', 'c'] }] }]);
@@ -146,7 +167,7 @@ test('a choice and a reply button send the pick to the command and then to the m
   const view = await render(f, [sample('deploy-plan')]);
   try {
     const options = view.root.findAll(node => node.props?.role === 'radio');
-    assert.deepEqual(options.map(node => node.props['aria-checked']), [false, true, false], 'the recommended option is preselected');
+    assert.deepEqual(options.map(node => node.props['aria-checked']), [false, true, false, false], 'the recommended option is preselected, then 其他');
     await act(async () => options[2].props.onClick());
     await act(async () => button(view, '用这个方案').props.onClick());
     assert.equal(f.calls.at(-1)[1], '/deep-ptc-card-act {"id":"deploy-plan","action":"act","rev":1,"key":"go","values":{"plan":"k8s"},"codedReceipt":true}');
@@ -154,6 +175,35 @@ test('a choice and a reply button send the pick to the command and then to the m
     assert.equal(f.prompts[0].sessionId, 'session-A');
     assert.equal(f.prompts[0].mode, 'steer');
     assert.equal(JSON.stringify(f.prompts[0].content), JSON.stringify([{ type: 'text', text: '部署方案选 k8s，开始准备' }]));
+  } finally { await act(async () => view.unmount()); }
+});
+
+test('a choice no command reads takes a written answer through 其他', async () => {
+  const f = fixture();
+  const card = { id: 'region', title: '选地域', phase: 'open', blocks: [
+    { type: 'choice', name: 'region', label: '地域', options: [{ value: 'cn', label: '国内' }, { value: 'us', label: '海外' }] }],
+    actions: [{ id: 'ok', label: '确认', reply: true }] };
+  const view = await render(f, [card]);
+  try {
+    const radios = view.root.findAll(node => node.props?.role === 'radio');
+    assert.equal(radios.length, 3, 'two options plus 其他');
+    await act(async () => radios[2].props.onClick());
+    await act(async () => view.root.find(node => node.type === 'textarea').props.onChange({ target: { value: '自建机房' } }));
+    await act(async () => button(view, '确认').props.onClick());
+    const payload = JSON.parse(f.calls.at(-1)[1].slice('/deep-ptc-card-act '.length));
+    assert.deepEqual(payload.values, { region: '自建机房' });
+    assert.match(f.prompts[0].content[0].text, /自建机房/u, 'the model reads the written answer');
+  } finally { await act(async () => view.unmount()); }
+});
+
+test('a choice a button command reads keeps the listed options only', async () => {
+  const f = fixture();
+  const card = { id: 'plan', title: '选方案', phase: 'open', blocks: [
+    { type: 'choice', name: 'plan', options: [{ value: 'vps', label: 'VPS' }, { value: 'k8s', label: 'K8s' }] }],
+    actions: [{ id: 'go', label: '部署', run: { command: 'deploy {plan}' } }] };
+  const view = await render(f, [card]);
+  try {
+    assert.equal(view.root.findAll(node => node.props?.role === 'radio').length, 2, 'no 其他 where a command substitutes the value');
   } finally { await act(async () => view.unmount()); }
 });
 

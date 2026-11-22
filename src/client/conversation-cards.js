@@ -166,10 +166,15 @@ export function createConversationCards({ React, h, tf, commandText, commandCode
 
   // Interactive blocks. Their values live in the card view until a button sends them; the server
   // validates them again before anything runs.
-  function ChoiceBlock({ block, value, setValue, disabled }) {
+  function ChoiceBlock({ block, value, setValue, disabled, allowCustom, t }) {
+    const [writing, setWriting] = React.useState(false);
     const picked = Array.isArray(value) ? value : value === undefined ? [] : [value];
+    // A written answer is any value outside the listed options; picking one replaces it.
+    const written = allowCustom === true && typeof value === 'string' && value !== ''
+      && !block.options.some(option => option.value === value);
+    const open = written || (allowCustom === true && writing && value === '');
     const toggle = option => {
-      if (!block.multiple) return setValue(option);
+      if (!block.multiple) { setWriting(false); return setValue(option); }
       setValue(picked.includes(option) ? picked.filter(item => item !== option) : [...picked, option]);
     };
     return h('div', { className: 'dpt-cc-choice', role: block.multiple ? 'group' : 'radiogroup', 'aria-label': block.label ?? block.name },
@@ -183,7 +188,13 @@ export function createConversationCards({ React, h, tf, commandText, commandCode
           h('span', { className: 'dpt-cc-option-text' },
             h('span', { className: 'dpt-cc-option-label' }, option.label),
             option.hint ? h('span', { className: 'dpt-cc-option-hint' }, option.hint) : null));
-      })));
+      }), allowCustom === true ? h('button', { key: ':written answer', type: 'button', className: 'dpt-cc-option', disabled,
+        role: 'radio', 'aria-checked': open, onClick: () => { setWriting(true); setValue(''); } },
+        h('span', { className: 'dpt-cc-option-mark', 'aria-hidden': 'true' }),
+        h('span', { className: 'dpt-cc-option-text' }, h('span', { className: 'dpt-cc-option-label' }, t('reviewOther')))) : null),
+      open ? h('textarea', { className: 'dpt-cq-text', rows: 2, value: written ? value : '', maxLength: 300, disabled,
+        placeholder: t('cardOtherHint'), 'aria-label': block.label ?? block.name,
+        onChange: event => setValue(event.target.value) }) : null);
   }
 
   function FieldBlock({ block, value, setValue, disabled }) {
@@ -203,11 +214,13 @@ export function createConversationCards({ React, h, tf, commandText, commandCode
   const INTERACTIVE = new Set(['choice', 'field']);
 
   // A block the client does not know (a newer server) is skipped rather than breaking the card.
-  function CardBlock({ block, t, values, setValue, disabled }) {
+  function CardBlock({ block, t, values, setValue, disabled, actions }) {
     const View = BLOCK_VIEWS[block?.type];
     if (!View) return null;
     const input = INTERACTIVE.has(block.type) ? { value: values[block.name], setValue: next => setValue(block.name, next), disabled } : {};
-    return h(Boundary, null, h(View, { block, t, ...input }));
+    // A choice the card's commands never substitute keeps the user's 「其他」 answer.
+    const custom = block.type === 'choice' && !block.multiple && !commandBound(actions, block.name);
+    return h(Boundary, null, h(View, { block, t, ...input, ...(custom ? { allowCustom: true } : {}) }));
   }
 
   // Initial input values: what the user last sent, else what the card preselects.
@@ -222,6 +235,9 @@ export function createConversationCards({ React, h, tf, commandText, commandCode
   }
 
   const PLACEHOLDERS = /\{([A-Za-z][A-Za-z0-9_]{0,23})\}/gu;
+  // A value a button command substitutes: a written answer must never reach it.
+  const commandBound = (actions, name) => (actions ?? []).some(action =>
+    typeof action.run?.command === 'string' && action.run.command.includes('{' + name + '}'));
   const present = value => value !== undefined && value !== '' && !(Array.isArray(value) && value.length === 0);
   const flat = value => Array.isArray(value) ? value.join(' ') : String(value);
 
@@ -328,7 +344,7 @@ export function createConversationCards({ React, h, tf, commandText, commandCode
       'data-size': size === 'half' || size === 'third' ? size : undefined, 'data-archived': live ? undefined : archived, 'aria-label': card.title },
       h(CardHead, { card, t, badge, pending, onClose: live ? () => { void run('dismiss'); } : undefined }),
       blocks.length > 0 ? h('div', { className: 'dpt-cc-body' }, ...blocks.map((block, index) =>
-        h(CardBlock, { key: index, block, t, values, setValue, disabled: pending || !live }))) : null,
+        h(CardBlock, { key: index, block, t, values, setValue, disabled: pending || !live, actions }))) : null,
       errors.length > 0 ? h('ul', { className: 'dpt-cc-errors' }, ...errors.map((error, index) => h('li', { key: index }, error))) : null,
       card.result?.jobId ? h('p', { className: 'dpt-cc-note', role: 'status' }, `${t('jobs')} · ${card.result.jobId}`) : null,
       message ? h('p', { className: 'dpt-cc-errors', role: 'alert' }, message) : null,
@@ -383,7 +399,8 @@ export function createConversationCards({ React, h, tf, commandText, commandCode
       return h('div', { className: 'dpt-cc-tags' }, ...question.options.filter(option => picked.has(option.value))
         .map(option => h('span', { key: option.value, className: 'dpt-cc-tag', 'data-tone': 'success' }, option.label)));
     }
-    if (!review) return h(ChoiceBlock, { block, value, setValue, disabled });
+    // Every option question ends with 「其他」: the options may not cover what the user means, and a
+    // written answer reaches the model exactly like a chosen one.
     const custom = value?.custom !== undefined;
     const options = [...block.options, { value: CUSTOM, label: t('reviewOther') }];
     return h(React.Fragment, null,
@@ -393,7 +410,8 @@ export function createConversationCards({ React, h, tf, commandText, commandCode
           else setValue(Array.isArray(next) ? next.filter(v => v !== CUSTOM) : next);
         } }),
       custom ? h('textarea', { className: 'dpt-cq-text', autoFocus: true, rows: 2, value: value.custom, maxLength: 1000, disabled,
-        placeholder: t('reviewRewriteHint'), 'aria-label': question.prompt, onChange: e => setValue({ custom: e.target.value }) }) : null);
+        placeholder: t(review ? 'reviewRewriteHint' : 'questionOtherHint'), 'aria-label': question.prompt,
+        onChange: e => setValue({ custom: e.target.value }) }) : null);
   }
 
   function QuestionCard({ card, archived, run, reply, pending, t, onAnswer, kicker, children }) {
