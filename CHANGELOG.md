@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.4.2 — 2026-11-21
+
+- 主代理用 `task_brief assign` 向直属的可继续子代理下发任务卡。两个代理可在执行中通过 `send_message` 双向沟通。子代理自行处理可逆细节，将阻塞任务的决定与建议报给主代理。
+- 提问、互动卡与审批由主代理处理。子会话以只读方式展示任务和记录。旧版项目引导继续在主对话进行。
+
+- The parent can assign scoped work to a direct continuable subagent with `task_brief assign`. Both agents can exchange updates and decisions with `send_message`.
+- User questions and approval stay with the parent. Child conversations display assignments and records with a read-only composer.
+
 ## 2.4.1 — 2026-11-21
 
 - 侧栏不再忽上忽下：子代理区块常驻，空时一行写「无」；后台任务只列出运行超过 1.5 秒的任务（实测一个会话里六成命令在 1.5 秒内结束），结束后原位停留几秒再离开，宿主提前移除的任务也一样；运行中与已结束的数量写在标题行，点击查看最近结束的任务。命令只显示第一行，时间列宽度固定，执行环境按钮按文字宽度排布。

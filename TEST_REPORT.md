@@ -1,5 +1,13 @@
 # Deep PTC 测试报告 / Test report
 
+## 2.4.2 · 2026-11-21
+
+- Windows、Node 24：332 项自动化测试通过，`npm run check` 通过。测试覆盖拦截子代理提问和审批、保留代理间消息、校验任务下发对象以及只读任务卡和输入区。
+- 在独立 DSH 0.2.2-rc.5 实例核对主代理下发的任务和子代理回报均写入收件方记录，发送者身份正确。消息由测试夹具触发。
+
+- Windows and Node 24: all 332 automated tests and `npm run check` passed. Coverage includes blocking child questions and approvals, preserving agent messages, validating assignment recipients, and rendering the read-only card and composer.
+- In an isolated DSH 0.2.2-rc.5 instance, the parent assignment and child report appeared in their recipients' journals with the correct sender. A test fixture sent both messages.
+
 ## 2.4.1 · 2026-11-21
 
 - Windows、Node 24：328 项自动化测试通过，`npm run check` 通过。后台任务测试改为覆盖：不足 1.5 秒的任务不显示、首次看到时已结束的任务不弹出、按开始时间排序、超过 4 条时的「另有」行、标题行计数与失败数、点击查看最近结束的任务，以及宿主在运行中移除的任务以「已结束」原位停留。
