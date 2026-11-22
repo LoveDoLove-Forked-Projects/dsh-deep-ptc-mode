@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { CARDS_EVENT, archivedReason, blankCards, cardsDigest, foldCardsState, latestOf, latestVersions, parseCardsState, records, MAX_VERSIONS } from '../lib/card-state.mjs';
 import { readCardInput, ANSWERED, DISMISSED, OPEN, STOPPED } from '../lib/cards.mjs';
-import { answerMessage, readAnswers, readQuestionInput } from '../lib/card-questions.mjs';
+import { answerMessage, readAnswers, readQuestionInput, storedAnswers } from '../lib/card-questions.mjs';
 
 const body = (title, extra = {}) => readCardInput({ title, subtitle: 's', ...extra }).card;
 const fold = (state, ...events) => events.reduce(foldCardsState, state);
@@ -105,6 +105,11 @@ test('question cards: defaults, recommendations and validation', () => {
   assert.match(readAnswers(card, { plan: ['vps', 'k8s'], q2: ['o1'] }).error, /choose one/u);
   const { answers } = readAnswers(card, { plan: 'k8s', q2: ['o3', 'o1', 'o3'], q3: '  周五前上线  ' });
   assert.deepEqual(answers, { plan: 'k8s', q2: ['o3', 'o1'], q3: '周五前上线' });
+  // Every option question keeps 「其他」, not only the review cards: the written answer is an answer.
+  const written = readAnswers(card, { plan: { custom: '  自建机房  ' }, q2: ['o1'] });
+  assert.deepEqual(written.answers, { plan: { custom: '自建机房' }, q2: ['o1'] });
+  assert.match(answerMessage(card, written.answers), /→ 自建机房/u, 'the model reads the written answer');
+  assert.deepEqual(storedAnswers(card, { plan: { custom: '自建机房' } }), { plan: { custom: '自建机房' } });
   assert.equal(answerMessage(card, answers), '【回答 · 选择部署方案】\n1. 用哪种方案？\n   → K8s\n2. 要哪些附加项？\n   → 告警、监控\n3. 还有别的要求吗？\n   → 周五前上线');
 
   let state = fold(blankCards(), turn(1));

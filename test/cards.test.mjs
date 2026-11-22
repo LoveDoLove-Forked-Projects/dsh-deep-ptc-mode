@@ -112,18 +112,23 @@ test('interactive inputs and buttons: values are validated before they reach a c
     { type: 'field', name: 'time', label: '时间', kind: 'time', value: '07:30' },
     { type: 'choice', name: 'plan', label: '方案', options: [{ value: 'vps', label: 'VPS' }, { value: 'k8s', label: 'K8s', hint: '贵' }], value: 'vps' },
     { type: 'choice', name: 'deps', options: [{ value: 'react', label: 'react' }, { value: 'vite', label: 'vite' }], multiple: true, value: ['vite'] },
+    { type: 'choice', name: 'region', label: '地域', options: [{ value: 'cn', label: '国内' }, { value: 'us', label: '海外' }], value: 'cn' },
   ], actions: [
-    { label: '改时间', run: { command: 'alarm set {time}' }, keep: true },
+    { label: '改时间', run: { command: 'alarm set {time} {plan}' }, keep: true },
     { id: 'go', label: '选这个', reply: '用 {plan} 部署', style: 'primary' },
     { label: '取消闹钟', style: 'danger', run: { schedules: ['s1'] } },
   ] });
   assert.deepEqual(alarm.actions.map(action => action.id), ['action-1', 'go', 'action-3']);
   assert.deepEqual(card(alarm), alarm, 'idempotent');
-  assert.deepEqual(readValues(alarm, {}), { values: { time: '07:30', plan: 'vps', deps: 'vite' } });
+  assert.deepEqual(readValues(alarm, {}), { values: { time: '07:30', plan: 'vps', deps: 'vite', region: 'cn' } });
   assert.deepEqual(readValues(alarm, { time: '6:5' }).error !== undefined, true);
   assert.equal(readValues(alarm, { time: '07:30; rm -rf /' }).error !== undefined, true, 'free text never passes');
   assert.equal(readValues(alarm, { plan: 'gcp' }).error !== undefined, true);
   assert.equal(readValues(alarm, { plan: ['vps', 'k8s'] }).error !== undefined, true, 'single choice takes one');
+  // A written answer is accepted only where no button command reads the value.
+  assert.deepEqual(readValues(alarm, { region: ' 自建机房 ' }).values.region, '自建机房', 'an unread choice takes a written answer');
+  assert.equal(readValues(alarm, { region: ['cn', 'us'] }).error !== undefined, true, 'a written answer is not a list');
+  assert.equal(readValues(alarm, { deps: 'vue' }).error !== undefined, true, 'a multiple choice stays on its options');
   assert.deepEqual(readValues(alarm, { deps: ['react', 'vite'] }).values.deps, 'react vite');
   assert.deepEqual(fillPlaceholders('alarm set {time}', { time: '08:00' }), { text: 'alarm set 08:00' });
   assert.deepEqual(fillPlaceholders('x {a} {b}', { a: '1' }), { missing: ['b'] });

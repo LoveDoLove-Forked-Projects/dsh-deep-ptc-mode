@@ -236,7 +236,7 @@ test('the root SDK call waits for every brief item and partial edits keep it pau
   const session = agent.session;
   session.append('turn/start', { turn: 1 });
   const root = { agent, callId: 'root', signal: AbortSignal.timeout(2000) };
-  const nested = { ...root, callId: 'nested', rootCallId: root.callId, parent: {} };
+  const nested = { ...root, callId: 'nested', rootCallId: root.callId, parent: {}, name: 'task_brief' };
   const tool = briefToolDefinition();
   await tool.execute({ action: 'update', items: ['first', 'second'].map(text => ({ section: 'goal', inferred: true, text })) }, nested);
   const post = host.listeners.get('tools/post-execute');
