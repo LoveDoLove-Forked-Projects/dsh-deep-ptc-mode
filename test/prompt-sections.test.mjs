@@ -11,17 +11,21 @@ function sections(questionCards) {
     systemPrompt: { section: row => { rows.set(row.name, row); }, context: () => {} },
   };
   installProgressReminder(ctx, { questionCards });
-  return (name, preset = 'deep-ptc') => rows.get(name).text({ agent: { session: { id: 's', preset, header: { agentPreset: preset } } } });
+  return (name, preset = 'deep-ptc', parentSession) => rows.get(name).text({ agent: { session: { id: 's', preset, header: { agentPreset: preset, parentSession } } } });
 }
 
 test('the asking section follows the conversation cards switch, so the model never looks for a missing tool', () => {
   let on = true;
   const text = sections(() => on);
-  assert.equal(text('deep-ptc:asking'), ASKING_WITH_CARDS);
+  assert.ok(text('deep-ptc:asking').startsWith(ASKING_WITH_CARDS));
   assert.match(ASKING_WITH_CARDS, /ask_user_question is not available/u);
   on = false;
-  assert.equal(text('deep-ptc:asking'), ASKING_WITHOUT_CARDS);
+  assert.ok(text('deep-ptc:asking').startsWith(ASKING_WITHOUT_CARDS));
   assert.match(ASKING_WITHOUT_CARDS, /Question cards are off/u);
+  assert.match(text('deep-ptc:asking'), /decide directly.*reply with send_message/u);
+  const child = text('deep-ptc:asking', 'deep-ptc', 'parent');
+  assert.match(child, /small, reversible uncertainties/u);
+  assert.doesNotMatch(child, /ask_user/u);
   assert.equal(text('deep-ptc:asking', 'ptc'), '', 'other modes keep their own question tool');
 });
 

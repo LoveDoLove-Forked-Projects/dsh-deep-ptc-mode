@@ -1,12 +1,18 @@
 # Deep PTC mode
 
-[中文](README.zh.md) · MIT · **2.4.1**
+[中文](README.zh.md) · MIT · **2.4.2**
 
 [Changelog](CHANGELOG.md) · [Test report](TEST_REPORT.md) · [Plugin workflows and verification](COMPATIBILITY.md)
 
 Deep PTC is a DeepSeek Harness agent mode with progress reports, clarifying questions, task-size planning, and interruptible background work. It builds on the installed official PTC preset with selectable shells, on-demand tools and skills, and a two-layer preset identity adapter for third-party plugins. Cards face both you and the model: you see a clear card, the model reads precise context with ids, sources and states; the task brief files the goals, constraints and acceptance criteria in your messages and, once you confirm, can take the raw messages out of the model's context.
 
 The panel sits beside the conversation and shows the environment, Deep creative mode with the virtual DSH, subagents, jobs, output files, SSH connections and tool state. The panel width can be dragged. The capsule expands or collapses it; it sits below the composer by default and can move into the toolbar or be hidden. Deep PTC also has its own settings page. Visual effects are lightweight and start off when an appearance plugin is installed.
+
+## Changes in 2.4.2
+
+- **Scoped assignments.** The parent can assign a goal, scope and acceptance criteria to a direct continuable subagent with `task_brief assign`. The assignment appears as a read-only card.
+- **Two-way communication during execution.** Parent and child can exchange progress, corrections and decisions with `send_message`. The child handles reversible details and reports material blockers to the parent with a recommendation.
+- **User interaction in the main conversation.** The runtime blocks child-initiated questions, interactive cards and approval requests. The parent makes decisions within its authorization and asks the user in the main chat when needed.
 
 ## Changes in 2.4.1
 

@@ -151,3 +151,28 @@ test('display and approval nodes share the chat timeline and settle at the origi
     assert.equal(node.visibility, 'visible');
   }
 });
+
+test('an agent relay renders a read-only assignment and the subagent composer directs users to the main chat', async () => {
+  const f = fixture();
+  const composer = f.slots.get('conversation.composer#undefined');
+  assert.ok(composer.slot.select({ session: { subagent: { address: { mode: 'continuable' } } } }));
+  assert.equal(composer.slot.select({ session: {} }), null);
+  const definition = f.definitions.get('deep-ptc-assignment');
+  const event = { type: 'user/message', seq: 13, data: { source: { kind: 'agent-message' }, content: [
+    { type: 'text', text: 'Agent main sent a message: ' },
+    { type: 'text', text: '[Deep PTC task assignment]\nVerify the importer\n- goal: Run the smoke test' },
+  ] } };
+  const match = definition.match[event.type](event);
+  assert.equal(match.id, '13');
+  assert.equal(definition.match[event.type]({ ...event, data: { ...event.data, source: { kind: 'user' } } }), null);
+  const start = { event, location: { kind: 'session' } };
+  const node = definition.buildViewNode({ start, matches: [start], id: match.id, key: 'assignment-13' });
+  const entry = f.slots.get('conversation.chat.node#deep-ptc-assignment');
+  let view;
+  await act(async () => { view = Renderer.create(React.createElement(entry.render, { node })); });
+  try {
+    assert.match(shown(view), /Verify the importer/u);
+    assert.match(shown(view), /Run the smoke test/u);
+    assert.equal(view.root.findAllByType('button').length, 0);
+  } finally { await act(async () => view.unmount()); }
+});

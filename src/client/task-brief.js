@@ -328,7 +328,7 @@ export function createTaskBrief({ React, h, tf, commandError, projectionValue, u
     const enabled = useFormValue(form, 'taskBrief') !== false;
     const [manage, setManage] = React.useState(false);
     const row = state?.versions?.find(version => String(version.anchor ?? version.rev) === anchor);
-    if (!enabled || !row) return null;
+    if (!enabled || !row || state.delegated) return null;
     if (row.completed) return h(CompletedReceipt, { row, sessionId, t });
     if (!row.round) return h(SnapshotRow, { row, t });
     const latest = row === state.versions.at(-1);
@@ -348,7 +348,7 @@ export function createTaskBrief({ React, h, tf, commandError, projectionValue, u
     const enabled = useFormValue(form, 'taskBrief') !== false;
     const [open, setOpen] = React.useState(false);
     const items = itemsOf(state);
-    if (!enabled || items.length === 0 || unconfirmedOf(state) > 0 || state?.revising) return null;
+    if (!enabled || state?.delegated || items.length === 0 || unconfirmedOf(state) > 0 || state?.revising) return null;
     const acceptance = acceptanceOf(state);
     const progress = acceptance.total ? tf(t, 'briefAcceptanceProgress', acceptance) : tf(t, 'briefCount', { count: items.length });
     return h('section', { className: 'dpt-taskdock', 'data-open': open ? '' : undefined, 'aria-label': t('briefTitle') },

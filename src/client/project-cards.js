@@ -299,7 +299,8 @@ export function createProjectCards({ React, h, tf, DecisionCard, commandError, c
     const enabled = useFormValue(form, 'projectCards') !== false;
     const [message, setMessage] = React.useState('');
     const [busy, setBusy] = React.useState(false);
-    if (!enabled) return null;
+    const delegated = projectionValue(useProjection, 'deepPtcBrief')?.delegated;
+    if (!enabled || delegated) return null;
     const settledRows = (state?.settled ?? []).filter(row => String(row.anchor) === anchor);
     // Every open proposal shows at its own place in the chat, at once.
     const open = (state?.proposals ?? []).filter(row => String(row.anchor) === anchor &&
@@ -324,8 +325,9 @@ export function createProjectCards({ React, h, tf, DecisionCard, commandError, c
     const [busy, setBusy] = React.useState(false);
     const [message, setMessage] = React.useState();
     const [editing, setEditing] = React.useState();
-    const [answer, setAnswer] = React.useState('');
-    React.useEffect(() => { void run?.({ op: 'refresh' }); }, []);
+    const delegated = projectionValue(useProjection, 'deepPtcBrief')?.delegated;
+    React.useEffect(() => { if (!delegated) void run?.({ op: 'refresh' }); }, [delegated]);
+    if (delegated) return null;
     if (typeof useProjection !== 'function') return h('div', { className: 'dpt-pv' }, h('p', { className: 'dpt-pv-empty-line' }, t('projectUnavailable')));
     const cards = Array.isArray(state?.cards) ? state.cards : [];
     const proposals = Array.isArray(state?.proposals) ? state.proposals : [];
@@ -345,14 +347,7 @@ export function createProjectCards({ React, h, tf, DecisionCard, commandError, c
         if (outcome.error) { setMessage(outcome.error); return false; }
         if (messageKey && !outcome.notified) {
           const details = { ...values, change: changeNote(outcome.text) };
-          const owner = proposals.find(row => row.id === payload.proposal)?.session;
-          // Every change reaches the main conversation at once (a steering message, even mid-task);
-          // a proposal written by the setup guide tells the guide as well.
           await say(messageKey, details);
-          if (state?.guide && owner === state.guide.childId) {
-            const receipt = projectOutcome(await run({ op: 'guide-reply', message: tf(t, messageKey, details) }), t);
-            if (receipt.error) setMessage(receipt.error);
-          }
         }
         return true;
       } catch (error) { setMessage(String(error?.message ?? error)); return false; } finally { setBusy(false); }
@@ -418,11 +413,7 @@ export function createProjectCards({ React, h, tf, DecisionCard, commandError, c
       state?.guide ? h('section', { className: 'dpt-pv-card', 'aria-label': t('projectGuide') },
         h('h3', null, t('projectGuide')),
         h('button', { type: 'button', className: 'dpt-cc-btn', disabled: busy, onClick: () => { void act({ op: 'guide-stop' }); } }, t('projectEndGuide')),
-        ...state.guide.messages.map((row, index) => h('p', { key: index, style: { whiteSpace: 'pre-wrap' } }, h('strong', null, t(row.role === 'user' ? 'projectYou' : 'projectGuide') + ' · '), row.text)),
-        state.guide.pending ? h('p', { role: 'status' }, t('projectGuideWorking')) : null,
-        h('form', { onSubmit: async event => { event.preventDefault(); if (answer.trim() && !busy && await act({ op: 'guide-reply', message: answer.trim() })) setAnswer(''); } },
-          h('textarea', { className: 'dpt-pv-textarea', value: answer, 'aria-label': t('projectAnswer'), placeholder: t('projectAnswer'), onChange: event => setAnswer(event.target.value) }),
-          h('button', { className: 'dpt-cc-btn', type: 'submit', disabled: busy || !answer.trim() }, t('projectSend')))) : null,
+        h('button', { type: 'button', className: 'dpt-cc-btn', disabled: busy, onClick: () => { void guideInChat(); } }, t('projectPanelGuideMore'))) : null,
       (state?.warnings ?? []).length > 0 ? h('p', { className: 'dpt-pv-warn' }, tf(t, 'projectWarnings', { count: state.warnings.length })) : null,
       proposals.length > 0 ? h('section', { className: 'dpt-pv-group', 'aria-label': t('projectProposals') },
         h('h3', { className: 'dpt-pv-group-title' }, t('projectProposals'), h('span', { className: 'dpt-pv-count' }, proposals.length)),

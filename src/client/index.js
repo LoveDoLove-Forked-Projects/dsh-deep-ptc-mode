@@ -242,6 +242,8 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     creativeSwitch: '深度创造模式', creativeHint: '新建深度 PTC 会话时生效，可在独立 DSH 中测试插件。',
     cardLiveLabel: '等待你操作的卡片', cardLiveNote: '模型在等你回答，同时继续做不依赖答案的部分；回答会立刻送到它手上。',
     cardStopping: '正在处理…', cardStopped: '已执行', cardFailed: '执行失败', cardDismissed: '已关闭',
+    delegatedComposer: '任务由主代理下发。请在主对话中提供补充信息。', delegatedAssignment: '主代理下发的任务',
+    delegatedComposer: 'The parent agent assigns work here. Provide follow-up in the main conversation.', delegatedAssignment: 'Assignment from the parent agent',
     briefTitle: '本次任务', briefGoal: '目标', briefConstraint: '约束', briefAcceptance: '验收', briefContext: '背景', briefQuestion: '待确认',
     briefBasisUser: '原话', briefBasisInferred: '推断', briefBasisConfirmed: '已确认', briefDone: '已完成',
     briefConfirmOne: '确认', briefEdit: '改', briefRemove: '删', briefMarkDone: '完成', briefReopen: '重开', briefSave: '保存',
@@ -1068,6 +1070,13 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     return typeof localized === 'string' && localized !== '' && localized !== key ? localized : row.description;
   }
 
+  function AssignmentCard({ node, t }) {
+    return h('section', { className: 'dpt-cc', 'aria-label': t('delegatedAssignment') },
+      h('header', { className: 'dpt-cc-head' }, h('div', { className: 'dpt-cc-titles' },
+        h('span', { className: 'dpt-cc-sub' }, t('delegatedAssignment')), h('span', { className: 'dpt-cc-title' }, node.data.title))),
+      h('ul', { className: 'dpt-tb-items dpt-cc-body' }, ...node.data.items.map((item, index) => h('li', { key: index, className: 'dpt-cc-text' }, item))));
+  }
+
   function ProjectSync({ sessionId, useProjection, form, refresh }) {
     const deep = projectionValue(useProjection, 'agentPreset') === 'deep-ptc';
     const enabled = useFormValue(form, 'projectCards') !== false;
@@ -1117,7 +1126,8 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     // Registered for every session; only Deep PTC sessions read the skill projection.
     let preset;
     try { preset = props.useProjection('agentPreset'); } catch { return null; }
-    if (preset !== 'deep-ptc') return null;
+    const delegated = projectionValue(props.useProjection, 'deepPtcCards')?.delegated;
+    if (preset !== 'deep-ptc' || delegated) return null;
     return h(SkillCard, props);
   }
 
@@ -2470,7 +2480,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     try {
       ctx.inject?.(['uiConversation', 'remote', 'remote.commands'], child => {
         const prefix = 'plugin:dsh-deep-ptc-mode/';
-        function inline(kind, match, component, inject) {
+        function inline(kind, match, component, inject, dataOf = () => ({})) {
           child.uiConversation.events.register({
             kind, target: 'chat', match,
             start: (_context, match) => match, update: context => context.state,
@@ -2478,7 +2488,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
               const first = context.start ?? context.matches[0];
               if (!first) return null;
               return { key: context.key, kind, id: context.id, target: 'chat', anchorSeq: first.event.seq,
-                location: first.location, visibility: 'visible', groupTree: 'turn', data: { anchor: context.id } };
+                location: first.location, visibility: 'visible', groupTree: 'turn', data: { anchor: context.id, ...dataOf(first.event) } };
             },
           });
           child.slots.inject('conversation.chat.node', () => child.slots.register({
@@ -2494,6 +2504,17 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
           sessionId, run: (id, action, extra) => runCardCommand(child, sessionId, { id, action, ...extra }),
           reply: text => sendReply(child, sessionId, text),
         }));
+        const assignment = event => {
+          const message = event.data?.message ?? event.data;
+          if (message?.source?.kind !== 'agent-message' || !Array.isArray(message.content)) return;
+          const block = message.content.find(row => row.type === 'text' && row.text?.startsWith('[Deep PTC task assignment]\n'));
+          if (!block) return;
+          const [, title, ...lines] = block.text.split('\n');
+          const items = lines.filter(line => line.startsWith('- ')).map(line => line.slice(2));
+          if (title && items.length) return { title, items };
+        };
+        inline('deep-ptc-assignment', { 'user/message': event => assignment(event) ? start(event.seq) : null },
+          AssignmentCard, undefined, assignment);
         inline('deep-ptc-task-brief', { [prefix + 'brief']: event => event.data?.rev ? start(event.data.anchor ?? event.data.rev) : null },
           BriefInline, sessionId => ({ sessionId, run: payload => runBriefCommand(child, sessionId, payload) }));
         inline('deep-ptc-project-proposals', {
@@ -2518,6 +2539,12 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
         }, props => h(ProjectSync, { ...props, form })));
       });
     } catch { /* the conversation keeps working without the card */ }
+    try {
+      ctx.slots.inject('conversation.composer', () => ctx.slots.register({
+        name: 'conversation.composer', priority: -20, locale: 'deep-ptc',
+        select: owner => owner.session?.subagent ? { delegated: true } : null,
+      }, props => h(LocalizedSlot, { ...props, component: ({ t: tt }) => h('p', { className: 'dpt-cc-note', role: 'status' }, tt('delegatedComposer')) })));
+    } catch { /* older hosts can still enforce the server-side input filter */ }
     try {
       // The Virtual DSH card asks for its status through a command: keep those rows out of the chat.
       ctx.slots.inject('conversation.chat.commandview', () => ctx.slots.register({
