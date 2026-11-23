@@ -1,5 +1,15 @@
 # Deep PTC 测试报告 / Test report
 
+## 2.5.0 · 2026-11-23
+
+- Windows、Node 24：372 项自动化测试和 `npm run check` 通过。
+- 在 DSH 0.2.2-rc.5 的虚拟 DSH 中用真实模型实测：右下角弹窗作答；模拟的 DSH Go 客户端收到原生提问、作答和撤回；子代理直接对话、卡片回答和内部卡片送达主代理；模型申请 3 次虚拟 DSH、卡片改为 2 次后完成启动、重启、停止、再启动、再停止，以及对话和界面读取。
+- DSH Go 视图通过其官方检查器，未在真机上验证。#45 以人为构造的半像素高度验证对齐，未做原始抖动的前后对比。
+
+- Windows and Node 24: all 372 automated tests and `npm run check` passed.
+- With a real model in a virtual DSH on 0.2.2-rc.5: answering in the notice; a stand-in DSH Go client receiving, answering and losing native questions; direct subagent talk, its cards and the internal card reaching the parent; a request for 3 virtual DSH uses changed to 2 on the card, then start, restart, stop, start, stop, plus chat and reading the interface.
+- DSH Go views pass its own checker; no real phone was used. #45 was checked with a constructed half-pixel height, not by comparing the original flicker.
+
 ## 2.4.2 · 2026-11-21
 
 - Windows、Node 24：332 项自动化测试通过，`npm run check` 通过。测试覆盖拦截子代理提问和审批、保留代理间消息、校验任务下发对象以及只读任务卡和输入区。

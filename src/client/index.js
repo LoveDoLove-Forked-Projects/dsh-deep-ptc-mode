@@ -242,8 +242,12 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     creativeSwitch: '深度创造模式', creativeHint: '新建深度 PTC 会话时生效，可在独立 DSH 中测试插件。',
     cardLiveLabel: '等待你操作的卡片', cardLiveNote: '模型在等你回答，同时继续做不依赖答案的部分；回答会立刻送到它手上。',
     cardStopping: '正在处理…', cardStopped: '已执行', cardFailed: '执行失败', cardDismissed: '已关闭',
-    delegatedComposer: '任务由主代理下发。请在主对话中提供补充信息。', delegatedAssignment: '主代理下发的任务',
-    delegatedComposer: 'The parent agent assigns work here. Provide follow-up in the main conversation.', delegatedAssignment: 'Assignment from the parent agent',
+    delegatedAssignment: '主代理下发的任务', delegatedDirect: '你在和子代理直接对话。你的话立即生效，并会整理后同步给主代理。',
+    noticeSound: '卡片提示音', noticeSoundHint: '有卡片等你回答、选择或确认时响一声。',
+    noticeDone: '任务结束提示音', noticeDoneHint: '深度 PTC 的一轮任务结束时响一声；你自己停止的不响。',
+    noticePopup: '屏幕右下角弹窗', noticePopupHint: '卡片同时出现在屏幕右下角，可以直接在里面回答，也可以回到 DSH 处理。',
+    noticePopup_always: '总是', noticePopup_away: 'DSH 在后台时', noticePopup_off: '不弹出',
+    mobileSwitch: '在 DSH Go 里显示卡片', mobileSwitchHint: '等你处理的卡片同时作为 DSH Go 的原生提问出现，展示卡片作为原生工具卡出现。在哪边回答都可以。',
     briefTitle: '本次任务', briefGoal: '目标', briefConstraint: '约束', briefAcceptance: '验收', briefContext: '背景', briefQuestion: '待确认',
     briefBasisUser: '原话', briefBasisInferred: '推断', briefBasisConfirmed: '已确认', briefDone: '已完成',
     briefConfirmOne: '确认', briefEdit: '改', briefRemove: '删', briefMarkDone: '完成', briefReopen: '重开', briefSave: '保存',
@@ -453,6 +457,12 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     creativeSwitch: 'Deep creative mode', creativeHint: 'Applies to new Deep PTC chats. Test plugins in a separate DSH instance.',
     cardLiveLabel: 'Cards waiting for you', cardLiveNote: 'The model is waiting for your answer and keeps working on what does not depend on it; your answer reaches it at once.',
     cardStopping: 'Working…', cardStopped: 'Done', cardFailed: 'Failed', cardDismissed: 'Dismissed',
+    delegatedAssignment: 'Assignment from the parent agent', delegatedDirect: 'You are talking to the subagent directly. Your words take effect at once and are passed on to the parent agent.',
+    noticeSound: 'Card sound', noticeSoundHint: 'Rings once when a card waits for your answer, choice or confirmation.',
+    noticeDone: 'Task end sound', noticeDoneHint: 'Rings once when a Deep PTC turn ends, not when you stop it yourself.',
+    noticePopup: 'Notice at the bottom right', noticePopupHint: 'The card also appears at the bottom right of the screen: answer it there, or go back to DSH.',
+    noticePopup_always: 'Always', noticePopup_away: 'DSH in background', noticePopup_off: 'Never',
+    mobileSwitch: 'Show cards in DSH Go', mobileSwitchHint: 'Cards that wait for you also appear as DSH Go native questions, and display cards as native tool cards. Answer on either side.',
     briefTitle: 'Task brief', briefGoal: 'Goals', briefConstraint: 'Constraints', briefAcceptance: 'Acceptance', briefContext: 'Context', briefQuestion: 'Open questions',
     briefBasisUser: 'Your words', briefBasisInferred: 'Inferred', briefBasisConfirmed: 'Confirmed', briefDone: 'Done',
     briefConfirmOne: 'Confirm', briefEdit: 'Edit', briefRemove: 'Remove', briefMarkDone: 'Done', briefReopen: 'Reopen', briefSave: 'Save',
@@ -1070,6 +1080,11 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     return typeof localized === 'string' && localized !== '' && localized !== key ? localized : row.description;
   }
 
+  function DirectNote({ useProjection, t }) {
+    const cards = projectionValue(useProjection, 'deepPtcCards');
+    return cards?.delegated ? h('p', { className: 'dpt-direct', role: 'note' }, t('delegatedDirect')) : null;
+  }
+
   function AssignmentCard({ node, t }) {
     return h('section', { className: 'dpt-cc', 'aria-label': t('delegatedAssignment') },
       h('header', { className: 'dpt-cc-head' }, h('div', { className: 'dpt-cc-titles' },
@@ -1171,6 +1186,8 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     return execute(sessionId, `/${CARD_COMMAND_NAME} ` + JSON.stringify({ ...payload, codedReceipt: true }), []);
   }
 
+  // @client notices
+
   // @client conversation-cards
 
   // ---------------------------------------------------------------------------------------------
@@ -1189,6 +1206,11 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     const conversation = useFormValue(form, 'conversationCards') !== false;
     const project = useFormValue(form, 'projectCards') !== false;
     const brief = useFormValue(form, 'taskBrief') !== false;
+    const mobile = useFormValue(form, 'mobileCards') !== false;
+    const sound = useFormValue(form, 'notifySound') !== false;
+    const done = useFormValue(form, 'notifyDone') !== false;
+    const popup = useFormValue(form, 'notifyPopup') ?? 'always';
+    const native = useFormValue(form, 'notifyHost') === 'native';
     const [failed, setFailed] = React.useState(false);
     const writable = form?.getSnapshot?.()?.writable !== false && form !== undefined;
     async function set(key, value) {
@@ -1206,6 +1228,15 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
       row('conversationCards', conversation, t('cardsSwitch'), t('cardsSwitchHint')),
       row('projectCards', project, t('projectSwitch'), t('projectSwitchHint')),
       row('taskBrief', brief, t('briefSwitch'), t('briefSwitchHint')),
+      row('mobileCards', mobile, t('mobileSwitch'), t('mobileSwitchHint')),
+      row('notifySound', sound, t('noticeSound'), t('noticeSoundHint')),
+      row('notifyDone', done, t('noticeDone'), t('noticeDoneHint')),
+      native ? h('div', { className: 'dpt-side-section' },
+        h('div', { className: 'dpt-side-label' }, h('span', null, t('noticePopup'))),
+        h('div', { className: 'dpt-seg', role: 'radiogroup', 'aria-label': t('noticePopup') }, ...['always', 'away', 'off'].map(value =>
+          h('button', { key: value, type: 'button', role: 'radio', className: 'dpt-seg-btn', 'aria-checked': popup === value, disabled: !writable,
+            onClick: () => { void set('notifyPopup', value); } }, t('noticePopup_' + value)))),
+        h('p', { className: 'dpt-side-note' }, t('noticePopupHint'))) : null,
       failed ? h('p', { className: 'dpt-side-note', role: 'alert' }, t('failed')) : null);
   }
 
@@ -2248,6 +2279,10 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
       SESSIONS.setWorking(sessionId, running);
       return () => SESSIONS.setWorking(sessionId, false);
     }, [sessionId, running]);
+    React.useEffect(() => {
+      const seat = marker.current?.closest?.('[data-composer-seat]');
+      return seat ? alignToDevicePixels(seat) : undefined;
+    }, []);
     const panel = open && layout ? ReactDOM.createPortal(h('aside', { className: 'dpt-sidecar',
       'data-floating': docked ? undefined : '', 'aria-label': t('sideTitle'),
       style: { top: layout.top, right: layout.right, height: layout.height, width: layout.width,
@@ -2271,6 +2306,20 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     render() { return this.state.failed ? null : this.props.children; }
   }
 
+  // When this conversation's model starts the virtual DSH, the user gets to see it: it opens in the right
+  // sidebar once, when it runs, if the conversation is on screen.
+  const OPENED_KEY = `${PLUGIN}:virtual-opened`;
+  function openVirtual(status, sessionId, element) {
+    const open = status?.open;
+    if (status?.state !== 'running' || !status.url || open?.session !== sessionId || Date.now() - open.at > 15 * 60_000) return;
+    if (!(element?.parentElement?.getClientRects?.().length > 0)) return;
+    try {
+      if (globalThis.sessionStorage?.getItem(OPENED_KEY) === String(open.at)) return;
+      globalThis.sessionStorage?.setItem(OPENED_KEY, String(open.at));
+      hostCtx?.get?.('sidebarRight')?.openTab('browser', { params: { url: status.url } });
+    } catch (error) { console.warn(`[${PLUGIN}] virtual DSH did not open:`, error); }
+  }
+
   function SessionBridge(props) {
     const { sessionId } = props;
     const marker = React.useRef(null);
@@ -2280,7 +2329,32 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     React.useEffect(() => { SESSIONS.set(sessionId, { id: sessionId, preset, busy, el: marker.current }); }, [sessionId, preset, busy]);
     React.useEffect(() => () => SESSIONS.del(sessionId), [sessionId]);
     React.useEffect(() => SESSIONS.watch(marker.current?.parentElement), []);
+    const virtual = projectionValue(props.useProjection, 'deepPtcVirtual')?.status;
+    React.useEffect(() => { openVirtual(virtual, sessionId, marker.current); }, [virtual, sessionId]);
     return h('span', { ref: marker, hidden: true, 'aria-hidden': 'true', 'data-dpt-bridge': sessionId });
+  }
+
+  // At 125 % scaling the sticky composer can come to rest on half a device pixel, and its text then
+  // flickers between two rows while scrolling (#45). The composer's height decides where it rests, so it
+  // is padded to whole device pixels. Nothing is padded at whole-number scaling.
+  function alignToDevicePixels(seat) {
+    if (typeof ResizeObserver !== 'function') return undefined;
+    let pad = 0;
+    const align = () => {
+      const ratio = globalThis.devicePixelRatio || 1;
+      const height = seat.getBoundingClientRect().height - pad;
+      const device = height * ratio;
+      const missing = Math.ceil(device - 0.01) - device;
+      const next = Number.isInteger(ratio) || missing < 0.02 ? 0 : missing / ratio;
+      if (Math.abs(next - pad) < 0.01) return;
+      pad = next;
+      seat.style.paddingBottom = pad ? `${pad}px` : '';
+    };
+    const observer = new ResizeObserver(align);
+    observer.observe(seat, { box: 'border-box' });
+    globalThis.addEventListener?.('resize', align);
+    align();
+    return () => { observer.disconnect(); globalThis.removeEventListener?.('resize', align); seat.style.paddingBottom = ''; };
   }
 
   function DockHost(props) {
@@ -2438,6 +2512,10 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
         child.effect(() => () => { if (REMOTE_SESSION.current === child) REMOTE_SESSION.current = undefined; }, `${PLUGIN}: session messages`);
       });
     } catch { /* reply buttons report that the message could not be sent */ }
+    try {
+      ctx.inject?.(['remote'], child => installNotices(child, {
+        setting: key => formValue(ctx.configForms.get(NS), key), deep: id => SESSIONS.map.get(id)?.preset === 'deep-ptc' }));
+    } catch { /* cards keep working without sounds */ }
     ctx.effect(() => injectCss(), `${PLUGIN}: style`);
     ctx.effect(() => watchActiveSession(), `${PLUGIN}: active session`);
     ctx.effect(() => {
@@ -2533,18 +2611,16 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
           name: 'conversation.input.dock', id: 'deep-ptc-task', order: 5, locale: 'deep-ptc',
           inject: sessionId => ({ sessionId, run: payload => runBriefCommand(child, sessionId, payload) }),
         }, props => h(LocalizedSlot, { ...props, form, component: TaskDock })));
+        // In a subagent's conversation: what the user writes here also reaches the parent.
+        child.slots.inject('conversation.input.dock', () => child.slots.register({
+          name: 'conversation.input.dock', id: 'deep-ptc-direct', order: 6, locale: 'deep-ptc',
+        }, props => h(LocalizedSlot, { ...props, component: DirectNote })));
         child.slots.inject('conversation.session.header.actions', () => child.slots.register({
           name: 'conversation.session.header.actions', id: 'deep-ptc-project-sync',
           inject: sessionId => ({ sessionId, refresh: () => runProjectCommand(child, sessionId, { op: 'refresh' }) }),
         }, props => h(ProjectSync, { ...props, form })));
       });
     } catch { /* the conversation keeps working without the card */ }
-    try {
-      ctx.slots.inject('conversation.composer', () => ctx.slots.register({
-        name: 'conversation.composer', priority: -20, locale: 'deep-ptc',
-        select: owner => owner.session?.subagent ? { delegated: true } : null,
-      }, props => h(LocalizedSlot, { ...props, component: ({ t: tt }) => h('p', { className: 'dpt-cc-note', role: 'status' }, tt('delegatedComposer')) })));
-    } catch { /* older hosts can still enforce the server-side input filter */ }
     try {
       // The Virtual DSH card asks for its status through a command: keep those rows out of the chat.
       ctx.slots.inject('conversation.chat.commandview', () => ctx.slots.register({

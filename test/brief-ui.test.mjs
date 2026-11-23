@@ -169,11 +169,9 @@ test('display and approval nodes share the chat timeline and settle at the origi
   }
 });
 
-test('an agent relay renders a read-only assignment and the subagent composer directs users to the main chat', async () => {
+test('an agent relay renders a read-only assignment and the subagent keeps the host’s input box', async () => {
   const f = fixture();
-  const composer = f.slots.get('conversation.composer#undefined');
-  assert.ok(composer.slot.select({ session: { subagent: { address: { mode: 'continuable' } } } }));
-  assert.equal(composer.slot.select({ session: {} }), null);
+  assert.equal(f.slots.get('conversation.composer#undefined'), undefined);
   const definition = f.definitions.get('deep-ptc-assignment');
   const event = { type: 'user/message', seq: 13, data: { source: { kind: 'agent-message' }, content: [
     { type: 'text', text: 'Agent main sent a message: ' },

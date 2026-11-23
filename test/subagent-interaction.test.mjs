@@ -23,13 +23,7 @@ test('child questions and approvals never reach the answerer and agent messages 
   assert.equal(await approve({ agent: child }, () => assert.fail('child approval reached the UI')), 'rejected');
   assert.equal(await approve({ agent: parent }, async () => 'allowed-once'), 'allowed-once');
   assert.throws(() => hooks.get('user-questions/request')({ agent: child }, () => assert.fail('child question reached the UI')), /parent/u);
-  const step = hooks.get('agent/pre-step');
-  const assignment = { source: { kind: 'agent-message', senderSessionId: parent.id } };
-  const report = { source: { kind: 'agent-message', senderSessionId: child.id } };
-  const initial = { source: { kind: 'user' } };
-  const directUserInput = { source: { kind: 'user', rpcId: 'browser-request' } };
-  assert.deepEqual((await step({ agent: child }, async () => ({ kind: 'enter', messages: [initial, assignment, directUserInput] }))).messages, [initial, assignment]);
-  assert.deepEqual((await step({ agent: parent }, async () => ({ kind: 'enter', messages: [report, directUserInput] }))).messages, [report, directUserInput]);
+  assert.equal(hooks.has('agent/pre-step'), false, 'what the user types into a subagent reaches it');
 });
 
 test('card and review tools reject a worker before anything is posted or waits on the user', async () => {

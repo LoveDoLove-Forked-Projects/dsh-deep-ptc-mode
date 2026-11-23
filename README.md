@@ -1,12 +1,21 @@
 # Deep PTC mode
 
-[中文](README.zh.md) · MIT · **2.4.2**
+[中文](README.zh.md) · MIT · **2.5.0**
 
 [Changelog](CHANGELOG.md) · [Test report](TEST_REPORT.md) · [Plugin workflows and verification](COMPATIBILITY.md)
 
 Deep PTC is a DeepSeek Harness agent mode with progress reports, clarifying questions, task-size planning, and interruptible background work. It builds on the installed official PTC preset with selectable shells, on-demand tools and skills, and a two-layer preset identity adapter for third-party plugins. Cards face both you and the model: you see a clear card, the model reads precise context with ids, sources and states; the task brief files the goals, constraints and acceptance criteria in your messages and, once you confirm, can take the raw messages out of the model's context.
 
 The panel sits beside the conversation and shows the environment, Deep creative mode with the virtual DSH, subagents, jobs, output files, SSH connections and tool state. The panel width can be dragged. The capsule expands or collapses it; it sits below the composer by default and can move into the toolbar or be hidden. Deep PTC also has its own settings page. Visual effects are lightweight and start off when an appearance plugin is installed.
+
+## Changes in 2.5.0
+
+- **Sounds and a notice at the bottom right**: one sound when a card waits, one when a task ends, none when you stop it. The Windows desktop app shows a small window, one question at a time with ‹ 2/5 › to switch; answer there or in DSH. Each can be turned off; the notice can appear always, with DSH in the background, or never. Approvals and host questions are announced and answered in DSH. The web version has the sounds.
+- **Cards work in DSH Go (#43)**: what waits for you also appears as a DSH Go native question, answered on either side; metrics, charts, the task brief and answers appear as native tool cards.
+- **Talk to subagents directly (#44)**: their input box is back, and you answer their cards in their conversation; cards from the parent stay filled in. The subagent files what you said as an internal card for the parent, not shown in the chat; your words go first when it has not filed them yet.
+- **A steady composer (#45)**: at 125 % and similar scaling the composer's height is aligned to device pixels, and reply text uses whole-pixel line spacing.
+- **A virtual DSH the model can really use**: it asks for a number of uses and you adjust it on the card. One use runs from opening to closing; restarts and new builds in between are free. What you open in the side panel costs none and is yours to close; only one exists at a time. Approval, start and test turns no longer run into run_code's time limit, and results arrive by themselves. It opens in the right sidebar. A package can be the plugin's directory. New `answer` (questions and approvals that wait there) and `ui` (read, click, type and take screenshots with the machine's Edge or Chrome). Turning deep creative mode on reaches conversations already open.
+- Virtual DSH fixes: `sessions` always failed; a normal stop was recorded as a failure; Windows temporary-file cleanup deleted the sign-in and packages of a running one, which now lives in `.dsh-virtual` in the user's home.
 
 ## Changes in 2.4.2
 

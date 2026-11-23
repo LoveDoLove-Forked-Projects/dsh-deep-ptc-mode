@@ -6,6 +6,7 @@ const modules = {
   'conversation-cards': 'const { ConversationCards, DecisionCard, commandError } = createConversationCards({ React, h, tf, commandText, commandCode, useFormValue });',
   'project-cards': 'const { PROJECT_COMMAND_NAME, runProjectCommand, ProjectView, ProjectInline } = createProjectCards({ React, h, tf, DecisionCard, commandError, commandCode, stripCode, projectionValue, useFormValue, openTab: openConversationTab, TaskSection: props => h(BriefProjectSection, props) });',
   'task-brief': 'const { BRIEF_COMMAND_NAME, runBriefCommand, BriefInline, BriefProjectSection, TaskDock } = createTaskBrief({ React, h, tf, commandError, projectionValue, useFormValue, openTab: openConversationTab });',
+  notices: 'const { installNotices } = createNotices();',
   styles: '',
 };
 

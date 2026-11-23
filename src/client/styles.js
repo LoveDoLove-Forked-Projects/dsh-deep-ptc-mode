@@ -161,8 +161,8 @@ ${ON} ${BUBBLE}{background-image:linear-gradient(90deg,color-mix(in srgb,var(--d
 ${ON} ${BUBBLE} *{color:inherit}
 @keyframes dpt-bubble-rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 ${ON} [data-chat-flow-kind="assistant-step"]{font-size:15px}
-${ON} [data-chat-flow-kind="assistant-step"] :is(p,li){line-height:1.82}
-${ON} [data-chat-flow-kind="assistant-step"] p{margin-block:0.7em}
+${ON} [data-chat-flow-kind="assistant-step"] :is(p,li){line-height:28px}
+${ON} [data-chat-flow-kind="assistant-step"] p{margin-block:12px}
 ${ON} [data-chat-flow-kind="assistant-step"] pre{border-radius:14px;border:1px solid var(--dsw-alias-border-l1);box-shadow:0 1px 2px rgba(16,24,40,0.04)}
 ${ON} [data-chat-flow-kind="assistant-step"] blockquote{border-radius:0 10px 10px 0}
 ${ON} [data-row-key^="session:"][role="treeitem"]{transition:background-color var(--dpt-dur-fast) var(--dpt-ease-out),color var(--dpt-dur-fast) var(--dpt-ease-out)}
@@ -372,6 +372,7 @@ ${DARK} .dpt-virtual{background:var(--dsw-static-neutral-850,#1b1f27)}
 .dpt-cc-callout{--cc-fill:var(--cc-s1);display:grid;grid-template-columns:16px 1fr;gap:9px;align-items:start;padding:9px 12px;border-radius:10px;background:color-mix(in srgb,var(--cc-fill) 10%,transparent);border:.5px solid color-mix(in srgb,var(--cc-fill) 28%,transparent);font-size:12.5px;line-height:19px}
 .dpt-cc-callout>svg{margin-top:2px;color:var(--cc-fill)}
 .dpt-cc-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:8px 14px 10px;border-top:.5px solid var(--cc-line);font-size:11.5px;line-height:16px;color:var(--cc-ink-3)}
+.dpt-direct{box-sizing:border-box;margin:0;padding:6px 14px 10px;font-size:12px;line-height:16px;color:var(--dsw-alias-label-tertiary,#667085);overflow-wrap:anywhere}
 .dpt-cc-note{flex:1;min-width:140px;margin:0;overflow-wrap:anywhere}
 .dpt-cc-actions{display:flex;gap:6px;margin-left:auto}
 .dpt-cc-btn{height:28px;padding:0 12px;border-radius:8px;border:.5px solid var(--dsw-alias-border-l3,#c9d0db);background:var(--cc-raised);color:var(--cc-ink);font:inherit;font-size:12px;font-weight:500;cursor:pointer;transition:background-color 120ms var(--dpt-ease,ease),opacity 120ms}

@@ -25,7 +25,8 @@ test('the asking section follows the conversation cards switch, so the model nev
   assert.match(text('deep-ptc:asking'), /decide directly.*reply with send_message/u);
   const child = text('deep-ptc:asking', 'deep-ptc', 'parent');
   assert.match(child, /small, reversible uncertainties/u);
-  assert.doesNotMatch(child, /ask_user/u);
+  assert.match(child, /write to you directly.*task_brief action=report/u);
+  assert.match(child, /never ask the user to fill in or confirm/u);
   assert.equal(text('deep-ptc:asking', 'ptc'), '', 'other modes keep their own question tool');
 });
 

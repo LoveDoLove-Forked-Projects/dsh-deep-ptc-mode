@@ -554,7 +554,7 @@ export function createConversationCards({ React, h, tf, commandText, commandCode
     const sizes = layoutSizes(mine.filter(version => version.phase !== 'dismissed'));
     return h('section', { className: 'dpt-cards', 'aria-label': t('cardLabel') },
       ...mine.map(version => {
-        const archived = state.delegated ? 'subagent' : archivedReason(state, version, latest);
+        const archived = state.delegated && !(version.posted >= (state.own ?? Infinity)) ? 'subagent' : archivedReason(state, version, latest);
         if (version.phase === 'dismissed') return h(ClosedStub, { key: versionKey(version), card: version, t });
         const props = { key: versionKey(version), card: version, size: sizes.get(version), archived, pending: busy === versionKey(version), t, run: guarded(version), reply: send };
         return h(version.kind === 'question' ? QuestionCard : CardView, props);
