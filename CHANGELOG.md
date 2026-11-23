@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.4.4 — 2026-11-23
+
+- 任务卡审阅完最后一条即视为确认：已整理的原话在下一次请求前自动换成指向任务卡的替身，不需要再点一次「确认并精简上下文」。未归档原文逐字保留，聊天与会话记录仍是原文，`task_brief source` 可读回，「恢复原文」可撤销。审阅中途不会提前精简；以版本选择结束审阅时同样适用；本次改动之前建立的任务卡保留手动按钮。
+- 虚拟 DSH 的授权改为聊天内审批卡：模型请求启动时在对话里发一张卡，提议可调整的启动次数（默认 10，最多 50），用户点「允许」后本会话获得该配额，模型在次数内自行启动、重启、安装插件和使用，不再逐次询问；次数用尽会重新发卡。侧栏启动仍可作为兜底授权；审批策略为「从不询问」时不再只报一句“用户拒绝”。
+- Finishing the last review item is the confirmation: the reviewed messages move out of the model's context before the next request, with no second click on Confirm and condense. Unfiled text stays verbatim, the chat and log keep the originals, `task_brief source` reads them back and Restore original undoes it. Nothing condenses while the review is still open, a version choice that ends the review behaves the same, and cards from before this change keep the manual button.
+- Virtual DSH authorization is now an approval card in the chat: the model posts it when it asks to start, proposing a start count the user can change (default 10, max 50). Allowing grants the conversation that many starts, and the model can start, restart, install plugins and use it within the count without asking again; when the count runs out it posts a new card. A side-panel start still authorizes as a fallback, and a "never" approval policy no longer produces a bare decline.
+
 ## 2.4.3 — 2026-11-22
 
 - 卡片待决不再卡死整个回合：用户不回答卡片、改用一条消息回复时，等待立即结束，回合继续推进，卡片仍留在对话里可后补点击。待决期间只有卡片类工具（ui_card、ask_user、task_brief、project_cards）被拒绝，读文件、跑命令等无关调用不再报 “Awaiting a card decision”（#40）。

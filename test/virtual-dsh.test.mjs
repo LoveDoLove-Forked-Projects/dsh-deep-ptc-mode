@@ -5,6 +5,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PREFIX, cliCommand, mirrorHome, mirrorProfile, parseArgs, sourceProfile, sweep } from '../lib/preview.mjs';
 import { VIRTUAL_COMMAND, VIRTUAL_TOOL, command, createApi, readStatus, virtualToolDefinition } from '../lib/virtual-dsh.mjs';
+import { cardsRuntime } from '../lib/cards-context.mjs';
+import { blankCards, CARDS_EVENT, foldCardsState, latestOf, records } from '../lib/card-state.mjs';
+import { STOPPED } from '../lib/cards.mjs';
 import { PROFILE } from '../lib/preview.mjs';
 
 const slash = path => path.replaceAll('\\', '/');
@@ -148,6 +151,137 @@ test('the panel command starts one virtual DSH, reports its state and stops it',
   assert.equal(command({ get: () => ({ presetForSession: () => 'ptc' }) }, api, agent, '{"op":"status"}').kind, 'error', 'Deep PTC only');
 });
 
+test('a start from the side panel authorizes the model in that conversation', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'dpt-state-'));
+  const file = join(dir, 'state.json');
+  const ctx = { get: name => name === 'agentPresets' ? { presetForSession: () => 'deep-ptc' } : undefined };
+  const authorized = { session: { id: 'panel-authorized' } };
+  const api = createApi({ stateFile: file });
+  api.start = () => ({ state: 'running' });
+  api.addPlugin = async () => ({ state: 'running', installed: 'dsh-x' });
+  assert.equal(command(ctx, api, authorized, '{"op":"start"}').kind, 'success');
+  let asks = 0;
+  const tool = virtualToolDefinition({ api }, { approval: () => ({ request: async () => { asks++; return 'rejected'; } }) });
+  assert.deepEqual(await tool.execute({ action: 'add_plugin', spec: 'dsh-x' }, { agent: authorized }), { state: 'running', installed: 'dsh-x' });
+  assert.equal(asks, 0, 'the panel start already authorized this conversation');
+  // Another conversation still needs authorization; the refusal explains how to give it.
+  await assert.rejects(() => tool.execute({ action: 'add_plugin', spec: 'dsh-x' }, { agent: { session: { id: 'other' } } }), /side panel/u);
+  assert.equal(asks, 1);
+  // A start that fails grants nothing.
+  api.start = () => { throw new Error('launcher missing'); };
+  assert.equal(command(ctx, api, { session: { id: 'panel-failed' } }, '{"op":"start"}').kind, 'error');
+  await assert.rejects(() => tool.execute({ action: 'add_plugin', spec: 'dsh-x' }, { agent: { session: { id: 'panel-failed' } } }), /side panel/u);
+  api.close();
+});
+
+// A card store that folds the approval card and answers it like the user would, after a tick.
+function approvalCards(answers = [{ action: 'approve', starts: '3' }]) {
+  let state = blankCards();
+  let seq = 0;
+  let next = 0;
+  const shown = [];
+  const store = {
+    read: () => state,
+    async append(session, record) {
+      seq += 1;
+      state = foldCardsState(state, { type: CARDS_EVENT, seq, data: record });
+      if (record.op !== 'show') return;
+      const version = latestOf(state, record.id);
+      if (!version?.actions?.length) return;
+      shown.push(version);
+      const answer = answers[Math.min(next++, answers.length - 1)];
+      setTimeout(() => {
+        const live = latestOf(state, record.id);
+        if (live === undefined || live.phase !== 'open') return;
+        const result = answer.action === 'approve'
+          ? { action: 'approve', label: 'Allow', values: { starts: String(answer.starts ?? '3') }, at: 1 }
+          : { action: 'deny', label: 'Deny', at: 1 };
+        seq += 1;
+        state = foldCardsState(state, { type: CARDS_EVENT, seq, data: records.phase(live, STOPPED, result) });
+      }, 5);
+    },
+    waits: { add() {} },
+    enabled: () => true,
+  };
+  return { store, shown };
+}
+
+test('the virtual_dsh tool asks in a card for a start count and reuses the approved quota', async () => {
+  const cards = approvalCards([{ action: 'approve', starts: '3' }, { action: 'approve', starts: '5' }]);
+  const priorStore = cardsRuntime.store;
+  const priorEnabled = cardsRuntime.enabled;
+  cardsRuntime.store = cards.store;
+  cardsRuntime.enabled = () => true;
+  try {
+    const dir = mkdtempSync(join(tmpdir(), 'dpt-state-'));
+    const api = createApi({ stateFile: join(dir, 'state.json') });
+    let starts = 0;
+    api.start = () => { starts += 1; return { state: 'preparing' }; };
+    api.status = () => ({ state: 'stopped' });
+    const tool = virtualToolDefinition({ api }, { approval: () => ({ request: async () => 'rejected' }) });
+    const exec = { agent: { session: { id: 'quota' } }, callId: 'call-1' };
+    assert.deepEqual(await tool.execute({ action: 'start', starts: 3 }, exec), { state: 'preparing' });
+    assert.equal(starts, 1);
+    assert.equal(api.quota('quota').total, 3);
+    assert.equal(api.quota('quota').remaining, 2);
+    const card = cards.shown[0];
+    assert.equal(card.blocks.find(block => block.type === 'field').value, '3');
+    assert.deepEqual(card.actions.map(action => action.id), ['approve', 'deny']);
+    // Inside the quota the tool starts again without a card.
+    await tool.execute({ action: 'start', starts: 3 }, exec);
+    assert.equal(starts, 2);
+    assert.equal(cards.shown.length, 1);
+    assert.equal(api.quota('quota').remaining, 1);
+    // The last allowance is used, then the next request opens a fresh card with the new proposal.
+    await tool.execute({ action: 'start', starts: 3 }, exec);
+    assert.equal(api.quota('quota').remaining, 0);
+    await tool.execute({ action: 'start', starts: 5 }, exec);
+    assert.equal(cards.shown.length, 2);
+    assert.equal(api.quota('quota').total, 5);
+    assert.equal(api.quota('quota').remaining, 4);
+    assert.equal(cards.shown[1].blocks.find(block => block.type === 'field').value, '5');
+  } finally {
+    cardsRuntime.store = priorStore;
+    cardsRuntime.enabled = priorEnabled;
+  }
+});
+
+test('a denied virtual DSH approval card starts nothing', async () => {
+  const cards = approvalCards([{ action: 'deny' }]);
+  const priorStore = cardsRuntime.store;
+  const priorEnabled = cardsRuntime.enabled;
+  cardsRuntime.store = cards.store;
+  cardsRuntime.enabled = () => true;
+  try {
+    const dir = mkdtempSync(join(tmpdir(), 'dpt-state-'));
+    const api = createApi({ stateFile: join(dir, 'state.json') });
+    let starts = 0;
+    api.start = () => { starts += 1; return { state: 'preparing' }; };
+    api.status = () => ({ state: 'stopped' });
+    const tool = virtualToolDefinition({ api }, { approval: () => ({ request: async () => 'rejected' }) });
+    await assert.rejects(() => tool.execute({ action: 'start', starts: 10 }, { agent: { session: { id: 'denied' } } }), /did not authorize/u);
+    assert.equal(starts, 0);
+    assert.equal(api.quota('denied'), undefined);
+    assert.equal(cards.shown[0].blocks.find(block => block.type === 'field').value, '10');
+  } finally {
+    cardsRuntime.store = priorStore;
+    cardsRuntime.enabled = priorEnabled;
+  }
+});
+
+test('chatting with the virtual DSH before a start points at the start action instead of a card', async () => {
+  const priorStore = cardsRuntime.store;
+  cardsRuntime.store = undefined;
+  try {
+    const dir = mkdtempSync(join(tmpdir(), 'dpt-state-'));
+    const api = createApi({ stateFile: join(dir, 'state.json') });
+    const tool = virtualToolDefinition({ api }, { approval: () => ({ request: async () => 'rejected' }) });
+    await assert.rejects(() => tool.execute({ action: 'chat', message: 'hi' }, { agent: { session: { id: 'no-start' } } }), /not running[\s\S]*start first/iu);
+  } finally {
+    cardsRuntime.store = priorStore;
+  }
+});
+
 test('the virtual_dsh tool adds and removes plugins, edits configuration and reads the log inside the virtual home', async () => {
   const { file, root } = runningVirtual();
   const calls = [];
@@ -166,7 +300,7 @@ test('the virtual_dsh tool adds and removes plugins, edits configuration and rea
   assert.equal(status.state, 'running');
   assert.deepEqual(status.added, []);
   assert.equal(asked.length, 0, 'reading status needs no approval');
-  await assert.rejects(() => tool.execute({ action: 'add_plugin', spec: 'dsh-x' }, exec), /declined/u);
+  await assert.rejects(() => tool.execute({ action: 'add_plugin', spec: 'dsh-x' }, exec), /not authorized[\s\S]*side panel/u);
   assert.equal(calls.length, 0, 'nothing ran without approval');
   answer = 'allowed-once';
   assert.equal(asked[0].toolName, VIRTUAL_TOOL);

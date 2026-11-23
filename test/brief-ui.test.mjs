@@ -89,6 +89,23 @@ test('a review round asks each item in one card at its transcript node and keeps
   } finally { await act(async () => view.unmount()); }
 });
 
+test('a reviewed message condenses by itself: the card asks for no second approval', async () => {
+  const f = fixture();
+  const entry = f.slots.get('conversation.input.dock#deep-ptc-task');
+  const message = { ref: 'm7', turn: 5, preview: 'Keep this behavior', covered: 1, total: 1, unfiled: [] };
+  const state = extra => brief({ title: 'Keep this behavior', items: [item({ basis: 'confirmed' })], messages: [{ ...message, ...extra }] });
+  const render = value => React.createElement(entry.render, { ...entry.slot.inject('deep'), useProjection: key => key === 'deepPtcBrief' ? value : undefined });
+  let view;
+  await act(async () => { view = Renderer.create(render(state({}))); });
+  try {
+    await act(async () => view.root.findByProps({ className: 'dpt-taskdock-head' }).props.onClick());
+    assert.equal(buttons(view, 'briefCondense').length, 1, 'a message left uncondensed still offers the manual fallback');
+    await act(async () => view.update(render(state({ pending: 'condense' }))));
+    assert.equal(buttons(view, 'briefCondense').length, 0, 'a message already condensing needs no click');
+    assert.match(shown(view), /briefCondensing/u);
+  } finally { await act(async () => view.unmount()); }
+});
+
 test('a finished task leaves a receipt that folds to one line', async () => {
   const f = fixture();
   const entry = f.slots.get('conversation.chat.node#deep-ptc-task-brief');

@@ -2,7 +2,7 @@
 
 Use this when a change to a DSH plugin, preset, skill or configuration needs to be tried in a real DSH before it reaches the user's own. The virtual DSH is a fresh DSH with the same host version, plugins, skills and settings as the user's, and none of their sessions, workspaces or memory. Everything you do there stays there. Drive it with the `virtual_dsh` tool (deep creative mode); the user watches it in the Deep creative mode section of the side panel, can open it in the right sidebar, and can stop it there at any time.
 
-The first action that starts, changes or talks to it asks the user once; that approval covers every later start, change and test in this conversation, so start and restart it as often as testing needs. It copies the user's sign-in and runs with their permission settings: its test sessions can act on this computer, so keep what you ask them to do inside its own workspace.
+The first launching action posts an approval card in the chat with a start count the user can adjust; allowing it grants that many starts for the conversation, and later starts, restarts and tests inside the count do not ask again. A start from the side panel also authorizes the conversation. It copies the user's sign-in and runs with their permission settings: its test sessions can act on this computer, so keep what you ask them to do inside its own workspace.
 
 ## 1. Decide what you are proving
 Write down, before you start, the behavior that must work and how you will see it: a tool the model can call, a panel that renders, a setting that changes an outcome, a plugin that coexists with another. Include the existing behavior the change could break. A check you cannot observe is not a check.

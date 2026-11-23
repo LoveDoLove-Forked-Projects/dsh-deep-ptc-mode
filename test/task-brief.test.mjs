@@ -146,6 +146,46 @@ test('condensing swaps the message for its stub before the next request, and res
   assert.equal(host.state(s).messages[0].condensed, undefined);
 });
 
+test('answering the last review item condenses the reviewed message without a second click', async () => {
+  const host = fakeHost();
+  await install(host.ctx, host.records);
+  const s = host.session('auto-condense');
+  const agent = { session: s };
+  s.append('turn/start', { turn: 1 });
+  const said = host.say(s, MESSAGE);
+  await briefToolDefinition().execute({ action: 'update', items: [
+    { section: 'goal', text: '设计模型面', quote: '卡片展示给模型的样子，以什么形式进入上下文' },
+    { section: 'constraint', text: '效率与准确', quote: '模型也不需要好看，而是需要效率与准确' }] }, { agent });
+  const run = payload => host.handlers.get(BRIEF_COMMAND)({ agent, rawInput: JSON.stringify(payload) });
+  assert.equal((await run({ op: 'confirm', ids: ['G1'] })).kind, 'success');
+  assert.equal(host.state(s).messages[0].pending, undefined, 'the first answer does not condense a review still in progress');
+  assert.equal((await run({ op: 'confirm', ids: ['C1'] })).kind, 'success');
+  assert.equal(host.state(s).versions.at(-1).settled, true);
+  assert.equal(host.state(s).messages[0].pending, 'condense', 'the closing answer starts the condense by itself');
+  await host.listeners.get('agent/pre-step')({ agent }, async () => ({ kind: 'enter', messages: [] }));
+  assert.equal(host.state(s).messages[0].condensed, true);
+  const stub = s.eventAt(s.surface.nodes[0]);
+  assert.match(stub.data.content[0].text, /is filed in the task brief: G1 C1/u);
+  assert.ok(s.eventAt(said.seq), 'the original stays in the log');
+  assert.match(promptText(host.state(s)), /Condensed into this brief: m\d+/u);
+});
+
+test('selecting the last version closes the review and condenses the reviewed message by itself', async () => {
+  const host = fakeHost();
+  await install(host.ctx, host.records);
+  const s = host.session('auto-condense-version');
+  const agent = { session: s };
+  s.append('turn/start', { turn: 1 });
+  host.say(s, MESSAGE);
+  await briefToolDefinition().execute({ action: 'update', items: [{ section: 'goal', text: '模型面设计', quote: '卡片展示给模型的样子，以什么形式进入上下文',
+    question: '按哪种范围设计？', versions: [{ label: '只做卡片', text: '只设计卡片' }, { label: '卡片和模型视图', text: '卡片和模型视图都设计' }] }] }, { agent });
+  const run = payload => host.handlers.get(BRIEF_COMMAND)({ agent, rawInput: JSON.stringify(payload) });
+  assert.equal((await run({ op: 'confirm', ids: ['G1'], choice: 'v2', rev: 1 })).kind, 'success');
+  assert.equal(host.state(s).items[0].text, '卡片和模型视图都设计');
+  assert.equal(host.state(s).versions[0].settled, true);
+  assert.equal(host.state(s).messages[0].pending, 'condense', 'a version choice that ends the review condenses too');
+});
+
 test('an unfiled substantive message earns at most two reminders, and none once it is filed', async () => {
   const host = fakeHost();
   await install(host.ctx, host.records);
