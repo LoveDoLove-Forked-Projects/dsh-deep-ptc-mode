@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.5.1 — 2026-11-23
+
+- 修复在线更新失败：打开过深度 PTC 会话时，从 2.4.4 更新到 2.5.0 会因旧模块仍在内存里而加载失败并回滚。新增的接口改放新文件，发布前会与以往版本逐一核对。更新后请重启 DSH 让新功能完整生效。
+- Fixes the live update: with a Deep PTC conversation opened, updating 2.4.4 to 2.5.0 failed to load against modules still in memory and was rolled back. New interfaces now live in new files, and releases are checked against earlier versions. Restart DSH after updating for the new features to take full effect.
+
 ## 2.5.0 — 2026-11-23
 
 - **提示音和右下角弹窗**：有卡片等你处理、任务结束时各响一声，自己停止的不响。Windows 桌面版在屏幕右下角弹出小窗，一次一道题，多张卡片用 ‹ 2/5 › 切换，可以直接回答，也可以回到 DSH。设置里可分别关闭；弹窗可选总是、DSH 在后台时或不弹出。审批和宿主提问只提醒，仍在 DSH 里处理。网页版只有声音。
