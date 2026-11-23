@@ -2306,6 +2306,20 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     render() { return this.state.failed ? null : this.props.children; }
   }
 
+  // When this conversation's model starts the virtual DSH, the user gets to see it: it opens in the right
+  // sidebar once, when it runs, if the conversation is on screen.
+  const OPENED_KEY = `${PLUGIN}:virtual-opened`;
+  function openVirtual(status, sessionId, element) {
+    const open = status?.open;
+    if (status?.state !== 'running' || !status.url || open?.session !== sessionId || Date.now() - open.at > 15 * 60_000) return;
+    if (!(element?.parentElement?.getClientRects?.().length > 0)) return;
+    try {
+      if (globalThis.sessionStorage?.getItem(OPENED_KEY) === String(open.at)) return;
+      globalThis.sessionStorage?.setItem(OPENED_KEY, String(open.at));
+      hostCtx?.get?.('sidebarRight')?.openTab('browser', { params: { url: status.url } });
+    } catch (error) { console.warn(`[${PLUGIN}] virtual DSH did not open:`, error); }
+  }
+
   function SessionBridge(props) {
     const { sessionId } = props;
     const marker = React.useRef(null);
@@ -2315,6 +2329,8 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     React.useEffect(() => { SESSIONS.set(sessionId, { id: sessionId, preset, busy, el: marker.current }); }, [sessionId, preset, busy]);
     React.useEffect(() => () => SESSIONS.del(sessionId), [sessionId]);
     React.useEffect(() => SESSIONS.watch(marker.current?.parentElement), []);
+    const virtual = projectionValue(props.useProjection, 'deepPtcVirtual')?.status;
+    React.useEffect(() => { openVirtual(virtual, sessionId, marker.current); }, [virtual, sessionId]);
     return h('span', { ref: marker, hidden: true, 'aria-hidden': 'true', 'data-dpt-bridge': sessionId });
   }
 

@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.5.0 — 2026-11-23
+
+- **提示音和右下角弹窗**：有卡片等你处理、任务结束时各响一声，自己停止的不响。Windows 桌面版在屏幕右下角弹出小窗，一次一道题，多张卡片用 ‹ 2/5 › 切换，可以直接回答，也可以回到 DSH。设置里可分别关闭；弹窗可选总是、DSH 在后台时或不弹出。审批和宿主提问只提醒，仍在 DSH 里处理。网页版只有声音。
+- **DSH Go 能用卡片了（#43）**：等你处理的卡片同时作为 DSH Go 的原生提问出现，哪边先回答都算；指标、图表、任务卡和答案作为原生工具卡显示。
+- **可以直接和子代理对话（#44）**：子代理恢复输入框，它问你的卡片由你在它的对话里回答；主代理下发的卡片仍是填好的。你对子代理说的话由它整理成内部卡片交给主代理，聊天里不显示；没来得及整理时原话先送到。
+- **底栏不再抖动（#45）**：125% 等缩放下，输入区高度按设备像素对齐，正文行距改为整像素。
+- **虚拟 DSH 真正可用**：模型申请若干次使用，你在卡片上调整次数。从打开到关闭算一次，其间重启和更换测试包不另计；你在侧栏打开的不占次数，也只能由你关闭；同时只存在一个。批准、启动和测试不再受 run_code 的时限打断，结果自动送达。启动后自动在右侧栏打开。测试包可以直接给插件目录。新增 `answer`（回答里面等待的提问和审批）和 `ui`（用本机 Edge 或 Chrome 读取、点击、输入、截图）。打开深度创造模式后，正在进行的对话立即可用。
+- 修复虚拟 DSH：`sessions` 必报错；正常停止被记成失败；Windows 临时文件清理会删掉运行中的凭据和依赖，现在放在用户目录的 `.dsh-virtual`。
+- **Sounds and a notice at the bottom right**: one sound when a card waits, one when a task ends, none when you stop it. The Windows desktop app shows a small window, one question at a time with ‹ 2/5 › to switch; answer there or in DSH. Each can be turned off; the notice can appear always, with DSH in the background, or never. Approvals and host questions are announced and answered in DSH. The web version has the sounds.
+- **Cards work in DSH Go (#43)**: what waits for you also appears as a DSH Go native question, answered on either side; metrics, charts, the task brief and answers appear as native tool cards.
+- **Talk to subagents directly (#44)**: their input box is back, and you answer their cards in their conversation; cards from the parent stay filled in. The subagent files what you said as an internal card for the parent, not shown in the chat; your words go first when it has not filed them yet.
+- **A steady composer (#45)**: at 125 % and similar scaling the composer's height is aligned to device pixels, and reply text uses whole-pixel line spacing.
+- **A virtual DSH the model can really use**: it asks for a number of uses and you adjust it on the card. One use runs from opening to closing; restarts and new builds in between are free. What you open in the side panel costs none and is yours to close; only one exists at a time. Approval, start and test turns no longer run into run_code's time limit, and results arrive by themselves. It opens in the right sidebar. A package can be the plugin's directory. New `answer` (questions and approvals that wait there) and `ui` (read, click, type and take screenshots with the machine's Edge or Chrome). Turning deep creative mode on reaches conversations already open.
+- Virtual DSH fixes: `sessions` always failed; a normal stop was recorded as a failure; Windows temporary-file cleanup deleted the sign-in and packages of a running one, which now lives in `.dsh-virtual` in the user's home.
+
 ## 2.4.4 — 2026-11-23
 
 - 任务卡审阅完最后一条即视为确认：已整理的原话在下一次请求前自动换成指向任务卡的替身，不需要再点一次「确认并精简上下文」。未归档原文逐字保留，聊天与会话记录仍是原文，`task_brief source` 可读回，「恢复原文」可撤销。审阅中途不会提前精简；以版本选择结束审阅时同样适用；本次改动之前建立的任务卡保留手动按钮。
