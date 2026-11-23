@@ -1,12 +1,16 @@
 # Deep PTC mode
 
-[中文](README.zh.md) · MIT · **2.5.0**
+[中文](README.zh.md) · MIT · **2.5.1**
 
 [Changelog](CHANGELOG.md) · [Test report](TEST_REPORT.md) · [Plugin workflows and verification](COMPATIBILITY.md)
 
 Deep PTC is a DeepSeek Harness agent mode with progress reports, clarifying questions, task-size planning, and interruptible background work. It builds on the installed official PTC preset with selectable shells, on-demand tools and skills, and a two-layer preset identity adapter for third-party plugins. Cards face both you and the model: you see a clear card, the model reads precise context with ids, sources and states; the task brief files the goals, constraints and acceptance criteria in your messages and, once you confirm, can take the raw messages out of the model's context.
 
 The panel sits beside the conversation and shows the environment, Deep creative mode with the virtual DSH, subagents, jobs, output files, SSH connections and tool state. The panel width can be dragged. The capsule expands or collapses it; it sits below the composer by default and can move into the toolbar or be hidden. Deep PTC also has its own settings page. Visual effects are lightweight and start off when an appearance plugin is installed.
+
+## Changes in 2.5.1
+
+- Fixes the live update: with a Deep PTC conversation opened, updating 2.4.4 to 2.5.0 failed to load against modules still in memory and was rolled back. New interfaces now live in new files, and releases are checked against earlier versions. Restart DSH after updating for the new features to take full effect.
 
 ## Changes in 2.5.0
 

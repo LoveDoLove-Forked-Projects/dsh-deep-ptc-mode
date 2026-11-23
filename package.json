@@ -1,6 +1,6 @@
 {
   "name": "dsh-deep-ptc-mode",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "description": "Deep PTC for DeepSeek Harness: interruptible jobs, selectable shells, conversation cards that pair side by side with a precise model view, a task brief reviewed item by item and archived when done, versioned project cards with workspace task history, a sortable side panel, on-demand tools and skills, and a virtual DSH for testing plugins.",
   "type": "module",
   "keywords": [
@@ -106,7 +106,7 @@
   "scripts": {
     "test": "node --test",
     "build:client": "node scripts/build-client.mjs",
-    "check": "node scripts/build-client.mjs --check && node scripts/check.mjs",
+    "check": "node scripts/build-client.mjs --check && node scripts/check-live-update.mjs && node scripts/check.mjs",
     "check:upstream": "node scripts/check.mjs --upstream",
     "check:parity": "node scripts/check-parity.mjs",
     "prepack": "npm run check && npm test",
