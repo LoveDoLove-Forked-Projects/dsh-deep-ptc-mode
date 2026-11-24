@@ -29,33 +29,71 @@ export function createNotices() {
     return dispose;
   }
 
-  // Struck-bell tones, the same as lib/notify/*.wav.
+  // Struck-bell tones, the same as lib/notify/*.wav, or a saved clip from the host route.
   const NOTES = { ask: [[0, 659.25], [0.13, 987.77]], done: [[0, 523.25], [0.11, 659.25], [0.22, 783.99]] };
   let audio;
-  function chime(name) {
+  let library;
+  let libraryAt = 0;
+  const volumeOf = value => {
+    const number = Number(value);
+    return Number.isFinite(number) ? Math.max(0, Math.min(100, number)) / 100 : 0.7;
+  };
+  function synth(name, volume) {
+    const Context = globalThis.AudioContext ?? globalThis.webkitAudioContext;
+    if (!Context) return;
+    audio ??= new Context();
+    void audio.resume?.();
+    for (const [start, frequency] of NOTES[name]) {
+      for (const [ratio, base, seconds] of [[1, 0.16, 0.8], [2, 0.045, 0.5]]) {
+        const at = audio.currentTime + 0.02 + start;
+        const gain = audio.createGain();
+        const tone = audio.createOscillator();
+        tone.frequency.value = frequency * ratio;
+        gain.gain.setValueAtTime(0.0001, at);
+        gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, base * volume), at + 0.008);
+        gain.gain.exponentialRampToValueAtTime(0.0001, at + seconds);
+        tone.connect(gain).connect(audio.destination);
+        tone.start(at);
+        tone.stop(at + seconds + 0.05);
+      }
+    }
+  }
+  async function saved(id) {
+    if (typeof fetch !== 'function') return undefined;
+    if (library === undefined || Date.now() - libraryAt > 30000) {
+      const response = await fetch('/deep-ptc/sounds/list');
+      if (!response.ok) return undefined;
+      const body = await response.json();
+      library = Array.isArray(body?.sounds) ? body.sounds : [];
+      libraryAt = Date.now();
+    }
+    return library.find(row => row.id === id);
+  }
+  function playClip(row, volume) {
+    if (typeof Audio !== 'function') return false;
+    const element = new Audio('/deep-ptc/sounds/clip/' + encodeURIComponent(row.id));
+    element.volume = volume;
+    element.addEventListener('loadedmetadata', () => {
+      try { element.currentTime = Math.max(0, Number(row.start) || 0); } catch { /* keep from the start */ }
+      void element.play?.()?.catch?.(() => {});
+    }, { once: true });
+    const span = Math.max(0.2, (Number(row.end) || 0) - (Number(row.start) || 0));
+    setTimeout(() => { try { element.pause(); element.removeAttribute('src'); } catch { /* gone */ } }, span * 1000 + 120);
+    return true;
+  }
+  function chime(name, setting) {
     try {
       // Two windows of the same DSH ring once.
       const last = Number(globalThis.localStorage?.getItem('dpt-chime') ?? 0);
       if (Date.now() - last < 700) return;
       globalThis.localStorage?.setItem('dpt-chime', String(Date.now()));
-      const Context = globalThis.AudioContext ?? globalThis.webkitAudioContext;
-      if (!Context) return;
-      audio ??= new Context();
-      void audio.resume?.();
-      for (const [start, frequency] of NOTES[name]) {
-        for (const [ratio, level, seconds] of [[1, 0.16, 0.8], [2, 0.045, 0.5]]) {
-          const at = audio.currentTime + 0.02 + start;
-          const gain = audio.createGain();
-          const tone = audio.createOscillator();
-          tone.frequency.value = frequency * ratio;
-          gain.gain.setValueAtTime(0.0001, at);
-          gain.gain.exponentialRampToValueAtTime(level, at + 0.008);
-          gain.gain.exponentialRampToValueAtTime(0.0001, at + seconds);
-          tone.connect(gain).connect(audio.destination);
-          tone.start(at);
-          tone.stop(at + seconds + 0.05);
-        }
+      const volume = volumeOf(typeof setting === 'function' ? setting('notifyVolume') : 70);
+      const id = typeof setting === 'function' ? setting(name === 'ask' ? 'notifyCardSound' : 'notifyDoneSound') : undefined;
+      if (typeof id === 'string' && id !== '' && id !== 'default') {
+        void saved(id).then(row => { if (row === undefined || !playClip(row, volume)) synth(name, volume); }).catch(() => synth(name, volume));
+        return;
       }
+      synth(name, volume);
     } catch { /* a browser that blocks sound stays silent */ }
   }
 
@@ -70,7 +108,7 @@ export function createNotices() {
       const id = request.questions[0].id;
       if (!heard.has(id)) {
         heard.add(id);
-        if (rings('notifySound')) chime('ask');
+        if (rings('notifySound')) chime('ask', setting);
       }
       return hold(request.signal);
     };
@@ -80,7 +118,7 @@ export function createNotices() {
       clearTimeout(timers.get(id));
       timers.delete(id);
       if (running || !deep(id) || !rings('notifyDone')) return;
-      timers.set(id, setTimeout(() => { timers.delete(id); chime('done'); }, 700));
+      timers.set(id, setTimeout(() => { timers.delete(id); chime('done', setting); }, 700));
     };
     child.effect(() => {
       const dispose = child.remote.$on('api-session/status', status);

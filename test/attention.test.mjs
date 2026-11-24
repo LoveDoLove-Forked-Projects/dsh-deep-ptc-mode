@@ -183,7 +183,10 @@ test('the notice chimes once, answers through the command and shows a refusal in
   h.show('q', question);
   h.show('card', interactive);
   await wait(80);
-  assert.deepEqual(calls.filter(([name]) => name === 'sound'), [['sound', 'ask']], 'two cards at once ring once');
+  const rings = calls.filter(([name]) => name === 'sound');
+  assert.equal(rings.length, 1, 'two cards at once ring once');
+  assert.match(rings[0][1].path, /ask[.]wav$/u);
+  assert.equal(rings[0][1].volume, 70);
   const shown = calls.filter(([name]) => name === 'show').map(([, notice]) => notice);
   assert.equal(shown.length, 2);
   assert.equal(shown[0].title, '选择部署方案');
@@ -196,7 +199,8 @@ test('the notice chimes once, answers through the command and shows a refusal in
   assert.deepEqual(calls.at(-1), ['close', shown[0].id]);
   h.apply({ type: 'turn/end', data: { turn: 1, reason: { kind: 'completed' } } });
   await wait(900);
-  assert.deepEqual(calls.filter(([name]) => name === 'sound').at(-1), ['sound', 'done']);
+  const done = calls.filter(([name]) => name === 'sound').at(-1);
+  assert.match(done[1].path, /done[.]wav$/u);
   const before = calls.length;
   h.apply({ type: 'turn/end', data: { turn: 2, reason: { kind: 'aborted' } } });
   await wait(900);

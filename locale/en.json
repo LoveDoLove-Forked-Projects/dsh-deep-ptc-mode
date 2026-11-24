@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Deep PTC Mode",
-    "description": "Deep PTC builds on official PTC with interruptible jobs, selectable shells and a conversation-side panel. A task brief files the goals, constraints and acceptance criteria in your messages, quoting your words, asks you item by item, sits above the composer while you work, and is archived to the project cards when done; once confirmed it can take the raw messages out of the model's context. Click output files to open them; drag the panel edge to resize it, and place the capsule below the composer, in its toolbar or nowhere. Use drawing, design and research tools on demand, with general SSH and DSH Go assistance. The UI follows DSH's Chinese or English setting. Sounds and a desktop notice for waiting cards, cards in DSH Go, and a virtual DSH the model can use itself.",
+    "description": "Deep PTC builds on official PTC with interruptible jobs, selectable shells and a conversation-side panel. A task brief files the goals, constraints and acceptance criteria in your messages, quoting your words, asks you item by item, sits above the composer while you work, and is archived to the project cards when done; once confirmed it can take the raw messages out of the model's context. Click output files to open them; drag the panel edge to resize it, and place the capsule below the composer, in its toolbar or nowhere. Use drawing, design and research tools on demand, with general SSH and DSH Go assistance. The UI follows DSH's Chinese or English setting. Sounds and a desktop notice for waiting cards (adjustable volume, your own audio uploadable and trimmable), cards in DSH Go, and a virtual DSH the model can use itself. Card buttons settle after one press.",
     "detail": "README.md"
   }
 }

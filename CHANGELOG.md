@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.5.2 — 2026-11-24
+
+- 提示音可调：设置里新增音量滑杆（拖动即以新音量试听）、自定义音频上传（进度条、波形选段、试听后保存）、多个提示音保存与切换；两类提示音各自选音源，内置提示音仍是默认。音频存放于 $DSH_HOME/storages/deep-ptc-sounds/，清浏览器缓存不丢；Windows 桌面弹窗由宿主播放并受音量控制。
+- Sounds you can adjust: a volume slider that previews at the new level while it moves, upload of your own audio with a progress bar, a waveform clip picker and a preview before saving, several saved sounds to switch between, one source per notice, and the built-in sounds as the default. Audio lives in $DSH_HOME/storages/deep-ptc-sounds/, so clearing the browser cache never loses it; the Windows desktop notice plays it from the host with the chosen volume.
+- 卡片按钮不再保持可点（#48）：任何按钮按一次后卡片立即结算并显示结果，按钮不再可交互；按钮上的 "keep" 字段仍被接受但忽略，需要再次执行时由模型重新发卡。
+- Card buttons no longer stay pressable (#48): one press settles the card and shows the outcome; the "keep" field is still accepted but ignored, and the model posts a new card when the action is needed again.
+
 ## 2.5.1 — 2026-11-23
 
 - 修复在线更新失败：打开过深度 PTC 会话时，从 2.4.4 更新到 2.5.0 会因旧模块仍在内存里而加载失败并回滚。新增的接口改放新文件，发布前会与以往版本逐一核对。更新后请重启 DSH 让新功能完整生效。

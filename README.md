@@ -1,12 +1,17 @@
 # Deep PTC mode
 
-[中文](README.zh.md) · MIT · **2.5.1**
+[中文](README.zh.md) · MIT · **2.5.2**
 
 [Changelog](CHANGELOG.md) · [Test report](TEST_REPORT.md) · [Plugin workflows and verification](COMPATIBILITY.md)
 
-Deep PTC is a DeepSeek Harness agent mode with progress reports, clarifying questions, task-size planning, and interruptible background work. It builds on the installed official PTC preset with selectable shells, on-demand tools and skills, and a two-layer preset identity adapter for third-party plugins. Cards face both you and the model: you see a clear card, the model reads precise context with ids, sources and states; the task brief files the goals, constraints and acceptance criteria in your messages and, once you confirm, can take the raw messages out of the model's context.
+Deep PTC is a DeepSeek Harness agent mode with progress reports, clarifying questions, task-size planning, and interruptible background work. It builds on the installed official PTC preset with selectable shells, on-demand tools and skills, and a two-layer preset identity adapter for third-party plugins. Cards face both you and the model: you see a clear card, the model reads precise context with ids, sources and states; the task brief files the goals, constraints and acceptance criteria in your messages and, once you confirm, can take the raw messages out of the model's context. Alert sounds are adjustable and can use your own clipped audio.
 
 The panel sits beside the conversation and shows the environment, Deep creative mode with the virtual DSH, subagents, jobs, output files, SSH connections and tool state. The panel width can be dragged. The capsule expands or collapses it; it sits below the composer by default and can move into the toolbar or be hidden. Deep PTC also has its own settings page. Visual effects are lightweight and start off when an appearance plugin is installed.
+
+## Changes in 2.5.2
+
+- **Your own alert sounds**: the settings page gains a volume slider that previews at the new level while it moves; you can upload your own audio (mp3 / wav / m4a, up to 30 MB), watch a real upload progress bar, pick a clip of up to 30 seconds on the waveform, preview it and save it as a sound. Save several and switch at any time; the built-in sounds stay the default, and the two notices choose their sources independently. Audio lives under DSH's storages/deep-ptc-sounds directory, so clearing the browser cache never loses it; the Windows desktop notice plays it from the host with the chosen volume and clip.
+- **Card buttons settle after one press (#48)**: a pressed button settles the card and shows the outcome, so it cannot be pressed again; the keep field is still accepted but ignored, and the model posts a new card when the action is needed again.
 
 ## Changes in 2.5.1
 
@@ -150,7 +155,7 @@ The model posts cards in the chat transcript with the `ui_card` tool. Cards are 
 - **Display blocks**: `stats` tiles, `rows`, `progress`, `bars`, `line` (with a hover tooltip), `donut`, `steps` (checklist or timeline), `table`, `tags`, `text`, `callout`.
 - **Interactive blocks**: `choice` (single or multiple, with a preselected recommendation) and `field` (time, date or number).
 - **Layout**: cards form a grid, two side by side or three in a row, stacking in narrow windows. Display cards posted back to back in a turn with no reply text between them form one group and pair automatically; a half holds 4 stat tiles, 6 rows or 280 characters, while tables and long charts take the full width. `size` (full / half / third) sets a width explicitly. A card shown again keeps only its newest version in the group.
-- **Buttons**: `run` really runs on the host (deletes scheduled tasks, or runs one command in **your selected execution environment**); `reply` sends the user's choice to the model as their next message; a button can do both. `keep` leaves the card usable after a press (restart, snooze, rerun).
+- **Buttons**: `run` really runs on the host (deletes scheduled tasks, or runs one command in **your selected execution environment**); `reply` sends the user's choice to the model as their next message; a button can do both. Every button settles the card and shows the outcome, so a pressed button cannot be pressed again; when the action is needed again, the model posts a new card (`keep` is deprecated and ignored).
 - **Safety**: `{name}` placeholders in a command are filled only from times, dates, numbers and option values the card declared, so free text never reaches a shell; the server validates them again. Destructive buttons use the `danger` style.
 - **Model view**: answers and button choices reach the model as `[Card answer: id «title»]` followed by `question id = value «the words you saw»`; tool results carry no presentation fields such as size or tone.
 - **Design**: display, question, task and project cards share one shell (icon, kicker, title, status pill, footer), coloured by family: blue questions, green tasks, orange project cards. It follows the host's light and dark themes; the chart palette is validated for colour-vision deficiency and every value is printed, so colour never carries meaning alone. Interactive cards appear as soon as they are requested and all pending ones can be answered at once.

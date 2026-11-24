@@ -245,6 +245,17 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     delegatedAssignment: '主代理下发的任务', delegatedDirect: '你在和子代理直接对话。你的话立即生效，并会整理后同步给主代理。',
     noticeSound: '卡片提示音', noticeSoundHint: '有卡片等你回答、选择或确认时响一声。',
     noticeDone: '任务结束提示音', noticeDoneHint: '深度 PTC 的一轮任务结束时响一声；你自己停止的不响。',
+    soundSection: '提示音',
+    soundVolume: '音量', soundVolumeHint: '拖动时立即以新音量试听当前卡片提示音，松手后保存。',
+    soundCardSource: '卡片提示音', soundDoneSource: '任务结束提示音', soundDefault: '默认（内置）', soundPreview: '试听',
+    soundLibrary: '已保存的提示音', soundEmpty: '还没有自定义提示音。', soundUnavailable: '当前宿主不支持音频存储与试听。',
+    soundUpload: '上传音频', soundUploadHint: '支持 mp3 / wav / m4a，单个文件不超过 {max} MB。',
+    soundUploading: '上传中：{name} · {progress}%',
+    soundTrim: '选择片段', soundTrimHint: '拖动两个滑块选择起止，最长 {max} 秒。',
+    soundStart: '起点', soundEnd: '终点', soundLength: '本段 {length} 秒', soundName: '名称',
+    soundPlaySelection: '试听本段', soundSave: '保存为候选提示音', soundCancel: '取消',
+    soundDelete: '删除', soundConfirmDelete: '确认删除', soundSaved: '已保存。',
+    soundFormat: '不支持的音频格式（mp3 / wav / m4a）。', soundTooBig: '文件超过大小上限。', soundFailed: '操作失败，请重试。',
     noticePopup: '屏幕右下角弹窗', noticePopupHint: '卡片同时出现在屏幕右下角，可以直接在里面回答，也可以回到 DSH 处理。',
     noticePopup_always: '总是', noticePopup_away: 'DSH 在后台时', noticePopup_off: '不弹出',
     mobileSwitch: '在 DSH Go 里显示卡片', mobileSwitchHint: '等你处理的卡片同时作为 DSH Go 的原生提问出现，展示卡片作为原生工具卡出现。在哪边回答都可以。',
@@ -460,6 +471,17 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     delegatedAssignment: 'Assignment from the parent agent', delegatedDirect: 'You are talking to the subagent directly. Your words take effect at once and are passed on to the parent agent.',
     noticeSound: 'Card sound', noticeSoundHint: 'Rings once when a card waits for your answer, choice or confirmation.',
     noticeDone: 'Task end sound', noticeDoneHint: 'Rings once when a Deep PTC turn ends, not when you stop it yourself.',
+    soundSection: 'Sounds',
+    soundVolume: 'Volume', soundVolumeHint: 'Moving it plays the current card sound at the new volume; the value is saved when you stop.',
+    soundCardSource: 'Card sound', soundDoneSource: 'Task end sound', soundDefault: 'Default (built in)', soundPreview: 'Preview',
+    soundLibrary: 'Saved sounds', soundEmpty: 'No custom sound yet.', soundUnavailable: 'This host cannot store or preview sounds.',
+    soundUpload: 'Upload audio', soundUploadHint: 'mp3 / wav / m4a, one file up to {max} MB.',
+    soundUploading: 'Uploading: {name} · {progress}%',
+    soundTrim: 'Choose a clip', soundTrimHint: 'Drag the two handles to set start and end; at most {max} seconds.',
+    soundStart: 'Start', soundEnd: 'End', soundLength: 'This clip is {length} seconds', soundName: 'Name',
+    soundPlaySelection: 'Preview clip', soundSave: 'Save as a sound', soundCancel: 'Cancel',
+    soundDelete: 'Delete', soundConfirmDelete: 'Confirm delete', soundSaved: 'Saved.',
+    soundFormat: 'Unsupported audio format (mp3 / wav / m4a).', soundTooBig: 'The file is over the size limit.', soundFailed: 'That did not work. Try again.',
     noticePopup: 'Notice at the bottom right', noticePopupHint: 'The card also appears at the bottom right of the screen: answer it there, or go back to DSH.',
     noticePopup_always: 'Always', noticePopup_away: 'DSH in background', noticePopup_off: 'Never',
     mobileSwitch: 'Show cards in DSH Go', mobileSwitchHint: 'Cards that wait for you also appear as DSH Go native questions, and display cards as native tool cards. Answer on either side.',
@@ -1187,6 +1209,8 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
   }
 
   // @client notices
+
+  // @client sound-settings
 
   // @client conversation-cards
 
@@ -2447,6 +2471,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
       h('section', { 'aria-label': t('environment') },
         form ? h(Card, { form, t }) : h('p', { className: 'dpt-side-note' }, t('readOnly'))),
       h('section', { 'aria-label': t('cardsSection') }, h('h3', null, t('cardsSection')), h(CardsSettingsSection, { form, t })),
+      h('section', { 'aria-label': t('soundSection') }, h('h3', null, t('soundSection')), h(SoundSettings, { form, t })),
       h('section', { 'aria-label': t('appearance') }, h('h3', null, t('appearance')),
         h(VisualEffectsSection, { t }), h(PanelLocationSection, { t }), h(CapsulePlacementSection, { t })),
       h(DiagnosticsSection, { t }));

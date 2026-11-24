@@ -100,7 +100,7 @@ test('cards stay in the history: a new version archives the old one, the outstan
   assert.deepEqual(host.state(session).versions.map(version => version.turn), [1, 1, 2, 2]);
 });
 
-test('closing, invalid input and kept buttons', async () => {
+test('closing, invalid input and one-shot buttons', async () => {
   const host = fakeHost();
   await install(host.ctx, host.records);
   const tool = host.registered.get(CARD_TOOL);
@@ -116,10 +116,16 @@ test('closing, invalid input and kept buttons', async () => {
     blocks: [{ type: 'field', name: 'time', label: '时间', kind: 'time', value: '07:30' }],
     actions: [{ id: 'snooze', label: '推迟', run: { schedules: ['s9'] }, keep: true }, { id: 'pick', label: '改时间', reply: '改到 {time}' }] }, { agent: { session } });
   await host.run(session, { id: 'alarm', action: 'act', key: 'snooze' });
-  const alarm = await settle(host, session, 'alarm', version => version.phase === OPEN && version.result?.schedules);
-  assert.equal(alarm.phase, OPEN, 'a kept button leaves the card usable in this turn');
+  const alarm = await settle(host, session, 'alarm', version => version.phase === STOPPED && version.result?.schedules);
+  assert.equal(alarm.phase, STOPPED, 'keep no longer holds the card open: one press settles it');
   assert.deepEqual(alarm.result.values, { time: '07:30' });
-  assert.equal(host.run(session, { id: 'alarm', action: 'act', key: 'pick', values: { time: 'bad' } }).kind, 'error');
+  assert.match(host.run(session, { id: 'alarm', action: 'act', key: 'snooze' }).text, /already handled/u);
+
+  // Validation still runs on a fresh card.
+  await tool.execute({ action: 'show', id: 'alarm2', title: '闹钟', subtitle: '运行中',
+    blocks: [{ type: 'field', name: 'time', label: '时间', kind: 'time', value: '07:30' }],
+    actions: [{ id: 'pick', label: '改时间', reply: '改到 {time}' }] }, { agent: { session } });
+  assert.equal(host.run(session, { id: 'alarm2', action: 'act', key: 'pick', values: { time: 'bad' } }).kind, 'error');
 });
 
 test('the card setting turns the tool and the buttons off', async () => {

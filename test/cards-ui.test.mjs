@@ -321,3 +321,15 @@ test('a brief clarification accepts a free interpretation without choosing one o
     assert.deepEqual(JSON.parse(f.calls.at(-1)[1].slice('/deep-ptc-card-act '.length)).answers, { scope: { custom: 'Checked rows across pages' } });
   } finally { await act(async () => view.unmount()); }
 });
+
+test('a pressed card shows the outcome and no buttons, even when the action asked to be kept', async () => {
+  const f = fixture();
+  const card = { id: 'rerun', title: '跑测试', subtitle: '上一轮失败 2 项', phase: 'stopped',
+    actions: [{ id: 'rerun', label: '只重跑失败的', reply: true, keep: true }],
+    result: { action: 'rerun', label: '只重跑失败的', at: 1 } };
+  const view = await render(f, [card]);
+  try {
+    assert.equal(byClass(view, 'dpt-cc-btn').length, 0, 'no button is left after the press');
+    assert.match(JSON.stringify(view.toJSON()), /cardChose/u, 'the card says what was chosen');
+  } finally { await act(async () => view.unmount()); }
+});

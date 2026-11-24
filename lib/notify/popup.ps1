@@ -461,7 +461,57 @@ function ForegroundIs([string]$name) {
 }
 
 # ---- Messages --------------------------------------------------------------------------------
-$player = New-Object System.Media.SoundPlayer
+# ---- Sound -----------------------------------------------------------------------------------
+$script:sounds = New-Object System.Collections.ArrayList
+function PlayAlert($message) {
+  try {
+    $volume = 0.7
+    if ($null -ne $message.volume) { $volume = [double]$message.volume / 100.0 }
+    $volume = [Math]::Max(0.0, [Math]::Min(1.0, $volume))
+    $start = $null
+    if ($null -ne $message.start) { $start = [double]$message.start }
+    $end = $null
+    if ($null -ne $message.end) { $end = [double]$message.end }
+    $seconds = 1.2
+    if ($null -ne $start -and $null -ne $end) { $seconds = $end - $start } elseif ($null -ne $end) { $seconds = $end }
+    $alert = New-Object System.Windows.Media.MediaPlayer
+    $alert.Volume = $volume
+    $alert.add_MediaFailed({ param($sender, $args) [Console]::Error.WriteLine('sound failed: ' + $args.ErrorException.Message) })
+    $alert.Open([Uri]([string]$message.path))
+    [void]$script:sounds.Add([pscustomobject]@{ Player = $alert; Start = $start; Started = $false; Born = (Get-Date); StopAt = (Get-Date); Seconds = $seconds })
+  } catch { [Console]::Error.WriteLine($_.Exception.Message) }
+}
+function TickSounds {
+  $now = Get-Date
+  for ($i = $script:sounds.Count - 1; $i -ge 0; $i--) {
+    $entry = $script:sounds[$i]
+    try {
+      if (-not $entry.Started) {
+        if ($entry.Player.NaturalDuration.HasTimeSpan) {
+          if ($null -ne $entry.Start) { $entry.Player.Position = [TimeSpan]::FromSeconds([double]$entry.Start) }
+          $entry.Player.Play()
+          $entry.Started = $true
+          $entry.StopAt = $now.AddSeconds([Math]::Max(0.3, [double]$entry.Seconds))
+        } elseif (($now - $entry.Born).TotalSeconds -gt 3) {
+          try { $entry.Player.Close() } catch { }
+          $script:sounds.RemoveAt($i)
+        }
+        continue
+      }
+      if ($now -ge $entry.StopAt) {
+        try { $entry.Player.Close() } catch { }
+        $script:sounds.RemoveAt($i)
+      }
+    } catch {
+      try { $entry.Player.Close() } catch { }
+      $script:sounds.RemoveAt($i)
+    }
+  }
+}
+$script:soundTimer = New-Object System.Windows.Threading.DispatcherTimer
+$script:soundTimer.Interval = [TimeSpan]::FromMilliseconds(60)
+$script:soundTimer.Add_Tick({ TickSounds })
+$script:soundTimer.Start()
 function Handle($message) {
   switch ($message.op) {
     'show' { if (-not ($message.unless -and (ForegroundIs ([string]$message.unless)))) { ShowNotice $message } else { Send @{ event = 'hide'; id = [string]$message.id } } }
@@ -469,7 +519,7 @@ function Handle($message) {
     'error' {
       if ($open.Contains([string]$message.id)) { $entry = $open[[string]$message.id]; $entry.error = [string]$message.text; $entry.busy = $false; if ($at.id -eq $entry.id) { Render } }
     }
-    'sound' { $player.SoundLocation = [string]$message.path; $player.Play() }
+    'sound' { PlayAlert $message }
     'exit' { if ($ui) { $ui.ending = $true }; [System.Windows.Threading.Dispatcher]::CurrentDispatcher.InvokeShutdown() }
   }
 }

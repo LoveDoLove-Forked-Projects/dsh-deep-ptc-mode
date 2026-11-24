@@ -1,5 +1,15 @@
 # Deep PTC 测试报告 / Test report
 
+## 2.5.2 · 2026-11-24
+
+- Windows、Node 24：377 项测试（376 通过、1 跳过）和 npm run check 通过。新增音频存储与路由 3 项、设置页 1 项；真实 HTTP 走通上传、保存、Range 播放、改名、裁剪、删除；PowerShell 播放器冒烟通过（有效 wav 播放、坏路径记录失败）。
+- 卡片按钮一次性：keep 卡片点击一次即结算、二次点击被拒绝，已由自动化测试覆盖。
+- 未在真机验证：桌面弹窗的实际音量与片段听感、浏览器上传大文件的手感。
+
+- Windows and Node 24: 377 tests (376 passed, 1 skipped) and npm run check passed. New coverage: 3 sound store/route tests and 1 settings page test; a real HTTP round trip of upload, save, range playback, rename, trim and delete; a PowerShell player smoke test (a valid wav plays, a missing file is reported).
+- One-shot card buttons: a kept card settles after one press and a second press is refused; covered by automated tests.
+- Not verified on a real device: the audible volume and clip of the desktop notice, and a large browser upload.
+
 ## 2.5.0 · 2026-11-23
 
 - Windows、Node 24：372 项自动化测试和 `npm run check` 通过。
