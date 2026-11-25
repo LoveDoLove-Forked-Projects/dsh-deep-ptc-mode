@@ -229,7 +229,22 @@ test('subagents keep live state indicators and show only their names and same-ro
     assert.deepEqual(rows.map(visibleText), [' Research', ' Report 1m 15s', ' Live']);
     assert.equal(rows[1].children.at(-1).props.className, 'dpt-agent-duration');
     assert.equal(rows[1].props['aria-label'], 'Report · Done', 'the state remains accessible without visible status text');
-    assert.deepEqual(sections(view).slice(0, 6), ['Execution environment', 'Deep sleep', 'Deep creative mode', 'Project cards', 'Subagents', 'Background jobs']);
+    assert.deepEqual(sections(view).slice(0, 6), ['Execution environment', 'Deep sleep mode', 'Deep creative mode', 'Project cards', 'Subagents', 'Background jobs']);
+  });
+});
+
+test('every subagent renders, and the list is a scroll container once it outgrows the panel', async () => {
+  const f = fixture({ localeId: 'en', snapshot: windows({ hostPlatform: 'darwin', environment: 'auto', shellChoices: [] }) });
+  const catalog = Array.from({ length: 30 }, (_, index) => ({ id: `child-${index}`, label: `Child ${index}`, mode: 'one-shot', activity: 'inactive' }));
+  const sessions = { projectionsBySession: { deep: { values: { subagentCatalog: catalog } } }, byId: {} };
+  await withPanel(f, { sessions }, async view => {
+    const rows = view.root.findAllByProps({ className: 'dpt-agent' });
+    assert.equal(rows.length, 30, 'no display cap hides the later subagents');
+    assert.equal(rows.at(-1).props['data-state'], 'idle');
+    const list = view.root.findAllByProps({ className: 'dpt-agents-list' })[0];
+    assert.ok(list, 'the list scrolls inside its section');
+    const section = view.root.findByProps({ 'aria-label': 'Subagents' });
+    assert.match(JSON.stringify(section.findAllByProps({ className: 'dpt-side-hint' }).map(node => node.props.children)), /30 total/u);
   });
 });
 
@@ -452,7 +467,7 @@ test('the effects switch removes and restores the effects at once and remembers 
       await act(async () => bridge.update(renderBridge('standard')));
       // Leaving Deep PTC keeps the effects for a short grace, so a switch between conversations never flips them.
       assert.equal(attrs.has('data-dpt-ui'), true);
-      await act(async () => { await new Promise(resolve => setTimeout(resolve, 200)); });
+      await act(async () => { await new Promise(resolve => setTimeout(resolve, 500)); });
       assert.equal(attrs.has('data-dpt-ui'), false);
       assert.equal(layers.size, 0);
       assert.equal(keyHandlers.size, 0);
@@ -807,10 +822,44 @@ test('moving between two Deep PTC conversations never removes and re-adds the ef
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 200)); });
     assert.equal(writes.includes(false), false, 'the attribute was never removed');
     assert.equal(attrs.has('data-dpt-ui'), true);
+    // A later session update that keeps the effects on writes nothing: the state is compared first.
+    writes.length = 0;
+    await act(async () => view.update(f.slots.get('conversation.session.header.actions#deep-ptc-session').render({
+      sessionId: 'b', useProjection: () => 'deep-ptc', useSessionStatus: () => new Map([['b', { running: true }]]) })));
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 250)); });
+    assert.deepEqual(writes, [], 'an unchanged on-state touches no DOM');
   } finally {
     await act(async () => view?.unmount());
     f.dispose();
   }
+});
+
+test('a re-mounted transcript replays no entrance animation', () => {
+  const source = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8');
+  const theme = source.slice(source.indexOf('const THEME_CSS'), source.indexOf('function injectCss'));
+  assert.match(theme, /\[data-dpt-anim\]\{animation:dpt-bubble-rise/u, 'the entrance animation is opt-in per bubble');
+  assert.doesNotMatch(theme, /\[data-message-bubble\]\{[^}]*animation:dpt-bubble-rise/u, 'no animation on every bubble');
+  assert.match(source, /bubbles\.length > 4/u, 'a bulk mount is never treated as new messages');
+  assert.match(source, /data-dpt-anim/u);
+});
+
+test('the long-session switch only skips off-screen assistant text', () => {
+  const source = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8');
+  assert.match(source, /body\[data-dpt-lazy\] \[data-chat-flow-kind="assistant-step"\]\{content-visibility:auto/u);
+  assert.match(source, /data-dpt-lazy/u, 'the switch drives the attribute');
+  assert.doesNotMatch(source, /body\[data-dpt-lazy\] \*\{/u, 'never every element');
+});
+
+test('the settings page offers a long-session switch that remembers the choice', async () => {
+  const storage = new Map();
+  const f = fixture({ snapshot: windows(), storage });
+  await withSettings(f, async view => {
+    const control = () => view.root.findByProps({ role: 'switch', 'aria-label': 'longSessionSwitch' });
+    assert.equal(control().props['aria-checked'], true, 'on by default');
+    await act(async () => control().props.onClick());
+    assert.equal(control().props['aria-checked'], false);
+    assert.equal(storage.get('dsh-deep-ptc-mode:long-session'), '0');
+  });
 });
 
 test('the effects never rewrite host design tokens, fonts or every control on the page', () => {
@@ -949,18 +998,23 @@ test('the side panel switches deep sleep mode on and off, and shows the running 
   await withPanel(f, { sleep: off }, async view => {
     const section = view.root.findAll(node => typeof node.props?.className === 'string' && node.props.className.includes('dpt-side-sleep'))[0];
     assert.ok(section, 'the switch has its own section');
-    const button = section.findAllByType('button').find(node => node.props.title === 'sleepOn');
-    assert.ok(button, 'the switch reads 打开 while the mode is off');
-    await act(async () => { await button.props.onClick(); });
+    const toggle = section.findAllByType('button').find(node => node.props.role === 'switch');
+    assert.ok(toggle, 'the section uses the same switch as Deep creative mode');
+    assert.equal(toggle.props['aria-checked'], false, 'the switch reads off');
+    await act(async () => { toggle.props.onClick(); });
     assert.equal(f.calls.at(-1)[0], 'deep', 'the command runs in this conversation');
-    assert.match(f.calls.at(-1)[1], /^\/deep-ptc-sleep \{"action":"toggle"\}$/u);
+    assert.match(f.calls.at(-1)[1], /^\/deep-ptc-sleep \{"action":"on"\}$/u);
   });
   const running = { ...off, on: true, phase: 'running', objective: '把迁移做完', cards: [{ id: 'sleep-1-1', title: '目标', count: 2 }], answered: 1, rounds: 3 };
   await withPanel(f, { sleep: running }, async view => {
     const section = view.root.findAll(node => typeof node.props?.className === 'string' && node.props.className.includes('dpt-side-sleep'))[0];
-    assert.ok(section.findAll(node => node.props?.children === 'sleepPhase_running').length > 0, 'the phase is shown');
-    assert.match(JSON.stringify(section.findAllByType('p').map(node => node.props.children)), /把迁移做完/u);
-    assert.ok(section.findAllByType('button').some(node => node.props.title === 'sleepOff'), 'the switch can turn it off again');
+    const toggle = section.findAllByType('button').find(node => node.props.role === 'switch');
+    assert.equal(toggle.props['aria-checked'], true, 'the switch stays on');
+    const note = JSON.stringify(section.findAllByType('p').map(node => node.props.children));
+    assert.match(note, /sleepPhase_running/u, 'the phase is shown');
+    assert.match(note, /把迁移做完/u);
+    await act(async () => { toggle.props.onClick(); });
+    assert.match(f.calls.at(-1)[1], /^\/deep-ptc-sleep \{"action":"off"\}$/u, 'clicking an on switch turns it off');
   });
 });
 
@@ -971,8 +1025,9 @@ test('the panel renders the finished run and the settings gate', async () => {
   await withPanel(f, { sleep: done }, async view => {
     const section = view.root.findAll(node => typeof node.props?.className === 'string' && node.props.className.includes('dpt-side-sleep'))[0];
     assert.ok(section, 'the section still renders after the run');
-    assert.ok(section.findAll(node => node.props?.children === 'sleepPhase_done').length > 0);
-    assert.ok(section.findAllByType('button').some(node => node.props.title === 'sleepOff'), 'the switch stays on');
+    assert.match(JSON.stringify(section.findAllByType('p').map(node => node.props.children)), /sleepPhase_done/u);
+    const toggle = section.findAllByType('button').find(node => node.props.role === 'switch');
+    assert.equal(toggle.props['aria-checked'], true, 'the switch stays on');
   });
   const offForm = { ...windows(), value: { ...windows().value, deepSleep: false } };
   await withPanel(fixture({ snapshot: offForm }), {}, async view => {

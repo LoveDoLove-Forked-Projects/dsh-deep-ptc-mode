@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.5.4 — 2026-11-25
+
+- **侧边栏「深度睡眠模式」改为开关**：和「深度创造模式」用同一个开关组件与标题行布局，不再占一行文字按钮「打开/关闭」；阶段、已答卡片数、目标与轮次移到开关下方的说明行，说明文字写明它面向长程任务、不想中途逐项把关的场景。
+- **A switch for Deep sleep mode in the side panel**: it now uses the same switch and label row as Deep creative mode instead of a text button, with the phase, answered cards, objective and round moved to the note under the switch and a description that names its purpose: long-running work without gating every detail.
+
 ## 2.5.3 — 2026-11-25
 
 - **深度睡眠模式**：侧边栏新增「深度睡眠」开关，同一个对话里可以反复开关。打开后模型把还缺的问题一次性问完（多张小卡，最多 8 张、每张 5 问；全部答完后合并成一条消息送回模型），再发一张确认卡列出目标、路线、约束、验收与交付物；只有你选「满意，开始」才真正进入无人值守运行。运行由宿主的 goal 续跑驱动：一轮结束自动开下一轮，直到模型确认目标完成并结束运行；期间没问到的细节由模型自己拿主意，并用任务卡记录下来。运行中你发消息会暂停续跑，模型就新信息再次提问并确认后才继续；关掉开关即暂停，再打开继续。深度睡眠期间任务卡不再逐条要求确认（由确认卡统一授权）。旧的宿主没有 goal 服务时会明确说明无法跨回合续跑。

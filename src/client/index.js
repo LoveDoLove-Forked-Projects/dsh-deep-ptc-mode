@@ -194,11 +194,12 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
   }
   Object.assign(dictionaries.zh, {
     visualEffects: '界面特效', visualEffectsHint: '使用外部主题或 UI 插件时，建议关闭此开关。',
-    sleepSection: '深度睡眠', sleepOn: '打开', sleepOff: '关闭', sleepBusy: '切换中…',
+    longSessionSwitch: '长会话优化', longSessionHint: '离屏的助手文本不参与布局与绘制，长会话滚动与切页更轻；若出现滚动跳动可关闭。',
+    sleepSection: '深度睡眠模式',
     sleepPhase_off: '已关闭', sleepPhase_asking: '一次性提问中', sleepPhase_ready: '等待确认卡', sleepPhase_confirming: '等待确认', sleepPhase_running: '无人值守运行中', sleepPhase_done: '已结束',
     sleepCards: '已答 {done}/{total} 张卡', sleepObjective: '目标', sleepRound: '第 {round} 轮',
-    sleepHintOff: '打开后模型把还缺的问题一次性问完，你确认设定后它才独立运行，直到目标完成。运行中你随时可以再发消息打断。',
-    sleepHintOn: '无人值守：停下即由宿主自动开下一轮。你发消息会暂停运行，模型就新信息再问你并重新确认。',
+    sleepHintOff: '适合长程任务，或不想中途逐项把关时使用：模型把还缺的问题一次问完，你确认设定后它自行运行到目标完成。',
+    sleepHintOn: '无人值守运行中：一轮结束会自动开下一轮；你发消息会暂停，模型就新信息重新提问并确认。',
     sleepFailed: '切换失败', questionBatch: '第 {index}/{total} 张',
     sleepSwitch: '深度睡眠模式', sleepSwitchHint: '侧边栏开关与 deep_sleep 工具；关闭后开关不出现，模型也没有这个工具。',
     jobsTitle: '后台任务', jobsEmpty: '本会话暂无后台任务。', jobsMore: '另有 {count} 个在运行', jobsRunningCount: '{count} 运行中', jobsDoneCount: '{count} 已结束', jobsFailedCount: '{count} 失败', jobsShowRecent: '查看最近结束的任务', jobsHideRecent: '收起最近结束的任务',
@@ -211,6 +212,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
   });
   Object.assign(dictionaries.en, {
     visualEffects: 'Visual effects', visualEffectsHint: 'Keep this off when using an external theme or UI plugin.',
+    longSessionSwitch: 'Long-session optimisation', longSessionHint: 'Off-screen assistant text is skipped during layout and paint, which keeps scrolling and page switches lighter in long conversations. Turn it off if scrolling jumps.',
     jobsTitle: 'Background jobs', jobsEmpty: 'No background jobs in this conversation.', jobsMore: '{count} more running', jobsRunningCount: '{count} running', jobsDoneCount: '{count} finished', jobsFailedCount: '{count} failed', jobsShowRecent: 'Show recently finished jobs', jobsHideRecent: 'Hide recently finished jobs',
     jobRunning: 'Running', jobStopping: 'Stopping', jobCompleted: 'Completed', jobEnded: 'Ended', jobKilled: 'Canceled', jobFailed: 'Failed',
     toolReset: 'Reload all tool states', toolResetShort: 'Reload', toolsOk: 'OK', sideNone: 'None', sshNone: 'None configured', toolResetBusy: 'Reloading…', toolResetDone: 'Tool states reloaded for this conversation.',
@@ -478,11 +480,11 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     delegatedAssignment: 'Assignment from the parent agent', delegatedDirect: 'You are talking to the subagent directly. Your words take effect at once and are passed on to the parent agent.',
     noticeSound: 'Card sound', noticeSoundHint: 'Rings once when a card waits for your answer, choice or confirmation.',
     noticeDone: 'Task end sound', noticeDoneHint: 'Rings once when a Deep PTC turn ends, not when you stop it yourself.',
-    sleepSection: 'Deep sleep', sleepOn: 'Turn on', sleepOff: 'Turn off', sleepBusy: 'Switching…',
+    sleepSection: 'Deep sleep mode',
     sleepPhase_off: 'Off', sleepPhase_asking: 'Gathering questions', sleepPhase_ready: 'Ready to confirm', sleepPhase_confirming: 'Waiting for confirmation', sleepPhase_running: 'Running unattended', sleepPhase_done: 'Finished',
     sleepCards: '{done}/{total} cards answered', sleepObjective: 'Objective', sleepRound: 'Round {round}',
-    sleepHintOff: 'Turn it on and the model asks every open question at once; after you confirm the settings it works on its own until the objective is complete. Write at any time to interrupt.',
-    sleepHintOn: 'Unattended: finishing a turn starts the next goal round by itself. A message from you pauses the run so the model can ask about the new information and confirm again.',
+    sleepHintOff: 'For long-running work, or when you would rather not gate every detail: the model asks every open question once, and after you confirm the settings it runs on its own until the objective is complete.',
+    sleepHintOn: 'Running unattended: each finished turn starts the next round; a message from you pauses it so the model can ask about the new information and confirm again.',
     sleepFailed: 'Could not switch', questionBatch: 'Card {index}/{total}',
     sleepSwitch: 'Deep sleep mode', sleepSwitchHint: 'The side-panel switch and the deep_sleep tool; when off, neither exists.',
     soundSection: 'Sounds',
@@ -798,8 +800,9 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
   const uiOn = () => typeof document !== 'undefined' && document.body?.hasAttribute('data-dpt-ui');
 
   const BUSY = { on: false, was: false, timer: 0 };
-  // How long the effects stay on after the last Deep PTC conversation leaves the screen.
-  const OFF_GRACE_MS = 150;
+  // How long the effects stay on after the last Deep PTC conversation leaves the screen. A page
+  // switch is not a decision: the state is re-read after the grace before anything is torn down.
+  const OFF_GRACE_MS = 400;
   function applyBusy() {
     if (typeof document === 'undefined') return;
     const busy = uiOn() && BUSY.on;
@@ -813,6 +816,30 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
       }
     }
     BUSY.was = busy;
+  }
+
+  // Long-session switch: off-screen assistant text skips layout and paint. Stored like the effects
+  // switch so the whole page keeps it across reloads, and applied to <body> so it works in every preset.
+  const LONG_SESSION_KEY = `${PLUGIN}:long-session`;
+  function storedLongSession() {
+    try { return localStorage.getItem(LONG_SESSION_KEY) !== '0'; } catch { return true; }
+  }
+  let longSession = storedLongSession();
+  const longSessionListeners = new Set();
+  const getLongSession = () => longSession;
+  function subscribeLongSession(listener) {
+    longSessionListeners.add(listener);
+    return () => longSessionListeners.delete(listener);
+  }
+  function setLongSession(on) {
+    if (longSession === on) return;
+    longSession = on;
+    try { localStorage.setItem(LONG_SESSION_KEY, on ? '1' : '0'); } catch { /* keep the in-memory value */ }
+    for (const listener of longSessionListeners) listener();
+  }
+  function syncLongSession() {
+    if (typeof document === 'undefined') return;
+    document.body?.toggleAttribute?.('data-dpt-lazy', getLongSession());
   }
 
   function watchActiveSession() {
@@ -829,8 +856,12 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
       const current = SESSIONS.current();
       return { current, on: getEffects() && current?.preset === 'deep-ptc' && !refinedPresent() };
     };
+    let painted;
     const render = ({ current, on }) => {
-      document.body.toggleAttribute('data-dpt-ui', on);
+      if (painted !== on) {
+        document.body.toggleAttribute('data-dpt-ui', on);
+        painted = on;
+      }
       // Like dsh-refined-ui, a running subagent keeps the conversation working.
       BUSY.on = on && (current?.busy === true || SESSIONS.working.get(current?.id) === true);
       applyBusy();
@@ -841,7 +872,14 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     };
     // The switch in settings applies at once.
     let offTimer = 0;
-    const update = () => { clearTimeout(offTimer); render(wanted()); };
+    const update = () => {
+      clearTimeout(offTimer);
+      const next = wanted();
+      // A route without an active conversation is not a decision to turn the effects off: keep the
+      // state and look again after the grace, so a short trip to another page never flips the page.
+      if (next.current === undefined && uiOn()) { offTimer = setTimeout(update, OFF_GRACE_MS); return; }
+      render(next);
+    };
     // A conversation switch unmounts one header bridge and mounts the next. Session changes settle at
     // the end of the current task, and switching off waits a moment longer, so moving between Deep PTC
     // conversations never removes and re-adds the effects (#17).
@@ -869,6 +907,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
       unsubscribe();
       window.removeEventListener('storage', sync);
       document.body.removeAttribute('data-dpt-ui');
+      painted = undefined;
       document.body.removeAttribute('data-dpt-busy');
       BUSY.on = false;
       BUSY.was = false;
@@ -895,6 +934,16 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
           if (rect.width > 0 && rect.right >= bestRight) { best = button; bestRight = rect.right; }
         }
         if (best) { best.setAttribute('data-dpt-send', ''); tagged.add(best); }
+      }
+      const bubbles = [...pendingBubbles];
+      pendingBubbles.clear();
+      if (reduce || bubbles.length === 0 || bubbles.length > 4) return;
+      for (const bubble of bubbles) {
+        if (!bubble.isConnected) continue;
+        bubble.setAttribute('data-dpt-anim', '');
+        const done = () => { bubble.removeAttribute('data-dpt-anim'); bubble.removeEventListener?.('animationend', done); };
+        bubble.addEventListener?.('animationend', done);
+        setTimeout(done, 900);
       }
     }
     function track() {
@@ -933,7 +982,18 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
       setTimeout(() => ripple.remove(), 700);
     }
     // Streaming text mutates the document constantly; each burst costs one cheap query per frame.
-    const observer = new MutationObserver(() => { if (!tagFrame) tagFrame = requestAnimationFrame(tagSend); });
+    // A small batch of arriving bubbles is a new message and may animate. A large batch is the
+    // transcript mounting again (a page or conversation switch), and replaying the entrance
+    // animation for every old bubble is what stalled long conversations.
+    const pendingBubbles = new Set();
+    const observer = new MutationObserver(records => {
+      for (const record of records) for (const node of record.addedNodes ?? []) {
+        if (!node || node.nodeType !== 1) continue;
+        if (node.matches?.(BUBBLE)) pendingBubbles.add(node);
+        else for (const bubble of node.querySelectorAll?.(BUBBLE) ?? []) pendingBubbles.add(bubble);
+      }
+      if (!tagFrame) tagFrame = requestAnimationFrame(tagSend);
+    });
     observer.observe(document.body, { childList: true, subtree: true });
     document.addEventListener('pointermove', onMove, { capture: true, passive: true });
     document.addEventListener('pointerdown', onDown, { capture: true, passive: true });
@@ -1107,6 +1167,15 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
       h('div', { className: 'dpt-side-label' }, h('span', null, label),
         h(SkillSwitch, { on: enabled, label, onChange: toggleEffects })),
       h('p', { className: 'dpt-side-note' }, appearance ? tf(t, 'visualEffectsAuto', { name: appearance }) : t('visualEffectsHint')));
+  }
+
+  // Long-session switch: one row in the appearance section.
+  function LongSessionSection({ t }) {
+    const on = React.useSyncExternalStore(subscribeLongSession, getLongSession, getLongSession);
+    const label = t('longSessionSwitch');
+    return h('section', { className: 'dpt-side-effects', 'aria-label': label },
+      h('div', { className: 'dpt-settings-row' }, h('p', null, h('strong', null, label), h('br'), h('span', { className: 'dpt-side-note' }, t('longSessionHint'))),
+        h(SkillSwitch, { on, label, onChange: setLongSession })));
   }
 
   // Deep PTC's own skills carry a summary in the display language; other skills show the catalog text.
@@ -1288,7 +1357,8 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
   // The Deep PTC panel. Subagent rows follow the official subagent catalog and timing projections;
   // a row opens the official subagent chat in the right sidebar.
   // ---------------------------------------------------------------------------------------------
-  const AGENT_ROWS = 24;
+  // A safety cap only: the panel lists every subagent and the list scrolls inside its section.
+  const AGENT_ROWS = 200;
 
   function subagentRows(sessions, rootId, now) {
     const catalogOf = id => {
@@ -1881,20 +1951,22 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
   }
 
   // One conversation's environment, subagents, jobs, outputs, SSH and tool state.
-  // Deep sleep mode: one switch, and the state the host folds from the session log. Turning it on
-  // only arms the mode; the model asks the batch and the user's confirmation starts the run.
+  // Deep sleep mode: the same switch and label row as Deep creative mode, plus the state the host
+  // folds from the session log. Turning it on only arms the mode; the model asks the batch and the
+  // user's confirmation starts the run.
   function DeepSleepSection({ sessionId, useProjection, runSleep, t }) {
     const state = projectionValue(useProjection, 'deepPtcSleep');
     const [busy, setBusy] = React.useState(false);
     const [message, setMessage] = React.useState();
     const on = state?.on === true;
     const phase = on ? state.phase : 'off';
-    async function toggle() {
-      if (typeof runSleep !== 'function') return;
+    const ready = typeof runSleep === 'function';
+    async function toggle(next) {
+      if (!ready) return;
       setBusy(true);
       setMessage(undefined);
       try {
-        const outcome = await runSleep({ action: 'toggle' });
+        const outcome = await runSleep({ action: next ? 'on' : 'off' });
         if (outcome?.ok === false) throw new Error(outcome.error?.message);
         const reply = outcome?.ok === true ? outcome.value : outcome;
         const result = reply?.result ?? reply;
@@ -1910,13 +1982,11 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
       state?.objective ? `${t('sleepObjective')}：${state.objective}` : '',
       state?.rounds > 0 ? tf(t, 'sleepRound', { round: state.rounds }) : '',
     ].filter(Boolean).join(' · ') : '';
+    const note = on ? [t(`sleepPhase_${phase}`), facts].filter(Boolean).join(' · ') : t('sleepHintOff');
     return h('section', { className: 'dpt-side-section dpt-side-sleep', 'aria-label': t('sleepSection'), 'data-on': on ? '' : undefined },
-      h('div', { className: 'dpt-side-label' }, h('span', null, t('sleepSection')),
-        h('span', { className: 'dpt-side-tail' },
-          h('span', { className: 'dpt-side-hint', 'data-tone': on ? 'ok' : undefined }, t(`sleepPhase_${phase}`)),
-          h('button', { type: 'button', className: 'dpt-link', onClick: toggle, disabled: busy || typeof runSleep !== 'function',
-            'aria-pressed': on, title: on ? t('sleepOff') : t('sleepOn') }, busy ? t('sleepBusy') : on ? t('sleepOff') : t('sleepOn')))),
-      h('p', { className: 'dpt-side-note' }, facts || (on ? t('sleepHintOn') : t('sleepHintOff'))),
+      h('div', { className: 'dpt-side-label' }, h('span', { title: on ? t('sleepHintOn') : t('sleepHintOff') }, t('sleepSection')),
+        h(SkillSwitch, { on, label: t('sleepSection'), disabled: busy || !ready, onChange: next => { void toggle(next); } })),
+      h('p', { className: 'dpt-side-note' }, note),
       message ? h('p', { className: 'dpt-side-note', role: 'alert', 'data-tone': 'error' }, message) : null);
   }
 
@@ -1926,7 +1996,9 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     const activity = projectionValue(useProjection, 'deepPtcActivity');
     const [now, setNow] = React.useState(() => Date.now());
     const deep = preset === 'deep-ptc';
-    const rows = deep ? subagentRows(sessions, sessionId, now) : [];
+    const rowsRef = React.useRef({ at: 0, rows: [] });
+    if (deep && now - rowsRef.current.at >= 400) rowsRef.current = { at: now, rows: subagentRows(sessions, sessionId, now) };
+    const rows = deep ? rowsRef.current.rows : [];
     const running = rows.filter(row => row.state === 'running').length;
     React.useEffect(() => {
       if (running === 0) return undefined;
@@ -2260,7 +2332,12 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     const sessions = typeof useSessions === 'function' ? useSessions(state => state) : undefined;
     const tools = projectionValue(useProjection, 'deepPtcTools');
     const settings = useSettingsForm(form);
-    const rows = subagentRows(sessions, sessionId, Date.now());
+    // The session store changes constantly while the agent streams; a summary a fraction of a second
+    // old is indistinguishable on screen and saves a full catalog walk on every update.
+    const rowsCache = React.useRef({ at: 0, rows: [] });
+    const now = Date.now();
+    if (now - rowsCache.current.at >= 400) rowsCache.current = { at: now, rows: subagentRows(sessions, sessionId, now) };
+    const rows = rowsCache.current.rows;
     const running = rows.some(row => row.state === 'running');
     const failures = tools && typeof tools === 'object' ? (tools.report?.tools ?? []).length : 0;
     const environment = settings.status === 'ready' && settings.value ? envLabel(settings.value.environment ?? 'auto', t) : undefined;
@@ -2355,7 +2432,10 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
       return () => { region.removeAttribute('data-dpt-panel-open'); region.style.removeProperty('--dpt-panel-width'); };
     }, [layout?.region, layout?.width, docked]);
     const sessions = typeof useSessions === 'function' ? useSessions(state => state) : undefined;
-    const running = subagentRows(sessions, sessionId, Date.now()).some(row => row.state === 'running');
+    const runningRef = React.useRef({ at: 0, rows: [] });
+    const runningNow = Date.now();
+    if (runningNow - runningRef.current.at >= 400) runningRef.current = { at: runningNow, rows: subagentRows(sessions, sessionId, runningNow) };
+    const running = runningRef.current.rows.some(row => row.state === 'running');
     React.useEffect(() => {
       SESSIONS.setWorking(sessionId, running);
       return () => SESSIONS.setWorking(sessionId, false);
@@ -2530,7 +2610,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
       h('section', { 'aria-label': t('cardsSection') }, h('h3', null, t('cardsSection')), h(CardsSettingsSection, { form, t })),
       h('section', { 'aria-label': t('soundSection') }, h('h3', null, t('soundSection')), h(SoundSettings, { form, t })),
       h('section', { 'aria-label': t('appearance') }, h('h3', null, t('appearance')),
-        h(VisualEffectsSection, { t }), h(PanelLocationSection, { t }), h(CapsulePlacementSection, { t })),
+        h(VisualEffectsSection, { t }), h(LongSessionSection, { t }), h(PanelLocationSection, { t }), h(CapsulePlacementSection, { t })),
       h(DiagnosticsSection, { t }));
   }
 
@@ -2605,6 +2685,13 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     } catch { /* cards keep working without sounds */ }
     ctx.effect(() => injectCss(), `${PLUGIN}: style`);
     ctx.effect(() => watchActiveSession(), `${PLUGIN}: active session`);
+    ctx.effect(() => {
+      syncLongSession();
+      const unsubscribe = subscribeLongSession(syncLongSession);
+      const sync = event => { if (event.key === LONG_SESSION_KEY || event.key === null) { longSession = storedLongSession(); syncLongSession(); } };
+      window.addEventListener?.('storage', sync);
+      return () => { unsubscribe(); window.removeEventListener?.('storage', sync); document.body?.removeAttribute?.('data-dpt-lazy'); };
+    }, `${PLUGIN}: long sessions`);
     ctx.effect(() => {
       if (typeof window?.addEventListener !== 'function') return () => {};
       const sync = event => PANEL.sync(event);

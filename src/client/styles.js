@@ -39,7 +39,7 @@ ${DARK} .dpt-card{--dpt-card-fill:var(--dsw-static-neutral-850,#1a1f29)}
 .dpt-side-section{padding:2px 14px 12px}
 .dpt-side-section+.dpt-side-section{border-top:1px solid var(--dpt-line);padding-top:10px}
 .dpt-side-agents{padding-left:8px;padding-right:8px}
-.dpt-side-agents .dpt-agents-list{display:flex;flex-direction:column;gap:4px;padding:2px 0}
+.dpt-side-agents .dpt-agents-list{display:flex;flex-direction:column;gap:4px;padding:2px 0;max-height:min(42vh,360px);overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;border-radius:8px}
 .dpt-side-agents>.dpt-side-label{padding:0 6px}
 .dpt-side-label{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:6px;font-size:12px;line-height:18px;font-weight:600;color:var(--dsw-alias-label-secondary,#4a5565)}
 .dpt-side-hint{min-width:0;font-size:11px;font-weight:400;color:var(--dsw-alias-label-tertiary,#667085);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -139,6 +139,8 @@ body[data-dpt-resizing],body[data-dpt-resizing] *{cursor:col-resize!important;us
 [data-chat-flow-kind="command"]:has([data-dpt-hidden-command]){display:none!important}
 .dpt-command-error{padding:4px 2px;font-size:12px;line-height:18px;color:var(--dsw-alias-state-error-primary,#c4321f)}
 @keyframes dpt-rise{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+/* Long conversations: assistant text that is off screen is skipped during layout and paint. */
+body[data-dpt-lazy] [data-chat-flow-kind="assistant-step"]{content-visibility:auto;contain-intrinsic-size:auto 120px}
 @media (prefers-reduced-motion:reduce){.dpt-card,.dpt-panel,.dpt-capsule,.dpt-agent-dot,.dpt-switch,.dpt-switch-thumb,.dpt-job,.dpt-agent{animation:none!important;transition:none!important}}
 `;
   // The effects restyle a few host elements only. Toggling them never touches a design token, font or
@@ -157,7 +159,9 @@ ${ON} ${COMPOSER}:hover:not(:focus-within){background-image:radial-gradient(360p
 ${ON} [data-dpt-send]:not(:disabled):not([aria-disabled="true"]){background-image:linear-gradient(135deg,var(--dpt-brand-light),var(--dpt-brand)) !important;color:#fff !important;box-shadow:0 4px 14px color-mix(in srgb,var(--dpt-brand) 38%,transparent);transition:transform 160ms var(--dpt-ease-out),box-shadow 160ms var(--dpt-ease-out),filter var(--dpt-dur-fast) var(--dpt-ease-out) !important}
 ${ON} [data-dpt-send]:not(:disabled):not([aria-disabled="true"]):hover{transform:translateY(-1px);box-shadow:0 8px 20px color-mix(in srgb,var(--dpt-brand) 46%,transparent);filter:saturate(1.08)}
 ${ON} [data-dpt-send]:not(:disabled):not([aria-disabled="true"]):active{transform:translateY(0) scale(0.94);transition-duration:60ms}
-${ON} ${BUBBLE}{background-image:linear-gradient(90deg,color-mix(in srgb,var(--dpt-brand) 20%,transparent),color-mix(in srgb,var(--dpt-brand) 7%,transparent)) !important;background-color:transparent !important;color:var(--dsw-alias-label-primary) !important;border-radius:18px 18px 6px 18px !important;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--dpt-brand) 16%,transparent);animation:dpt-bubble-rise var(--dpt-dur-base) var(--dpt-ease-out) both}
+${ON} ${BUBBLE}{background-image:linear-gradient(90deg,color-mix(in srgb,var(--dpt-brand) 20%,transparent),color-mix(in srgb,var(--dpt-brand) 7%,transparent)) !important;background-color:transparent !important;color:var(--dsw-alias-label-primary) !important;border-radius:18px 18px 6px 18px !important;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--dpt-brand) 16%,transparent)}
+// Only a bubble that arrives while the transcript is already on screen animates; a re-mount (page switch, conversation swap) tags nothing and so replays no animation.
+${ON} ${BUBBLE}[data-dpt-anim]{animation:dpt-bubble-rise var(--dpt-dur-base) var(--dpt-ease-out) both}
 ${ON} ${BUBBLE} *{color:inherit}
 @keyframes dpt-bubble-rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 ${ON} [data-chat-flow-kind="assistant-step"]{font-size:15px}

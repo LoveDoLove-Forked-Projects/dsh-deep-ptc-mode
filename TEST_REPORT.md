@@ -1,5 +1,13 @@
 # Deep PTC 测试报告 / Test report
 
+## 2.5.4 · 2026-11-25
+
+- Windows、Node 24：391 项测试（390 通过、1 跳过）与 npm run check 通过。面板测试改为断言「深度睡眠」与「深度创造模式」同款开关（role=switch、aria-checked、命令 on/off）；新增 0 项。
+- 在虚拟 DSH（DSH 0.2.2-rc.5）里截图确认侧边栏两个开关并排的样式，用户确认后发布。
+
+- Windows and Node 24: 391 tests (390 passed, 1 skipped) and npm run check passed. The panel test now asserts the Deep sleep switch uses the same switch as Deep creative mode (role=switch, aria-checked, on/off commands). No new tests.
+- A virtual DSH (DSH 0.2.2-rc.5) screenshot confirmed the two switches side by side; published after the user's approval.
+
 ## 2.5.3 · 2026-11-25
 
 - Windows、Node 24：391 项测试（390 通过、1 跳过）和 `npm run check` 通过。新增覆盖：深度睡眠状态机（开关、确认、调整、重开、续开）、批次卡片一次性投递、确认卡启动与拒绝、运行中新消息重开、开关关闭暂停/再开续跑、提示词分区；面板新增深度睡眠开关的渲染与命令调用。
