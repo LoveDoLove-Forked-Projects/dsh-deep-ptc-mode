@@ -96,13 +96,13 @@ const noTools = { v: 1, epoch: 0, blocked: [], report: null };
 
 // Render one conversation's Deep PTC panel (or its capsule) and unmount it even when an assertion
 // fails, so timers never keep the process alive.
-async function withPanel(f, { sessions = {}, tools = noTools, activity, preset = 'deep-ptc', sessionId = 'deep', entry = f.dock } = {}, body) {
+async function withPanel(f, { sessions = {}, tools = noTools, activity, sleep, preset = 'deep-ptc', sessionId = 'deep', entry = f.dock } = {}, body) {
   f.document.sessionId = sessionId;
   const injected = entry.slot.inject(sessionId);
   const jobsStore = injected.hooks?.jobs;
   let view;
   await act(async () => { view = Renderer.create(React.createElement(entry.render, { ...injected, sessionId,
-    useProjection: key => key === 'agentPreset' ? preset : key === 'deepPtcTools' ? tools : key === 'deepPtcActivity' ? activity : undefined,
+    useProjection: key => key === 'agentPreset' ? preset : key === 'deepPtcTools' ? tools : key === 'deepPtcActivity' ? activity : key === 'deepPtcSleep' ? sleep : undefined,
     useJobs: jobsStore ? select => select(React.useSyncExternalStore(jobsStore.subscribe, jobsStore.getState)) : undefined,
     useSessionStatus: select => select(new Map()), useSessions: select => select(sessions) })); });
   await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
@@ -146,7 +146,7 @@ test('the panel holds the environment switch, outputs, SSH and tool state', asyn
     assert.equal(checked(view), 'PowerShell');
     assert.match(text(view), /envForNew/u, 'the switch applies to new sessions');
     assert.ok(view.root.findAllByType('button').some(node => node.props['aria-label'] === 'toolReset'));
-    assert.deepEqual(sections(view), ['environment', 'creativeSwitch', 'projectTab', 'agentsTitle', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
+    assert.deepEqual(sections(view), ['environment', 'sleepSection', 'creativeSwitch', 'projectTab', 'agentsTitle', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
     assert.equal(view.root.findAllByProps({ role: 'switch', 'aria-label': 'visualEffects' }).length, 0, 'the effects switch lives in settings');
     assert.ok(view.root.findAll(node => node.props.title === 'outputsEmpty').length > 0);
     assert.ok(view.root.findAll(node => node.props.title === 'sshEmpty').length > 0);
@@ -229,7 +229,7 @@ test('subagents keep live state indicators and show only their names and same-ro
     assert.deepEqual(rows.map(visibleText), [' Research', ' Report 1m 15s', ' Live']);
     assert.equal(rows[1].children.at(-1).props.className, 'dpt-agent-duration');
     assert.equal(rows[1].props['aria-label'], 'Report · Done', 'the state remains accessible without visible status text');
-    assert.deepEqual(sections(view).slice(0, 5), ['Execution environment', 'Deep creative mode', 'Project cards', 'Subagents', 'Background jobs']);
+    assert.deepEqual(sections(view).slice(0, 6), ['Execution environment', 'Deep sleep', 'Deep creative mode', 'Project cards', 'Subagents', 'Background jobs']);
   });
 });
 
@@ -841,24 +841,24 @@ test('panel sections reorder by drag or keyboard, and the order is remembered', 
       assert.equal(view.root.findAll(node => node.props?.className === 'dpt-sortable' && node.props['data-drop']).length, 1, 'a drop line shows');
       await act(async () => gripOf(key).props.onPointerUp({ clientX: 0, clientY }));
     };
-    assert.deepEqual(order(), ['environment', 'creativeSwitch', 'projectTab', 'agentsTitle', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
+    assert.deepEqual(order(), ['environment', 'sleepSection', 'creativeSwitch', 'projectTab', 'agentsTitle', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
     // Drag SSH onto the upper half of the environment section: it moves to the top.
     await drag('ssh', 10);
-    assert.deepEqual(order(), ['sshTitle', 'environment', 'creativeSwitch', 'projectTab', 'agentsTitle', 'jobsTitle', 'outputsTitle', 'toolsSection']);
+    assert.deepEqual(order(), ['sshTitle', 'environment', 'sleepSection', 'creativeSwitch', 'projectTab', 'agentsTitle', 'jobsTitle', 'outputsTitle', 'toolsSection']);
     // Drag SSH onto the lower half of output files: it lands after them.
     under = { key: 'outputs', top: 0 };
     await drag('ssh', 90);
-    assert.deepEqual(order(), ['environment', 'creativeSwitch', 'projectTab', 'agentsTitle', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
+    assert.deepEqual(order(), ['environment', 'sleepSection', 'creativeSwitch', 'projectTab', 'agentsTitle', 'jobsTitle', 'outputsTitle', 'sshTitle', 'toolsSection']);
     under = { key: 'environment', top: 0 };
     await drag('ssh', 10);
-    assert.deepEqual(order(), ['sshTitle', 'environment', 'creativeSwitch', 'projectTab', 'agentsTitle', 'jobsTitle', 'outputsTitle', 'toolsSection']);
+    assert.deepEqual(order(), ['sshTitle', 'environment', 'sleepSection', 'creativeSwitch', 'projectTab', 'agentsTitle', 'jobsTitle', 'outputsTitle', 'toolsSection']);
     // Keyboard: the tool state section moves up one place.
-    await act(async () => grips()[7].props.onKeyDown({ key: 'ArrowUp', preventDefault() {} }));
-    assert.deepEqual(order(), ['sshTitle', 'environment', 'creativeSwitch', 'projectTab', 'agentsTitle', 'jobsTitle', 'toolsSection', 'outputsTitle']);
+    await act(async () => grips()[8].props.onKeyDown({ key: 'ArrowUp', preventDefault() {} }));
+    assert.deepEqual(order(), ['sshTitle', 'environment', 'sleepSection', 'creativeSwitch', 'projectTab', 'agentsTitle', 'jobsTitle', 'toolsSection', 'outputsTitle']);
     await act(async () => grips()[0].props.onKeyDown({ key: 'ArrowDown', preventDefault() {} }));
-    assert.deepEqual(order(), ['environment', 'sshTitle', 'creativeSwitch', 'projectTab', 'agentsTitle', 'jobsTitle', 'toolsSection', 'outputsTitle']);
+    assert.deepEqual(order(), ['environment', 'sshTitle', 'sleepSection', 'creativeSwitch', 'projectTab', 'agentsTitle', 'jobsTitle', 'toolsSection', 'outputsTitle']);
   });
-  assert.deepEqual(JSON.parse(storage.get('dsh-deep-ptc-mode:panel-order')), ['environment', 'ssh', 'creative', 'project', 'agents', 'jobs', 'tools', 'outputs'], 'hidden sections keep a place too');
+  assert.deepEqual(JSON.parse(storage.get('dsh-deep-ptc-mode:panel-order')), ['environment', 'ssh', 'sleep', 'creative', 'project', 'agents', 'jobs', 'tools', 'outputs'], 'hidden sections keep a place too');
 });
 
 test('the panel location setting moves the whole panel into the right sidebar tab', async () => {
@@ -940,5 +940,43 @@ test('the project editor button finds the Project cards view in the host’s mor
     await act(async () => { button.props.onClick(); await new Promise(resolve => setTimeout(resolve, 450)); });
     assert.deepEqual(clicks, ['more', 'more'], 'a miss closes the menu again');
     assert.match(text(view), /projectPanelNoTab/u);
+  });
+});
+
+test('the side panel switches deep sleep mode on and off, and shows the running state', async () => {
+  const f = fixture({ snapshot: windows() });
+  const off = { v: 1, on: false, phase: 'off', series: undefined, cards: [], answered: 0, objective: '', goalId: undefined, rounds: 0, runs: 0, reason: undefined, at: 0 };
+  await withPanel(f, { sleep: off }, async view => {
+    const section = view.root.findAll(node => typeof node.props?.className === 'string' && node.props.className.includes('dpt-side-sleep'))[0];
+    assert.ok(section, 'the switch has its own section');
+    const button = section.findAllByType('button').find(node => node.props.title === 'sleepOn');
+    assert.ok(button, 'the switch reads 打开 while the mode is off');
+    await act(async () => { await button.props.onClick(); });
+    assert.equal(f.calls.at(-1)[0], 'deep', 'the command runs in this conversation');
+    assert.match(f.calls.at(-1)[1], /^\/deep-ptc-sleep \{"action":"toggle"\}$/u);
+  });
+  const running = { ...off, on: true, phase: 'running', objective: '把迁移做完', cards: [{ id: 'sleep-1-1', title: '目标', count: 2 }], answered: 1, rounds: 3 };
+  await withPanel(f, { sleep: running }, async view => {
+    const section = view.root.findAll(node => typeof node.props?.className === 'string' && node.props.className.includes('dpt-side-sleep'))[0];
+    assert.ok(section.findAll(node => node.props?.children === 'sleepPhase_running').length > 0, 'the phase is shown');
+    assert.match(JSON.stringify(section.findAllByType('p').map(node => node.props.children)), /把迁移做完/u);
+    assert.ok(section.findAllByType('button').some(node => node.props.title === 'sleepOff'), 'the switch can turn it off again');
+  });
+});
+
+test('the panel renders the finished run and the settings gate', async () => {
+  const f = fixture({ snapshot: windows() });
+  const done = { v: 1, on: true, phase: 'done', series: 'sleep-1', cards: [{ id: 'sleep-1-1', title: '目标', count: 2 }],
+    answered: 2, objective: '把目录写完', goalId: 'goal-1', rounds: 3, runs: 1, reason: null, at: 1 };
+  await withPanel(f, { sleep: done }, async view => {
+    const section = view.root.findAll(node => typeof node.props?.className === 'string' && node.props.className.includes('dpt-side-sleep'))[0];
+    assert.ok(section, 'the section still renders after the run');
+    assert.ok(section.findAll(node => node.props?.children === 'sleepPhase_done').length > 0);
+    assert.ok(section.findAllByType('button').some(node => node.props.title === 'sleepOff'), 'the switch stays on');
+  });
+  const offForm = { ...windows(), value: { ...windows().value, deepSleep: false } };
+  await withPanel(fixture({ snapshot: offForm }), {}, async view => {
+    assert.equal(view.root.findAll(node => typeof node.props?.className === 'string' && node.props.className.includes('dpt-side-sleep')).length, 0,
+      'the section disappears when the feature is switched off');
   });
 });

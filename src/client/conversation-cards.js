@@ -437,18 +437,30 @@ export function createConversationCards({ React, h, tf, commandText, commandCode
       const sent = await reply(answerText(card, answers, t));
       if (sent === false) setMessage(t('cardReplyFailed'));
     }
-    const status = answered ? { phase: 'stopped', text: t('questionAnswered') }
+    // A briefing card's answer is recorded at once but reaches the model only when the whole batch is
+    // answered, so it says "recorded" rather than "sent".
+    const status = answered ? { phase: 'stopped', text: t(card.briefing ? 'questionRecorded' : 'questionAnswered') }
       : live ? { phase: 'question', text: t('questionWaiting') } : { phase: 'archived', text: t('questionUnanswered') };
+    // A briefing card names the batch and its place in it, so the user knows how many are still open.
+    const heading = card.briefing && Number.isSafeInteger(card.seriesIndex) && Number.isSafeInteger(card.seriesTotal)
+      ? tf(t, 'questionBatch', { index: card.seriesIndex, total: card.seriesTotal })
+      : t(kicker ?? (card.review === 'brief' ? 'briefClarify' : card.review === 'project' ? 'projectClarify' : 'questionKicker'));
+    // The confirmation card of an unattended run shows the settings it will follow as a short table.
+    const summary = Array.isArray(card.summary) && card.summary.length > 0
+      ? h('dl', { className: 'dpt-cc-rows dpt-cq-summary' }, ...card.summary.flatMap((row, index) => [
+        h('dt', { key: `k${index}` }, row.label), h('dd', { key: `v${index}` }, row.value ?? '')]))
+      : null;
     return h('form', { className: 'dpt-cc dpt-cq', 'data-answered': answered ? '' : undefined, 'data-archived': live ? undefined : archived,
       'data-family': card.review === 'project' ? 'project' : card.review === 'brief' ? 'task' : undefined,
       'aria-label': card.title, onSubmit: event => { void submit(event); } },
       h('header', { className: 'dpt-cc-head' },
         h('span', { className: 'dpt-cc-icon dpt-cq-icon' }, h(QuestionIcon)),
         h('div', { className: 'dpt-cc-titles' },
-          h('span', { className: 'dpt-cq-kicker' }, t(kicker ?? (card.review === 'brief' ? 'briefClarify' : card.review === 'project' ? 'projectClarify' : 'questionKicker'))),
+          h('span', { className: 'dpt-cq-kicker' }, heading),
           h('span', { className: 'dpt-cc-title' }, card.title),
           card.subtitle ? h('span', { className: 'dpt-cc-sub' }, card.subtitle) : null),
         h('span', { className: 'dpt-cc-pill', 'data-phase': status.phase, role: 'status' }, status.text)),
+      summary,
       h('ol', { className: 'dpt-cq-list' }, ...questions.map((question, index) => h('li', { key: question.id, className: 'dpt-cq-item' },
         card.title === question.prompt && onAnswer ? null : h('p', { className: 'dpt-cq-prompt' }, h('span', { className: 'dpt-cq-num' }, index + 1), question.prompt,
           question.optional ? h('span', { className: 'dpt-cq-optional' }, t('questionOptional')) : null),

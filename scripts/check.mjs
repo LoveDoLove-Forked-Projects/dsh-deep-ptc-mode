@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { availableEnvironments, deriveDeepPtc, personaFrom, PRESET_META, presetDescription, SHELL_ROWS, STATUS_SEPARATOR, SHELL_TOOLS, walkRows } from '../lib/model.mjs';
@@ -125,6 +125,16 @@ export function assertDerivation(upstream, preset, { environment = 'wsl', wslDis
     const officialTool = upstreamRows.find(row => SHELL_TOOLS[kind].ids.includes(row.id) || SHELL_TOOLS[kind].names.includes(row.name));
     assert.equal(terminal.config.upstream, officialTool?.name, `terminal loads the official ${kind} tool`);
     assert.doesNotMatch(JSON.stringify(executor), /dsh-tool-/u, 'executor comes from the base declaration');
+  }
+  // Every Deep PTC row must name a module that exists AND is exported: the package's exports map is a
+  // whitelist, so a row whose subpath is missing fails to load and the preset silently falls back to
+  // safe mode (the virtual DSH found exactly that with a new row).
+  const manifest = JSON.parse(readFileSync(new URL('package.json', root), 'utf8'));
+  for (const row of derivedRows) {
+    if (typeof row.name !== 'string' || !row.name.startsWith('dsh-deep-ptc-mode/')) continue;
+    const module = row.name.slice('dsh-deep-ptc-mode/'.length);
+    assert.ok(existsSync(new URL(`lib/${module}.mjs`, root)), `preset row ${row.id} names lib/${module}.mjs, which must exist`);
+    assert.equal(manifest.exports?.[`./${module}`], `./lib/${module}.mjs`, `preset row ${row.id} needs ${module} in package.json exports`);
   }
   const guard = derivedRows.filter(row => row.name === 'dsh-deep-ptc-mode/guard');
   assert.equal(guard.length, 1, 'one reachability guard');

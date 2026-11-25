@@ -1,12 +1,17 @@
 # Deep PTC mode
 
-[中文](README.zh.md) · MIT · **2.5.2**
+[中文](README.zh.md) · MIT · **2.5.3**
 
 [Changelog](CHANGELOG.md) · [Test report](TEST_REPORT.md) · [Plugin workflows and verification](COMPATIBILITY.md)
 
-Deep PTC is a DeepSeek Harness agent mode with progress reports, clarifying questions, task-size planning, and interruptible background work. It builds on the installed official PTC preset with selectable shells, on-demand tools and skills, and a two-layer preset identity adapter for third-party plugins. Cards face both you and the model: you see a clear card, the model reads precise context with ids, sources and states; the task brief files the goals, constraints and acceptance criteria in your messages and, once you confirm, can take the raw messages out of the model's context. Alert sounds are adjustable and can use your own clipped audio.
+Deep PTC is a DeepSeek Harness agent mode with progress reports, clarifying questions, task-size planning, and interruptible background work. It builds on the installed official PTC preset with selectable shells, on-demand tools and skills, and a two-layer preset identity adapter for third-party plugins. Cards face both you and the model: you see a clear card, the model reads precise context with ids, sources and states; the task brief files the goals, constraints and acceptance criteria in your messages and, once you confirm, can take the raw messages out of the model's context. Alert sounds are adjustable and can use your own clipped audio. When you want to step away, turn on **deep sleep** in the side panel: the model asks every open question in one batch, and after you confirm the settings it works on its own until the objective is complete without interrupting you again.
 
-The panel sits beside the conversation and shows the environment, Deep creative mode with the virtual DSH, subagents, jobs, output files, SSH connections and tool state. The panel width can be dragged. The capsule expands or collapses it; it sits below the composer by default and can move into the toolbar or be hidden. Deep PTC also has its own settings page. Visual effects are lightweight and start off when an appearance plugin is installed.
+The panel sits beside the conversation and shows the environment, Deep sleep mode, Deep creative mode with the virtual DSH, subagents, jobs, output files, SSH connections and tool state. The panel width can be dragged. The capsule expands or collapses it; it sits below the composer by default and can move into the toolbar or be hidden. Deep PTC also has its own settings page. Visual effects are lightweight and start off when an appearance plugin is installed.
+
+## Changes in 2.5.3
+
+- **Deep sleep mode**: a switch in the side panel, on or off any number of times in one conversation. Turning it on makes the model ask every open question in one batch of small cards (at most 8 cards, 5 questions each; the answers arrive together as one message), then post a confirmation card listing the goal, route, constraints, acceptance and deliverable. Only your "satisfied, start" starts the unattended run. The host's goal rounds drive it: finishing a turn starts the next round until the model marks the goal complete; details it never asked about are its own decision, recorded in the task brief. A message from you pauses the run so the model can ask about the new information and confirm again; turning the switch off pauses it and turning it back on resumes. While the mode is on the task brief is filed without item-by-item confirmation. An older host without the goal service says so instead of looping.
+- **A settings switch**: the settings page gains a Deep sleep mode switch; when it is off, the side-panel switch and the deep_sleep tool do not exist.
 
 ## Changes in 2.5.2
 

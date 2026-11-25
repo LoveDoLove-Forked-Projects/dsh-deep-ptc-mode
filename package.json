@@ -1,7 +1,7 @@
 {
   "name": "dsh-deep-ptc-mode",
-  "version": "2.5.2",
-  "description": "Deep PTC for DeepSeek Harness: interruptible jobs, selectable shells, cards with one-press buttons, a task brief and project cards, adjustable alert sounds with your own audio, on-demand tools and skills, and a virtual DSH for testing plugins.",
+  "version": "2.5.3",
+  "description": "Deep PTC for DeepSeek Harness: interruptible jobs, selectable shells, cards with one-press buttons, a task brief and project cards, deep sleep mode for unattended runs, adjustable alert sounds with your own audio, on-demand tools and skills, and a virtual DSH for testing plugins.",
   "type": "module",
   "keywords": [
     "dsh-plugin",
@@ -23,7 +23,9 @@
     "official-ptc-fallback",
     "ssh",
     "side-panel",
-    "alert-sounds"
+    "alert-sounds",
+    "deep-sleep",
+    "unattended-run"
   ],
   "license": "MIT",
   "author": {
@@ -98,6 +100,7 @@
     "./bundled-skills": "./lib/bundled-skills.mjs",
     "./project-tool": "./lib/project-tool.mjs",
     "./question-tool": "./lib/question-tool.mjs",
+    "./deep-sleep-tool": "./lib/deep-sleep-tool.mjs",
     "./brief-tool": "./lib/brief-tool.mjs",
     "./virtual-dsh-tool": "./lib/virtual-dsh-tool.mjs",
     "./client": "./lib/client.js",

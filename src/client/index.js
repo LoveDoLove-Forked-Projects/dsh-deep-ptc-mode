@@ -194,6 +194,13 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
   }
   Object.assign(dictionaries.zh, {
     visualEffects: '界面特效', visualEffectsHint: '使用外部主题或 UI 插件时，建议关闭此开关。',
+    sleepSection: '深度睡眠', sleepOn: '打开', sleepOff: '关闭', sleepBusy: '切换中…',
+    sleepPhase_off: '已关闭', sleepPhase_asking: '一次性提问中', sleepPhase_ready: '等待确认卡', sleepPhase_confirming: '等待确认', sleepPhase_running: '无人值守运行中', sleepPhase_done: '已结束',
+    sleepCards: '已答 {done}/{total} 张卡', sleepObjective: '目标', sleepRound: '第 {round} 轮',
+    sleepHintOff: '打开后模型把还缺的问题一次性问完，你确认设定后它才独立运行，直到目标完成。运行中你随时可以再发消息打断。',
+    sleepHintOn: '无人值守：停下即由宿主自动开下一轮。你发消息会暂停运行，模型就新信息再问你并重新确认。',
+    sleepFailed: '切换失败', questionBatch: '第 {index}/{total} 张',
+    sleepSwitch: '深度睡眠模式', sleepSwitchHint: '侧边栏开关与 deep_sleep 工具；关闭后开关不出现，模型也没有这个工具。',
     jobsTitle: '后台任务', jobsEmpty: '本会话暂无后台任务。', jobsMore: '另有 {count} 个在运行', jobsRunningCount: '{count} 运行中', jobsDoneCount: '{count} 已结束', jobsFailedCount: '{count} 失败', jobsShowRecent: '查看最近结束的任务', jobsHideRecent: '收起最近结束的任务',
     jobRunning: '运行中', jobStopping: '正在停止', jobCompleted: '已完成', jobEnded: '已结束', jobKilled: '已取消', jobFailed: '已失败',
     toolReset: '重载所有工具状态', toolResetShort: '重载', toolsOk: '正常', sideNone: '无', sshNone: '未配置', toolResetBusy: '正在重载…', toolResetDone: '本对话工具状态已重载。',
@@ -366,7 +373,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     cardChose: "已选：{action}",
     questionKicker: "需要你决定",
     questionWaiting: "等你回答",
-    questionAnswered: "已回答并发给模型",
+    questionAnswered: "已回答并发给模型", questionRecorded: "已记录",
     questionUnanswered: "未回答",
     questionOptional: "可选",
     questionSubmit: "提交回答",
@@ -471,6 +478,13 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     delegatedAssignment: 'Assignment from the parent agent', delegatedDirect: 'You are talking to the subagent directly. Your words take effect at once and are passed on to the parent agent.',
     noticeSound: 'Card sound', noticeSoundHint: 'Rings once when a card waits for your answer, choice or confirmation.',
     noticeDone: 'Task end sound', noticeDoneHint: 'Rings once when a Deep PTC turn ends, not when you stop it yourself.',
+    sleepSection: 'Deep sleep', sleepOn: 'Turn on', sleepOff: 'Turn off', sleepBusy: 'Switching…',
+    sleepPhase_off: 'Off', sleepPhase_asking: 'Gathering questions', sleepPhase_ready: 'Ready to confirm', sleepPhase_confirming: 'Waiting for confirmation', sleepPhase_running: 'Running unattended', sleepPhase_done: 'Finished',
+    sleepCards: '{done}/{total} cards answered', sleepObjective: 'Objective', sleepRound: 'Round {round}',
+    sleepHintOff: 'Turn it on and the model asks every open question at once; after you confirm the settings it works on its own until the objective is complete. Write at any time to interrupt.',
+    sleepHintOn: 'Unattended: finishing a turn starts the next goal round by itself. A message from you pauses the run so the model can ask about the new information and confirm again.',
+    sleepFailed: 'Could not switch', questionBatch: 'Card {index}/{total}',
+    sleepSwitch: 'Deep sleep mode', sleepSwitchHint: 'The side-panel switch and the deep_sleep tool; when off, neither exists.',
     soundSection: 'Sounds',
     soundVolume: 'Volume', soundVolumeHint: 'Moving it plays the current card sound at the new volume; the value is saved when you stop.',
     soundCardSource: 'Card sound', soundDoneSource: 'Task end sound', soundDefault: 'Default (built in)', soundPreview: 'Preview',
@@ -591,7 +605,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     cardChose: "Chose: {action}",
     questionKicker: "Your decision",
     questionWaiting: "Waiting for you",
-    questionAnswered: "Answered · sent to the model",
+    questionAnswered: "Answered · sent to the model", questionRecorded: "Recorded",
     questionUnanswered: "Not answered",
     questionOptional: "optional",
     questionSubmit: "Submit answers",
@@ -1230,6 +1244,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     const conversation = useFormValue(form, 'conversationCards') !== false;
     const project = useFormValue(form, 'projectCards') !== false;
     const brief = useFormValue(form, 'taskBrief') !== false;
+    const sleep = useFormValue(form, 'deepSleep') !== false;
     const mobile = useFormValue(form, 'mobileCards') !== false;
     const sound = useFormValue(form, 'notifySound') !== false;
     const done = useFormValue(form, 'notifyDone') !== false;
@@ -1252,6 +1267,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
       row('conversationCards', conversation, t('cardsSwitch'), t('cardsSwitchHint')),
       row('projectCards', project, t('projectSwitch'), t('projectSwitchHint')),
       row('taskBrief', brief, t('briefSwitch'), t('briefSwitchHint')),
+      row('deepSleep', sleep, t('sleepSwitch'), t('sleepSwitchHint')),
       row('mobileCards', mobile, t('mobileSwitch'), t('mobileSwitchHint')),
       row('notifySound', sound, t('noticeSound'), t('noticeSoundHint')),
       row('notifyDone', done, t('noticeDone'), t('noticeDoneHint')),
@@ -1865,7 +1881,46 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
   }
 
   // One conversation's environment, subagents, jobs, outputs, SSH and tool state.
-  function DeepPtcPanel({ sessionId, useSessions, useProjection, useJobs, watchJobs, reset, reply, runProject, runVirtual, form, inline, t }) {
+  // Deep sleep mode: one switch, and the state the host folds from the session log. Turning it on
+  // only arms the mode; the model asks the batch and the user's confirmation starts the run.
+  function DeepSleepSection({ sessionId, useProjection, runSleep, t }) {
+    const state = projectionValue(useProjection, 'deepPtcSleep');
+    const [busy, setBusy] = React.useState(false);
+    const [message, setMessage] = React.useState();
+    const on = state?.on === true;
+    const phase = on ? state.phase : 'off';
+    async function toggle() {
+      if (typeof runSleep !== 'function') return;
+      setBusy(true);
+      setMessage(undefined);
+      try {
+        const outcome = await runSleep({ action: 'toggle' });
+        if (outcome?.ok === false) throw new Error(outcome.error?.message);
+        const reply = outcome?.ok === true ? outcome.value : outcome;
+        const result = reply?.result ?? reply;
+        if (result?.kind === 'error') throw new Error(result.text);
+      } catch (error) {
+        setMessage(String(error?.message ?? error).slice(0, 180));
+      } finally {
+        setBusy(false);
+      }
+    }
+    const facts = on ? [
+      Array.isArray(state?.cards) && state.cards.length > 0 ? tf(t, 'sleepCards', { done: state.answered ?? 0, total: state.cards.length }) : '',
+      state?.objective ? `${t('sleepObjective')}：${state.objective}` : '',
+      state?.rounds > 0 ? tf(t, 'sleepRound', { round: state.rounds }) : '',
+    ].filter(Boolean).join(' · ') : '';
+    return h('section', { className: 'dpt-side-section dpt-side-sleep', 'aria-label': t('sleepSection'), 'data-on': on ? '' : undefined },
+      h('div', { className: 'dpt-side-label' }, h('span', null, t('sleepSection')),
+        h('span', { className: 'dpt-side-tail' },
+          h('span', { className: 'dpt-side-hint', 'data-tone': on ? 'ok' : undefined }, t(`sleepPhase_${phase}`)),
+          h('button', { type: 'button', className: 'dpt-link', onClick: toggle, disabled: busy || typeof runSleep !== 'function',
+            'aria-pressed': on, title: on ? t('sleepOff') : t('sleepOn') }, busy ? t('sleepBusy') : on ? t('sleepOff') : t('sleepOn')))),
+      h('p', { className: 'dpt-side-note' }, facts || (on ? t('sleepHintOn') : t('sleepHintOff'))),
+      message ? h('p', { className: 'dpt-side-note', role: 'alert', 'data-tone': 'error' }, message) : null);
+  }
+
+  function DeepPtcPanel({ sessionId, useSessions, useProjection, useJobs, watchJobs, reset, reply, runProject, runVirtual, runSleep, form, inline, t }) {
     const sessions = typeof useSessions === 'function' ? useSessions(state => state) : undefined;
     const preset = projectionValue(useProjection, 'agentPreset');
     const activity = projectionValue(useProjection, 'deepPtcActivity');
@@ -1884,6 +1939,8 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
         !deep ? h('section', { className: 'dpt-side-section' }, h('p', { className: 'dpt-side-note' }, t('sideOtherMode'))) : null,
         h(SortableSections, { t, sections: [
         { key: 'environment', label: t('environment'), node: form ? h(EnvironmentSection, { form, t }) : null },
+        { key: 'sleep', label: t('sleepSection'), node: deep && formValue(form, 'deepSleep') !== false && typeof runSleep === 'function'
+          ? h(DeepSleepSection, { sessionId, useProjection, runSleep, t }) : null },
         { key: 'creative', label: t('creativeSwitch'), node: deep && form ? h(CreativeSection, { form, runVirtual, useProjection, t }) : null },
         { key: 'project', label: t('projectTab'), node: deep && formValue(form, 'projectCards') !== false ? h(ProjectSection, { sessionId, useProjection, reply, runProject, form, t }) : null },
         // Always present in Deep PTC, one line while empty: a first subagent fills the section instead
@@ -1930,7 +1987,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
 
   // The order of the side panel's sections, chosen by dragging their handles; kept per browser.
   const SECTION_ORDER_KEY = `${PLUGIN}:panel-order`;
-  const SECTION_KEYS = ['environment', 'creative', 'project', 'agents', 'jobs', 'outputs', 'ssh', 'tools'];
+  const SECTION_KEYS = ['environment', 'sleep', 'creative', 'project', 'agents', 'jobs', 'outputs', 'ssh', 'tools'];
   function normalizeOrder(value) {
     const known = Array.isArray(value) ? value.filter((key, index) => SECTION_KEYS.includes(key) && value.indexOf(key) === index) : [];
     return [...known, ...SECTION_KEYS.filter(key => !known.includes(key))];
@@ -2509,6 +2566,11 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
           const execute = child.remote?.commands?.execute;
           if (typeof execute !== 'function') return Promise.resolve({ ok: true, value: undefined });
           return execute(sessionId, '/deep-ptc-reset-tools', []);
+        },
+        runSleep: payload => {
+          const execute = child.remote?.commands?.execute;
+          if (typeof execute !== 'function') return Promise.resolve({ ok: false, error: { message: 'unavailable' } });
+          return execute(sessionId, '/deep-ptc-sleep ' + JSON.stringify(payload), []);
         },
       };
       if (jobs?.state && typeof jobs.watchRows === 'function') {

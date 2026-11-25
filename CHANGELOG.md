@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.5.3 — 2026-11-25
+
+- **深度睡眠模式**：侧边栏新增「深度睡眠」开关，同一个对话里可以反复开关。打开后模型把还缺的问题一次性问完（多张小卡，最多 8 张、每张 5 问；全部答完后合并成一条消息送回模型），再发一张确认卡列出目标、路线、约束、验收与交付物；只有你选「满意，开始」才真正进入无人值守运行。运行由宿主的 goal 续跑驱动：一轮结束自动开下一轮，直到模型确认目标完成并结束运行；期间没问到的细节由模型自己拿主意，并用任务卡记录下来。运行中你发消息会暂停续跑，模型就新信息再次提问并确认后才继续；关掉开关即暂停，再打开继续。深度睡眠期间任务卡不再逐条要求确认（由确认卡统一授权）。旧的宿主没有 goal 服务时会明确说明无法跨回合续跑。
+- 设置页新增「深度睡眠模式」开关；关闭后侧边栏开关和 deep_sleep 工具都不再出现。
+
+- **Deep sleep mode**: a switch in the side panel, on or off any number of times in one conversation. Turning it on makes the model ask every open question in one batch of small cards (at most 8 cards, 5 questions each; the answers arrive together as one message), then post a confirmation card listing the goal, route, constraints, acceptance and deliverable. Only your "满意/开始" starts the unattended run. The host's goal rounds drive it: finishing a turn starts the next round until the model marks the goal complete through deep_sleep. Details it never asked about are its own decision, recorded in the task brief. A message from you pauses the run so the model can ask about the new information and confirm again; turning the switch off pauses it and turning it back on resumes. While the mode is on the task brief is filed without item-by-item confirmation (the confirmation card covers it). An older host without the goal service says so instead of looping.
+- The settings page gains a Deep sleep mode switch; when it is off, the side-panel switch and the deep_sleep tool do not exist.
+
 ## 2.5.2 — 2026-11-24
 
 - 提示音可调：设置里新增音量滑杆（拖动即以新音量试听）、自定义音频上传（进度条、波形选段、试听后保存）、多个提示音保存与切换；两类提示音各自选音源，内置提示音仍是默认。音频存放于 $DSH_HOME/storages/deep-ptc-sounds/，清浏览器缓存不丢；Windows 桌面弹窗由宿主播放并受音量控制。

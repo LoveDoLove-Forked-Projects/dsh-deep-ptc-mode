@@ -1,5 +1,17 @@
 # Deep PTC 测试报告 / Test report
 
+## 2.5.3 · 2026-11-25
+
+- Windows、Node 24：391 项测试（390 通过、1 跳过）和 `npm run check` 通过。新增覆盖：深度睡眠状态机（开关、确认、调整、重开、续开）、批次卡片一次性投递、确认卡启动与拒绝、运行中新消息重开、开关关闭暂停/再开续跑、提示词分区；面板新增深度睡眠开关的渲染与命令调用。
+- 检查脚本新增两条防回归断言：预设里每个 Deep PTC 行都必须在 `lib/` 有同名模块、并在 `package.json` 的 exports 白名单里（缺一即整预设退回安全模式）。
+- 在虚拟 DSH（DSH 0.2.2-rc.5，DSH 桌面端同版本宿主）用真实模型实测：插件按 2.5.3 加载，预设不再退安全模式（deep_sleep、task_brief、project_cards、ask_user 四个工具都在）；侧边栏「深度睡眠」开关连续开关四次，状态都正确；打开后模型把 4 个问题拆成 2 张卡（第 1/2、2/2 张），全部作答后模型一次性收到合并回答；确认卡渲染目标/版式/排序/说明来源/验收/交付六行摘要，点「满意，开始」后宿主创建 goal（界面出现「进行中的目标」），模型自行写完 目录.md、逐条自检、把验收标为 1/1 并结束运行，过程中没有再问过用户；深度睡眠开启期间任务卡不再逐条要求确认。
+- 未在真机验证：Windows 桌面弹窗；跨多轮的长时间续跑（本次任务在一轮内完成，续跑机制由宿主 goal-round-driver 提供并有单元测试覆盖）；运行中关掉再打开续跑（单元测试覆盖，界面只验证了开关本身）。
+
+- Windows and Node 24: 391 tests (390 passed, 1 skipped) and `npm run check` passed. New coverage: the deep sleep state machine (switch, confirm, revise, reopen, resume), one-shot delivery of a multi-card batch, the confirmation card starting or refusing the run, a message during the run reopening the brief, the switch pausing and resuming the run, and the prompt sections; the panel test renders the new switch and calls its command.
+- The checks gained two regressions: every Deep PTC preset row must have a matching module in `lib/` and an entry in the package's exports map (one missing either falls the whole preset back to safe mode).
+- In a virtual DSH (DSH 0.2.2-rc.5, the same host version as the desktop app) with a real model: the plugin loaded as 2.5.3 and the preset no longer fell back to safe mode (deep_sleep, task_brief, project_cards and ask_user were all present); the side-panel switch went on and off four times with the right state each time; turning it on made the model split four questions into two cards (Card 1/2 and 2/2), and the answers reached it once, together, after the last card; the confirmation card rendered the six summary rows (goal, format, order, description source, acceptance, deliverable), and pressing "satisfied, start" created the host goal (the UI showed the running objective); the model then wrote 目录.md, checked it line by line, marked acceptance 1/1 and ended the run without asking anything; while the mode was on the task brief was filed without item-by-item confirmation.
+- Not verified on a real device: the Windows desktop notice; a long run across many rounds (this task finished in one); pausing and resuming a live run from the switch (covered by unit tests).
+
 ## 2.5.2 · 2026-11-24
 
 - Windows、Node 24：377 项测试（376 通过、1 跳过）和 npm run check 通过。新增音频存储与路由 3 项、设置页 1 项；真实 HTTP 走通上传、保存、Range 播放、改名、裁剪、删除；PowerShell 播放器冒烟通过（有效 wav 播放、坏路径记录失败）。
