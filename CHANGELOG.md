@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.5.6 — 2026-11-26
+
+- **Skill 管理**：设置 → 深度 PTC 新增「Skill 管理」，列出插件内置与 DSH 已装的全部 skill，每个可单独设置「模型可见」。隐藏的 skill 不进入模型目录，skill 工具按名加载会被拒绝；聊天里自己写 /skill-name 仍可显式加载。名单按 profile 保存在 $DSH_HOME/storages/deep-ptc-skills/。实现上深度 PTC 的预设行替换了官方 @deepseek-ai/dsh-tool-skill 的目录与加载器（官方行停用保留），其他模式不受影响，已加载正文不因隐藏而消失。
+- **Skill management**: Settings → Deep PTC gains Skills, listing every skill from this plugin and from DSH with a per-skill model-visibility switch. A hidden skill leaves the model catalog and the skill tool refuses it by name, while a typed /skill-name still loads it explicitly. The list lives per profile under $DSH_HOME/storages/deep-ptc-skills/. Deep PTC's preset row replaces the official @deepseek-ai/dsh-tool-skill catalog and loader (the official row is disabled, not removed); other modes are unaffected, and instructions already in context are not removed by hiding.
+
 ## 2.5.5 — 2026-11-26
 
 - **互动卡片不再有上限**：提问卡（ask_user）每张可带任意多个问题，深度睡眠的提问批次可带任意多张卡、确认卡可带任意多行摘要（此前为每张 5 题、每批 8 张、摘要 8 行）。

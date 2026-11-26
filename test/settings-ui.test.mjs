@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import React from 'react';
 import Renderer, { act } from 'react-test-renderer';
 
-function setup(platform, localeId, presetEntries = new Map()) {
+function setup(platform, localeId, presetEntries = new Map(), options = {}) {
   let plugin;
   let Card;
   let snapshot = { status: 'ready', writable: true, revision: 4,
@@ -30,6 +30,7 @@ function setup(platform, localeId, presetEntries = new Map()) {
     window: { __ModuleLoader__: { load: definition => { plugin = definition.factory(name => {
       assert.ok(name === 'react' || name === 'react-dom', name); return React;
     }); } } },
+    fetch: options.fetch ?? (async () => { throw new Error('fetch is not stubbed in this test'); }),
   });
   const ctx = {
     locale: {
@@ -192,4 +193,41 @@ test('a stale draft keeps its original revision fence when another window update
   await act(async () => { await view.root.findByType('form').props.onSubmit({ preventDefault() {} }); });
   assert.equal(fixture.writes[0].revision, 4);
   await act(async () => { view.unmount(); });
+});
+test('the skill manager lists skills and switches model visibility', async () => {
+  const calls = [];
+  const fetch = async (url, init = {}) => {
+    calls.push({ url, init });
+    if (url === '/deep-ptc/skills/list') return { ok: true, json: async () => ({ origin: 'live', skills: [
+      { name: 'deep-ptc-cards', description: 'Cards for results', source: 'plugin', modelInvocable: true, hidden: false },
+      { name: 'dsh-doc', description: 'DSH documentation', source: 'bundled', modelInvocable: true, hidden: true },
+    ] }) };
+    if (url === '/deep-ptc/skills/set') return { ok: true, json: async () => ({ name: 'dsh-doc', hidden: false }) };
+    return { ok: false, json: async () => ({}) };
+  };
+  const entries = new Map([['settings.section', []]]);
+  const fixture = setup('win32', 'zh', entries, { fetch });
+  const entry = entries.get('settings.section').find(row => row.options.id === 'deep-ptc');
+  let view;
+  await act(async () => { view = Renderer.create(React.createElement(entry.component, {})); });
+  try {
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 5)); });
+    const text = JSON.stringify(view.toJSON());
+    assert.match(text, /Skill 管理/u);
+    assert.match(text, /deep-ptc-cards/u);
+    assert.match(text, /dsh-doc/u);
+    assert.match(text, /DSH 内置/u);
+    const switches = view.root.findAllByType('button').filter(node => node.props.role === 'switch' && node.props['aria-label']);
+    const doc = switches.find(node => node.props['aria-label'] === 'dsh-doc');
+    const cards = switches.find(node => node.props['aria-label'] === 'deep-ptc-cards');
+    assert.equal(doc.props['aria-checked'], false, 'a hidden skill starts off');
+    assert.equal(cards.props['aria-checked'], true);
+    await act(async () => { doc.props.onClick(); });
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 5)); });
+    const saved = calls.find(call => call.url === '/deep-ptc/skills/set');
+    assert.ok(saved, 'the switch saves through the plugin route');
+    assert.deepEqual(JSON.parse(saved.init.body), { name: 'dsh-doc', hidden: false });
+  } finally {
+    await act(async () => { view.unmount(); });
+  }
 });

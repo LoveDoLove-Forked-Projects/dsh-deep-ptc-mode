@@ -96,6 +96,13 @@ export function assertDerivation(upstream, preset, { environment = 'wsl', wslDis
         `official shell row ${row.id} must be replaced`);
       continue;
     }
+    if (row.id === 'tool-skill' && row.name === '@deepseek-ai/dsh-tool-skill') {
+      // Deep PTC owns the model-visible skill catalog: the official row stays as the fallback but is
+      // disabled, and the skill manager registers the same tool at the same scope.
+      assert.equal(derivedById.get(row.id)?.disabled, true, 'official skill row is disabled in favour of the skill manager');
+      assert.ok(derivedRows.some(item => item.name === 'dsh-deep-ptc-mode/skill-manager'), 'the skill manager row is present');
+      continue;
+    }
     const candidate = derivedById.get(row.id) ?? derivedRows.find(item => item.name === row.name || item.config?.upstream === row.name);
     assert.ok(candidate, `official row ${row.id ?? row.name} is missing from the derived preset`);
     if (isWrapped(row)) {

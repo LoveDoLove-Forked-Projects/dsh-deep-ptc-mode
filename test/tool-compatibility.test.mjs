@@ -348,6 +348,7 @@ test('official rows stay exactly as declared; only the feature rows are wrapped'
   const { preset } = deriveDeepPtc(snapshot, { environment: 'wsl' }, 'win32');
   const original = new Map(snapshot.plugins.map(row => [row.id, row]));
   for (const row of preset.plugins) {
+    if (row.id === 'tool-skill') { assert.equal(row.disabled, true, 'the official skill row is disabled for the skill manager'); continue; }
     if (!original.has(row.id) || ['persona', 'tool-bash', 'tool-pwsh', 'tool-jobs', 'tool-ask-user'].includes(row.id)) continue;
     assert.deepEqual(row, original.get(row.id));
   }

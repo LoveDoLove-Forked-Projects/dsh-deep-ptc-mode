@@ -298,6 +298,21 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     briefSwitch: '任务卡', briefSwitchHint: '模型把你消息里的目标、约束和验收标准整理成「本次任务」卡，附上原话出处并标出推断的部分。核对后可把原话移出模型上下文，原话不会删除。',
     cardLast: '上次：{action}', cardNeeds: '先填写：{names}', cardReplyFailed: '未能把选择发送给模型，请直接在对话里告诉它。',
     cardsSection: "卡片",
+    skillsSection: "Skill 管理",
+    skillsHint: "这里列出插件内置与 DSH 已装的 skill。关闭「模型可见」后，模型看到的 skill 目录不再包含它，也不能用 skill 工具加载；已经加载进上下文的正文不会被删除。",
+    skillsFilter: "筛选名称或描述",
+    skillsLoading: "正在读取 skill…",
+    skillsFailed: "读取或保存失败，请稍后重试。",
+    skillsEmpty: "还没有可列出的 skill。打开一次深度 PTC 对话后再回到这里。",
+    skillsNoMatch: "没有匹配的 skill。",
+    skillsOriginBuiltin: "当前显示插件内置清单；打开一次深度 PTC 对话后会补全 DSH 已装 skill。",
+    skillsUserOnly: "仅用户可调用",
+    skillsHiddenNote: "改动即时生效：模型下一次请求前会收到更新后的目录。",
+    skillSourcePlugin: "插件内置",
+    skillSourceBundled: "DSH 内置",
+    skillSourceProject: "项目",
+    skillSourceUser: "用户",
+    skillSourceOther: "其他",
     cardsSwitch: "对话卡片",
     cardsSwitchHint: "模型可以在对话末尾放置指标、图表、选项和按钮卡片。关闭后模型不再看到卡片工具，已有卡片隐藏。",
     projectSwitch: "特点卡片",
@@ -530,6 +545,21 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     briefSwitch: 'Task brief', briefSwitchHint: "The model files the goals, constraints and acceptance criteria in your messages into a Task brief card, quoting your words and marking what it inferred. Once checked, your messages can leave the model's context; they are never deleted.",
     cardLast: 'Last: {action}', cardNeeds: 'Fill in first: {names}', cardReplyFailed: 'Could not send the choice to the model; tell it in the conversation instead.',
     cardsSection: "Cards",
+    skillsSection: "Skills",
+    skillsHint: "Every skill from this plugin and from DSH. Turning off \"model visible\" removes it from the model's skill catalog and the skill tool refuses to load it; instructions already in context are not deleted.",
+    skillsFilter: "Filter by name or description",
+    skillsLoading: "Reading skills…",
+    skillsFailed: "Could not read or save. Try again in a moment.",
+    skillsEmpty: "No skills to list yet. Open a Deep PTC conversation once and come back.",
+    skillsNoMatch: "No skill matches the filter.",
+    skillsOriginBuiltin: "Showing the plugin's built-in list; opening a Deep PTC conversation adds the DSH-installed skills.",
+    skillsUserOnly: "user only",
+    skillsHiddenNote: "Changes apply at once: the model receives the updated catalog before its next request.",
+    skillSourcePlugin: "plugin",
+    skillSourceBundled: "DSH",
+    skillSourceProject: "project",
+    skillSourceUser: "user",
+    skillSourceOther: "other",
     cardsSwitch: "Conversation cards",
     cardsSwitchHint: "The model can leave cards with figures, charts, options and buttons at the end of the conversation. When off, the model no longer sees the card tool and existing cards are hidden.",
     projectSwitch: "Project cards",
@@ -2602,12 +2632,73 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
   }
 
   // The Deep PTC settings page: the environment form, the effects switch and diagnostics.
+  // Skill manager: every skill the plugin and DSH can load, with one "model visible" switch each.
+  // The list comes from the plugin's own route, so it also works before any conversation exists.
+  const SKILLS_API = '/deep-ptc/skills';
+  function skillSourceLabel(source, t) {
+    const value = String(source ?? '');
+    if (value === 'plugin') return t('skillSourcePlugin');
+    if (value === 'bundled') return t('skillSourceBundled');
+    if (value.startsWith('project')) return t('skillSourceProject');
+    if (value.startsWith('user')) return t('skillSourceUser');
+    return t('skillSourceOther');
+  }
+  function SkillsSettingsSection({ t }) {
+    const [rows, setRows] = React.useState(null);
+    const [origin, setOrigin] = React.useState('builtin');
+    const [failed, setFailed] = React.useState(false);
+    const [busy, setBusy] = React.useState('');
+    const [query, setQuery] = React.useState('');
+    React.useEffect(() => {
+      let live = true;
+      if (typeof fetch !== 'function') { setFailed(true); setRows([]); return undefined; }
+      fetch(SKILLS_API + '/list').then(response => {
+        if (!response.ok) throw new Error('list failed');
+        return response.json();
+      }).then(value => {
+        if (!live) return;
+        setRows(Array.isArray(value?.skills) ? value.skills : []);
+        setOrigin(typeof value?.origin === 'string' ? value.origin : 'builtin');
+      }).catch(() => { if (live) { setFailed(true); setRows([]); } });
+      return () => { live = false; };
+    }, []);
+    async function toggle(row) {
+      setBusy(row.name);
+      setFailed(false);
+      try {
+        const response = await fetch(SKILLS_API + '/set', { method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ name: row.name, hidden: row.hidden !== true }) });
+        if (!response.ok) throw new Error('save failed');
+        setRows(current => (current ?? []).map(candidate => candidate.name === row.name ? { ...candidate, hidden: row.hidden !== true } : candidate));
+      } catch { setFailed(true); }
+      finally { setBusy(''); }
+    }
+    if (rows === null) return h('p', { className: 'dpt-side-note' }, failed ? t('skillsFailed') : t('skillsLoading'));
+    const needle = query.trim().toLowerCase();
+    const shown = rows.filter(row => needle === '' || row.name.toLowerCase().includes(needle)
+      || String(row.description ?? '').toLowerCase().includes(needle));
+    return h(React.Fragment, null,
+      h('p', { className: 'dpt-side-note' }, t('skillsHint'), origin === 'builtin' ? ' ' + t('skillsOriginBuiltin') : ''),
+      rows.length > 6 ? h('input', { className: 'dpt-skill-filter', type: 'search', value: query, placeholder: t('skillsFilter'),
+        onChange: event => setQuery(event.target.value) }) : null,
+      shown.length === 0 ? h('p', { className: 'dpt-side-note' }, rows.length === 0 ? t('skillsEmpty') : t('skillsNoMatch')) : null,
+      shown.length === 0 ? null : h('ul', { className: 'dpt-skill-list' }, ...shown.map(row => h('li', { key: row.name, className: 'dpt-skill-row' },
+        h('div', { className: 'dpt-skill-main' },
+          h('div', { className: 'dpt-skill-name' }, h('code', null, row.name),
+            h('span', { className: 'dpt-skill-source' }, skillSourceLabel(row.source, t)),
+            row.modelInvocable === false ? h('span', { className: 'dpt-skill-source' }, t('skillsUserOnly')) : null),
+          row.description ? h('p', { className: 'dpt-skill-desc' }, row.description) : null),
+        h(SkillSwitch, { on: row.hidden !== true, label: row.name, disabled: busy === row.name, onChange: () => { void toggle(row); } })))),
+      failed ? h('p', { className: 'dpt-side-note', role: 'alert' }, t('skillsFailed')) : null,
+      h('p', { className: 'dpt-side-note' }, t('skillsHiddenNote')));
+  }
   function SettingsPage({ form, t }) {
     return h('div', { className: 'dpt-settings' },
       // The form labels its own environment field.
       h('section', { 'aria-label': t('environment') },
         form ? h(Card, { form, t }) : h('p', { className: 'dpt-side-note' }, t('readOnly'))),
       h('section', { 'aria-label': t('cardsSection') }, h('h3', null, t('cardsSection')), h(CardsSettingsSection, { form, t })),
+      h('section', { 'aria-label': t('skillsSection') }, h('h3', null, t('skillsSection')), h(SkillsSettingsSection, { t })),
       h('section', { 'aria-label': t('soundSection') }, h('h3', null, t('soundSection')), h(SoundSettings, { form, t })),
       h('section', { 'aria-label': t('appearance') }, h('h3', null, t('appearance')),
         h(VisualEffectsSection, { t }), h(LongSessionSection, { t }), h(PanelLocationSection, { t }), h(CapsulePlacementSection, { t })),

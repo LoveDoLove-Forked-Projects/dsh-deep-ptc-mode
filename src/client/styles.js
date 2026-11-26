@@ -58,6 +58,14 @@ ${DARK} .dpt-card{--dpt-card-fill:var(--dsw-static-neutral-850,#1a1f29)}
 .dpt-tool-failures ul{margin:0;padding-left:16px}
 .dpt-tool-failures code{font-family:var(--ds-font-family-code,ui-monospace,monospace)}
 .dpt-side-note{margin:6px 0 0;font-size:11px;line-height:16px;color:var(--dsw-alias-label-tertiary,#667085)}
+.dpt-skill-list{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.dpt-skill-row{display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border:1px solid var(--dpt-line);border-radius:8px}
+.dpt-skill-main{flex:1;min-width:0}
+.dpt-skill-name{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px}
+.dpt-skill-name code{font-size:12px;padding:0 2px}
+.dpt-skill-source{font-size:10.5px;line-height:16px;color:var(--dsw-alias-label-tertiary,#667085);border:1px solid currentColor;border-radius:999px;padding:0 6px}
+.dpt-skill-desc{margin:3px 0 0;font-size:11.5px;line-height:17px;color:var(--dsw-alias-label-secondary,#475467);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.dpt-skill-filter{width:100%;margin-top:8px;padding:6px 8px;font-size:12px;border:1px solid var(--dpt-line);border-radius:8px;background:transparent;color:inherit}
 .dpt-side-note[data-tone="ok"]{color:var(--dsw-alias-state-success-primary,#0f7a4f)}
 .dpt-side-note[data-tone="error"]{color:var(--dsw-alias-state-error-primary,#c4321f)}
 .dpt-agents-list{list-style:none;margin:0;padding:0;overflow:visible;min-height:0}

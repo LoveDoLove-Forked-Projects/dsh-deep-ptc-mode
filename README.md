@@ -1,12 +1,17 @@
 # Deep PTC mode
 
-[中文](README.zh.md) · MIT · **2.5.5**
+[中文](README.zh.md) · MIT · **2.5.6**
 
 [Changelog](CHANGELOG.md) · [Test report](TEST_REPORT.md) · [Plugin workflows and verification](COMPATIBILITY.md)
 
-Deep PTC is a DeepSeek Harness agent mode with progress reports, clarifying questions, task-size planning, and interruptible background work. It builds on the installed official PTC preset with selectable shells, on-demand tools and skills, and a two-layer preset identity adapter for third-party plugins. Cards face both you and the model: you see a clear card, the model reads precise context with ids, sources and states; the task brief files the goals, constraints and acceptance criteria in your messages and, once you confirm, can take the raw messages out of the model's context. Interactive cards are uncapped, project cards and the task brief hold far more records, and acceptance is verified as the work proceeds, with every task you add mid-way bringing its own checks. Alert sounds are adjustable and can use your own clipped audio. When you want to step away, turn on **deep sleep** in the side panel: the model asks every open question in one batch, and after you confirm the settings it works on its own until the objective is complete without interrupting you again.
+Deep PTC is a DeepSeek Harness agent mode with progress reports, clarifying questions, task-size planning, and interruptible background work. It builds on the installed official PTC preset with selectable shells, on-demand tools and skills, and a two-layer preset identity adapter for third-party plugins. Cards face both you and the model: you see a clear card, the model reads precise context with ids, sources and states; the task brief files the goals, constraints and acceptance criteria in your messages and, once you confirm, can take the raw messages out of the model's context. Interactive cards are uncapped, project cards and the task brief hold far more records, and acceptance is verified as the work proceeds, with every task you add mid-way bringing its own checks. Every skill this plugin and DSH can load is listed in settings with its own model-visibility switch. Alert sounds are adjustable and can use your own clipped audio. When you want to step away, turn on **deep sleep** in the side panel: the model asks every open question in one batch, and after you confirm the settings it works on its own until the objective is complete without interrupting you again.
 
 The panel sits beside the conversation and shows the environment, Deep sleep mode, Deep creative mode with the virtual DSH, subagents, jobs, output files, SSH connections and tool state. The panel width can be dragged. The capsule expands or collapses it; it sits below the composer by default and can move into the toolbar or be hidden. Deep PTC also has its own settings page. Visual effects are lightweight and start off when an appearance plugin is installed.
+
+## Changes in 2.5.6
+
+- **Skill management**: Settings → Deep PTC gains Skills, listing every skill from this plugin and from DSH with its source and a per-skill model-visibility switch. A hidden skill leaves the model catalog and the skill tool refuses it by name, while a typed /skill-name still loads it explicitly. The list is kept per profile and a change applies at once.
+- **A sturdier skill catalog**: Deep PTC now owns the model-visible catalog and the skill loader (the official row stays in the preset, disabled). Hiding does not depend on importing host modules while the preset mounts, and the catalog message is replaced only when its content changes.
 
 ## Changes in 2.5.5
 
@@ -227,7 +232,8 @@ People write the way they talk: goals, limits, background and pleasantries in on
 
 The Deep PTC mode label, settings, and conversation UI switch between Chinese and English with DSH **Settings → General → Language**. Every entry point uses an official DSH extension point; the plugin changes no host layout and registers no keyboard shortcuts.
 
-- **Settings → Deep PTC**: execution environment and shell; under Cards, the conversation cards, project cards and task brief switches; under Appearance, the visual effects switch and the capsule position (the effects switch lives only here, not in the side panel); copyable diagnostics to attach to interface bug reports.
+- **Settings → Deep PTC**: execution environment and shell; under Cards, the conversation cards, project cards and task brief switches; Skills, which lists every skill from this plugin and from DSH with a per-skill model-visibility switch; under Appearance, the visual effects switch and the capsule position (the effects switch lives only here, not in the side panel); copyable diagnostics to attach to interface bug reports.
+- **Skill management**: Settings → Deep PTC → Skills lists every skill this plugin and DSH can load, labelled by source (plugin, DSH, project, user). Turning off "model visible" removes the skill from the model's catalog and makes the skill tool refuse it by name; typing /skill-name in a message still loads it explicitly. Instructions already in context stay until the task card's release action removes them. The list lives per profile under $DSH_HOME/storages/deep-ptc-skills/.
 - **The Deep PTC panel beside the conversation** is open by default when there is room. It follows the conversation width and hides under a fullscreen native sidebar. On narrow screens the bottom capsule expands it.
   - **Execution environment**: WSL, PowerShell, native Bash or Zsh, for newly created Deep PTC sessions.
   - **Deep creative mode**: the switch, and the Virtual DSH card with its status, startup steps and Start / Open in sidebar / Stop.

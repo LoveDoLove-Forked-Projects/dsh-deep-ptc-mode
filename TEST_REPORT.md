@@ -1,5 +1,17 @@
 # Deep PTC 测试报告 / Test report
 
+## 2.5.6 · 2026-11-26
+
+- Windows、Node 24：416 项测试（415 通过、1 跳过）与 npm run check 通过。新增 13 项：目录过滤与转义、隐藏项拒绝加载、目录替换与 /手势显式加载、store 校验与去重、设置页开关与保存、路由列表/保存/边界、工具 schema 形状、本地渲染器。
+- 本轮验证修掉三个真实问题：工具输出 schema 改用 PTC 支持的 required 数组；webServer 晚于插件挂载时等待服务出现再注册路由；skill store 每次读文件，设置页改动立即对运行中的会话生效。
+- 在虚拟 DSH（2.5.6 构建）实测：初始模型目录 24 个 skill；在设置页关闭 deep-ptc-dsh-operations 后，新会话目录变为 23、skill 工具加载报 hidden by the Deep PTC skill settings；恢复后回到 24 且加载成功。设置页逐项开关正常渲染。
+- 未安装到活动 profile；2.5.6 只发布到 GitHub 与 npm。
+
+- Windows and Node 24: 416 tests (415 passed, 1 skipped) and npm run check passed. Thirteen new tests: catalog filtering and escaping, refusing a hidden load, catalog replacement and explicit /gesture loading, store validation and de-duplication, the settings switch and save, the route list/save/edges, the tool schema shape, and the local renderer.
+- Three real defects were fixed while verifying: the tool output schema now uses the required array form PTC supports; the route waits for webServer instead of registering during apply; and the skill store reads the file each time so a settings change applies to a running conversation.
+- In a virtual DSH (2.5.6 build): the initial model catalog held 24 skills; turning off deep-ptc-dsh-operations in settings made a new session show 23 and the skill tool refuse the name with "hidden by the Deep PTC skill settings"; restoring it brought back 24 and the load succeeded. The per-skill switches rendered correctly.
+- Not installed into the active profile; 2.5.6 was published to GitHub and npm only.
+
 ## 2.5.5 · 2026-11-26
 
 - Windows、Node 24：403 项测试（402 通过、1 跳过）与 `npm run check` 通过。新增 8 项：互动卡一张 40 题、一次 40 张批量卡、确认卡 40 行摘要、特点卡 300 条记录、任务卡 200 条、10 张卡端到端、验收进度状态行、缺验收提醒与中途任务补验收。
