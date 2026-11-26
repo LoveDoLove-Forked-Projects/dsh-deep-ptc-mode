@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { installCardWait } from '../lib/card-wait.mjs';
 import { BRIEF_GUIDANCE, applyUpdate, applyUserEdit, blankBrief, coverage, promptText, stateText, stubText, substantive } from '../lib/task-brief.mjs';
+import { acceptanceProgress } from '../lib/brief-progress.mjs';
 import { BRIEF_COMMAND, BRIEF_EVENT, briefContextText, briefRuntime, cardAnswerText, briefToolDefinition, briefView, foldBrief, install, reminderText,
   sectionText, settleCondensing } from '../lib/brief-context.mjs';
 
@@ -440,4 +441,49 @@ test('completing a task archives it, leaves a receipt and empties the brief for 
   assert.equal(host.state(session).versions.at(-1).completed.counts.acceptanceDone, 1);
   assert.match(notices.at(-2).content[0].text, /abandoned/u);
   assert.equal((await run({ op: 'complete' })).kind, 'error', 'an empty brief has nothing to complete');
+});
+
+test('the brief holds two hundred items after the old forty-item cap', () => {
+  const first = applyUpdate(blankBrief(), { items: Array.from({ length: 120 }, (_, index) => ({ section: 'context', text: `背景 ${index + 1}`, inferred: true })) });
+  assert.deepEqual(first.rejected, []);
+  assert.equal(first.brief.items.length, 120);
+  const grown = applyUpdate(first.brief, { items: Array.from({ length: 100 }, (_, index) => ({ section: 'context', text: `补充 ${index + 1}`, inferred: true })) });
+  assert.equal(grown.brief.items.length, 200);
+  assert.equal(grown.rejected.length, 20, 'the two-hundredth item is the last one accepted');
+});
+
+test('acceptance is verified as work goes and the brief states its progress', () => {
+  let { brief } = applyUpdate(withMessage(), { items: [
+    { section: 'goal', text: '设计模型面', quote: '以什么形式进入上下文' },
+    { section: 'acceptance', text: '模型能按 id 引用条目', quote: '以什么形式进入上下文' },
+    { section: 'acceptance', inferred: true, text: '状态行显示验收进度' },
+  ] }, 3);
+  assert.deepEqual(acceptanceProgress(brief), { done: 0, total: 2, open: ['A1', 'A2'] });
+  assert.match(stateText(brief), /Acceptance: 0\/2 verified; open A1 A2\./u);
+  ({ brief } = applyUpdate(brief, { done: ['A1'] }, 4));
+  assert.deepEqual(acceptanceProgress(brief), { done: 1, total: 2, open: ['A2'] });
+  assert.match(stateText(brief), /Acceptance: 1\/2 verified; open A2\./u);
+  assert.match(BRIEF_GUIDANCE, /Verify as you go/u);
+  assert.match(BRIEF_GUIDANCE, /never only in the first round/u);
+});
+
+test('a goal filed without a check is flagged, and a later task brings its own acceptance', async () => {
+  const host = fakeHost(), session = host.session('rhythm'), notices = [];
+  const agent = { session, steer: message => notices.push(message) };
+  await install(host.ctx, host.records);
+  session.append('turn/start', { turn: 1 });
+  session.append('user/message', { content: [{ type: 'text', text: '请把导出改成异步' }], source: { kind: 'user' } });
+  const tool = briefToolDefinition();
+  const filed = await tool.execute({ action: 'update', items: [{ section: 'goal', text: '导出改异步', quote: '把导出改成异步' }] }, { agent });
+  assert.match(filed.missingAcceptance, /G1 arrived with no acceptance item/u);
+  session.append('turn/start', { turn: 2 });
+  session.append('user/message', { content: [{ type: 'text', text: '再加一个进度条' }], source: { kind: 'user' } });
+  const added = await tool.execute({ action: 'update', items: [
+    { section: 'acceptance', text: '导出过程有进度条', quote: '再加一个进度条' },
+    { section: 'goal', text: '加进度条', quote: '再加一个进度条' },
+  ] }, { agent });
+  assert.equal(added.missingAcceptance, undefined);
+  assert.match(added.acceptance, /0\/1 verified; open A1/u);
+  const done = await tool.execute({ action: 'update', done: ['A1'] }, { agent });
+  assert.match(done.acceptance, /1\/1 verified/u);
 });

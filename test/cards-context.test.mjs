@@ -172,7 +172,7 @@ test('ask_user posts a question card that returns at once and takes one valid an
   assert.equal(answered.phase, ANSWERED);
   assert.deepEqual(answered.result.answers, { plan: 'k8s', note: '尽快' });
   assert.match(host.run(session, { id: 'deploy', action: 'answer', answers: { plan: 'vps' } }).text, /already handled/u);
-  await assert.rejects(() => ask.execute({ title: 'x', questions: [] }, { agent: { session } }), /1-5/u);
+  await assert.rejects(() => ask.execute({ title: 'x', questions: [] }, { agent: { session } }), /at least 1/u);
   // A pending question still takes an answer after an interrupted turn.
   await ask.execute({ id: 'later', title: 'Later', questions: [{ prompt: 'p?' }] }, { agent: { session } });
   host.turn(session, 4);

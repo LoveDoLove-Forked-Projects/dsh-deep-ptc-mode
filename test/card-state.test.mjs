@@ -94,7 +94,7 @@ test('question cards: defaults, recommendations and validation', () => {
   assert.deepEqual(card.questions[1].recommended, ['o1', 'o2']);
   assert.deepEqual(readQuestionInput(card).card, card, 'reading it twice changes nothing');
   const issues = value => readQuestionInput(value).issues?.join(' | ') ?? '';
-  assert.match(issues({ title: 'x', questions: [] }), /1-5/u);
+  assert.match(issues({ title: 'x', questions: [] }), /at least 1/u);
   assert.match(issues({ title: 'x', questions: [{ prompt: 'p', options: ['only'] }] }), /2-8/u);
   assert.match(issues({ title: 'x', questions: [{ prompt: 'p', options: ['a', 'b'], recommended: 'zzz' }] }), /recommended/u);
   assert.match(issues({ title: 'x', questions: [{ prompt: 'p', type: 'text', options: ['a', 'b'] }] }), /no options/u);
@@ -149,4 +149,20 @@ test('display cards posted back to back share a node until reply text or an inte
   assert.equal(cardGroup(state, display, 'call-2'), 'call-2', 'reply text starts a new group');
   state = foldCardsState(state, { type: 'turn/start', data: { turn: 2 } });
   assert.equal(cardGroup(state, display, 'call-3'), 'call-3', 'a new turn starts a new group');
+});
+
+test('question cards take any number of questions, and a batch any number of cards', () => {
+  const questions = Array.from({ length: 40 }, (_, index) => ({ prompt: `问题 ${index + 1}` }));
+  const many = readQuestionInput({ title: '很多问题', questions });
+  assert.equal(many.issues, undefined);
+  assert.equal(many.card.questions.length, 40);
+  const batch = readQuestionInput({ title: '批', briefing: true, series: 's1', seriesIndex: 30, seriesTotal: 40, questions: [{ prompt: 'p' }] });
+  assert.equal(batch.issues, undefined);
+  assert.equal(batch.card.seriesTotal, 40);
+  const outOfOrder = readQuestionInput({ title: '批', briefing: true, series: 's1', seriesIndex: 3, seriesTotal: 2, questions: [{ prompt: 'p' }] });
+  assert.match(outOfOrder.issues.join(' | '), /1 <= index <= total/u);
+  const rows = Array.from({ length: 40 }, (_, index) => ({ label: `设置 ${index + 1}`, value: '值' }));
+  const confirm = readQuestionInput({ title: '确认', questions: [{ prompt: '开始吗？', options: ['是', '否'] }], summary: rows });
+  assert.equal(confirm.issues, undefined);
+  assert.equal(confirm.card.summary.length, 40);
 });

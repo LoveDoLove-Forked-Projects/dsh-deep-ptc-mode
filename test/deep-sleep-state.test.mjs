@@ -122,3 +122,10 @@ test('turning the switch off and on again during a run continues it instead of r
   assert.equal(state.rounds, 2);
   assert.equal(state.cards.length, 1, 'the batch is not reset while the run is going');
 });
+
+test('a briefing batch is not capped at eight cards', () => {
+  const cards = Array.from({ length: 40 }, (_, index) => ({ id: `sleep-1-${index + 1}`, title: `卡 ${index + 1}`, count: 2 }));
+  const state = fold(fold(blankSleep(), records.toggle(true, 1)), records.briefing({ series: 'sleep-1', cards, at: 2 }));
+  assert.equal(state.cards.length, 40);
+  assert.equal(state.phase, 'asking');
+});

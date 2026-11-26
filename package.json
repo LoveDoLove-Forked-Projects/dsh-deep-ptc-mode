@@ -1,7 +1,7 @@
 {
   "name": "dsh-deep-ptc-mode",
-  "version": "2.5.4",
-  "description": "Deep PTC for DeepSeek Harness: interruptible jobs, selectable shells, cards with one-press buttons, a task brief and project cards, deep sleep mode for unattended runs, adjustable alert sounds with your own audio, on-demand tools and skills, and a virtual DSH for testing plugins.",
+  "version": "2.5.5",
+  "description": "Deep PTC for DeepSeek Harness: interruptible jobs, selectable shells, uncapped interactive cards, high-capacity project cards, a task brief that verifies acceptance as the work proceeds, deep sleep mode for unattended runs, adjustable alert sounds with your own audio, on-demand tools and skills, and a virtual DSH for testing plugins.",
   "type": "module",
   "keywords": [
     "dsh-plugin",

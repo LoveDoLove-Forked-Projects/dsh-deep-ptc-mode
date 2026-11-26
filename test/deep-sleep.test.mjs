@@ -274,3 +274,20 @@ test('the deep_sleep schema stays inside the SDK subset, and the prompt follows 
   assert.match(modeContext({ ...asking, phase: 'confirming' }), /waits for the user/u);
   assert.equal(modeContext({ on: false }), '', 'nothing is added while the mode is off');
 });
+
+test('a single batch may carry more than eight cards', async () => {
+  const { command, call, sleep, cards } = await setup();
+  await command(SLEEP_COMMAND, { action: 'toggle' });
+  const wide = Array.from({ length: 10 }, (_, index) => ({ title: `卡 ${index + 1}`, questions: [{ id: `q${index + 1}`, prompt: '问题？', type: 'text' }] }));
+  const posted = await call({ action: 'ask', cards: wide });
+  assert.equal(posted.cards.length, 10);
+  assert.equal(sleep().cards.length, 10);
+  assert.equal(cards().versions.filter(row => row.series === posted.series).length, 10);
+});
+
+test('the sleep prompt no longer caps the batch and routes new tasks through the brief with their checks', () => {
+  const rules = modeContext({ on: true, phase: 'asking', cards: [], answered: 0 });
+  assert.doesNotMatch(rules, /at most 8 cards|5 questions per card/u);
+  assert.match(rules, /file the new tasks with their acceptance criteria in task_brief/u);
+  assert.match(wakeText(), /file the new tasks and their acceptance criteria in task_brief/u);
+});

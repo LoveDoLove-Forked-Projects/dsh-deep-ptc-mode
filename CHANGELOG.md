@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.5.5 — 2026-11-26
+
+- **互动卡片不再有上限**：提问卡（ask_user）每张可带任意多个问题，深度睡眠的提问批次可带任意多张卡、确认卡可带任意多行摘要（此前为每张 5 题、每批 8 张、摘要 8 行）。
+- **特点卡片上限大幅提高**：每张卡片最多 1000 条（原 60），单条最多 2000 字符（原 500），模型收到的快照预算 48k 字符（原 16k）；已完成任务保留 1000 条、模型读最近 100 条（原 60 / 8）。
+- **任务卡上限提高、归档后不占位**：任务卡一次最多 200 条（原 40），单条最多 600 字符（原 300）；完成并归档后条目清空，归档记录进入特点卡片的「已完成任务」，不再占用任务卡的位置。
+- **验收边做边清、新任务补验收**：任务卡指南改为每完成一项就核对并把对应验收条目标为完成，不再攒到整轮结束；任务卡状态行显示「Acceptance: x/y verified」和仍未验收的条目。模型提交新目标却没有验收条目时会收到缺验收的提醒；你中途提出的新任务会把目标与验收标准一起增量写进同一张卡，而不是只有第一轮设置验收。深度睡眠运行中收到新消息时也先补验收再继续。
+- **Acceptance runs with the work, and new tasks bring their checks**: the guidance now verifies each acceptance item and marks it done as soon as its work finishes instead of waiting for the end of the round, and the brief state shows `Acceptance: x/y verified` with the items still open. A new goal filed without any acceptance item gets a missing-check reminder; a task added mid-way carries its acceptance criteria into the same brief, instead of the first round owning every check. Deep sleep does the same for a message that arrives during a run.
+- **No cap on interactive cards**: a question card takes any number of questions and a deep-sleep batch any number of cards (previously 5 and 8).
+- **Much higher project-card limits**: 1000 items per card (was 60), 2000 characters per item (was 500), a 48k-character model snapshot (was 16k), 1000 archived tasks kept with the newest 100 shown to the model (was 60 / 8).
+- **A higher task-brief limit, and archiving frees the card**: 200 items (was 40) of up to 600 characters (was 300); completing a task empties the brief and files the record under Completed tasks, which no longer occupies a task-brief slot.
+
 ## 2.5.4 — 2026-11-25
 
 - **侧边栏「深度睡眠模式」改为开关**：和「深度创造模式」用同一个开关组件与标题行布局，不再占一行文字按钮「打开/关闭」；阶段、已答卡片数、目标与轮次移到开关下方的说明行，说明文字写明它面向长程任务、不想中途逐项把关的场景。

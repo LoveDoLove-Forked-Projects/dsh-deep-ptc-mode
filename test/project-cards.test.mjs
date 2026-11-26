@@ -4,7 +4,7 @@ import { installCardWait } from '../lib/card-wait.mjs';
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { PROJECT_FILE, blankDoc, mergeProposal, ordered, diffItems, parseDoc, promptCards, promptText, removeCard, serializeDoc, writeCard } from '../lib/project-cards.mjs';
+import { MAX_PROMPT, PROJECT_FILE, blankDoc, mergeProposal, ordered, diffItems, parseDoc, promptCards, promptText, removeCard, serializeDoc, writeCard } from '../lib/project-cards.mjs';
 import { createProjectStore } from '../lib/project-store.mjs';
 import { blankProject, cardsContextText, command, foldProject, install, projectToolDefinition, sectionText, PROJECT_COMMAND, PROJECT_EVENT, PROPOSAL_EVENT, PROJECT_TOOL } from '../lib/project-context.mjs';
 import { apply as applyProjectTool } from '../lib/project-tool.mjs';
@@ -314,10 +314,10 @@ test('setting cards group by category, ahead of the model records, in the file a
 test('an oversized prompt leaves out whole cards, settings first, and names the rest', () => {
   let doc = blankDoc();
   const long = n => Array.from({ length: 12 }, (_, index) => `${n} rule ${index} ${'x'.repeat(400)}`);
-  for (let index = 0; index < 6; index++) doc = writeCard(doc, { title: `Rules ${index}`, category: 'code', items: long(index) }).doc;
+  for (let index = 0; index < 16; index++) doc = writeCard(doc, { title: `Rules ${index}`, category: 'code', items: long(index) }).doc;
   doc = writeCard(doc, { kind: 'features', items: ['records come last'] }).doc;
   const text = promptCards(doc, { deep: true });
-  assert.ok(text.length <= 16_000);
+  assert.ok(text.length <= MAX_PROMPT);
   assert.match(text, /### Rules 0 \(rules-0, setting/u, 'the first setting card is kept');
   assert.match(text, /more card\(s\) not shown here: .*\(features\)\. Read them with project_cards read/u);
   for (const block of text.split('\n### ').slice(1, -1)) {
@@ -332,8 +332,8 @@ test('long omitted titles and ids fit in the project snapshot budget', () => {
       items: Array.from({ length: 10 }, (_, j) => 'item ' + j + ' ' + 'x'.repeat(465)) }).doc;
   }
   const snapshot = promptCards(doc, { deep: true });
-  assert.ok(snapshot.length <= 16_000);
-  assert.ok(promptCards(doc, { deep: true, path: 'x'.repeat(20_000) }).length <= 16_000);
+  assert.ok(snapshot.length <= MAX_PROMPT);
+  assert.ok(promptCards(doc, { deep: true, path: 'x'.repeat(20_000) }).length <= MAX_PROMPT);
   assert.match(snapshot, /and \d+ more\. Read them with project_cards read/u);
 });
 
@@ -473,18 +473,27 @@ test('each project version rebases from the same original card and only the revi
 });
 
 test('completed tasks are a model record with done or dropped states, and only the newest reach the prompt', () => {
-  const items = Array.from({ length: 10 }, (_, index) => ({ text: `Task ${index + 1} (11/21)`, status: index === 3 ? 'dropped' : 'done' }));
+  const items = Array.from({ length: 110 }, (_, index) => ({ text: `Task ${index + 1} (11/21)`, status: index === 3 ? 'dropped' : 'done' }));
   const written = writeCard(blankDoc(), { kind: 'tasks', items }, '2026-11-21T00:00:00.000Z');
   assert.equal(written.card.id, 'tasks');
   assert.equal(written.card.items[3].status, 'dropped');
   const source = serializeDoc(written.doc);
-  assert.match(source, /next=R1,F1,Q1,T11 -->/u);
+  assert.match(source, /next=R1,F1,Q1,T111 -->/u);
   assert.match(source, /- \*\*T4\*\* \[dropped\] Task 4/u);
   const back = parseDoc(source);
   assert.deepEqual(back.warnings, []);
   assert.deepEqual(back.doc.cards[0].items.map(item => item.status).filter(state => state === 'dropped'), ['dropped']);
   const prompt = promptCards(back.doc, { deep: true });
-  assert.match(prompt, /2 older tasks not shown/u);
-  assert.doesNotMatch(prompt, /Task 2 /u);
-  assert.match(prompt, /Task 10/u);
+  assert.match(prompt, /10 older tasks not shown/u);
+  assert.doesNotMatch(prompt, /Task 10 /u);
+  assert.match(prompt, /Task 110/u);
+});
+
+test('a record card keeps hundreds of items instead of the old sixty', () => {
+  const items = Array.from({ length: 300 }, (_, index) => `规则 ${index + 1}`);
+  const written = writeCard(blankDoc(), { title: '大卡片', items }, at);
+  assert.equal(written.error, undefined);
+  assert.equal(written.card.items.length, 300);
+  assert.equal(parseDoc(serializeDoc(written.doc)).doc.cards[0].items.length, 300);
+  assert.match(promptCards(written.doc, { deep: true }), /规则 300/u);
 });

@@ -1,5 +1,15 @@
 # Deep PTC 测试报告 / Test report
 
+## 2.5.5 · 2026-11-26
+
+- Windows、Node 24：403 项测试（402 通过、1 跳过）与 `npm run check` 通过。新增 8 项：互动卡一张 40 题、一次 40 张批量卡、确认卡 40 行摘要、特点卡 300 条记录、任务卡 200 条、10 张卡端到端、验收进度状态行、缺验收提醒与中途任务补验收。
+- 旧断言按新语义调整：5 题、每批 8 张、每卡 60 条、任务只回显 8 条等旧上限不再成立；提示词快照预算改为按新常量断言。
+- 未安装到活动 profile；2.5.5 只发布到 GitHub 与 npm。
+
+- Windows and Node 24: 403 tests (402 passed, 1 skipped) and `npm run check` passed. Eight new tests: 40 questions on one card, a 40-card batch, 40 summary rows on the confirmation card, 300 items in a project card, 200 items in the task brief, a 10-card end-to-end batch, the acceptance progress line, and the missing-check reminder with a mid-task acceptance addition.
+- Older assertions moved to the new semantics: the 5-question, 8-card, 60-item and 8-newest-task limits no longer hold, and the snapshot budget asserts against the new constant.
+- Not installed into the active profile; 2.5.5 was published to GitHub and npm only.
+
 ## 2.5.4 · 2026-11-25
 
 - Windows、Node 24：391 项测试（390 通过、1 跳过）与 npm run check 通过。面板测试改为断言「深度睡眠」与「深度创造模式」同款开关（role=switch、aria-checked、命令 on/off）；新增 0 项。
