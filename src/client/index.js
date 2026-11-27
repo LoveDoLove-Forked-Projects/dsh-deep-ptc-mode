@@ -194,7 +194,6 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
   }
   Object.assign(dictionaries.zh, {
     visualEffects: '界面特效', visualEffectsHint: '使用外部主题或 UI 插件时，建议关闭此开关。',
-    longSessionSwitch: '长会话优化', longSessionHint: '离屏的助手文本不参与布局与绘制，长会话滚动与切页更轻；若出现滚动跳动可关闭。',
     sleepSection: '深度睡眠模式',
     sleepPhase_off: '已关闭', sleepPhase_asking: '一次性提问中', sleepPhase_ready: '等待确认卡', sleepPhase_confirming: '等待确认', sleepPhase_running: '无人值守运行中', sleepPhase_done: '已结束',
     sleepCards: '已答 {done}/{total} 张卡', sleepObjective: '目标', sleepRound: '第 {round} 轮',
@@ -212,7 +211,6 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
   });
   Object.assign(dictionaries.en, {
     visualEffects: 'Visual effects', visualEffectsHint: 'Keep this off when using an external theme or UI plugin.',
-    longSessionSwitch: 'Long-session optimisation', longSessionHint: 'Off-screen assistant text is skipped during layout and paint, which keeps scrolling and page switches lighter in long conversations. Turn it off if scrolling jumps.',
     jobsTitle: 'Background jobs', jobsEmpty: 'No background jobs in this conversation.', jobsMore: '{count} more running', jobsRunningCount: '{count} running', jobsDoneCount: '{count} finished', jobsFailedCount: '{count} failed', jobsShowRecent: 'Show recently finished jobs', jobsHideRecent: 'Hide recently finished jobs',
     jobRunning: 'Running', jobStopping: 'Stopping', jobCompleted: 'Completed', jobEnded: 'Ended', jobKilled: 'Canceled', jobFailed: 'Failed',
     toolReset: 'Reload all tool states', toolResetShort: 'Reload', toolsOk: 'OK', sideNone: 'None', sshNone: 'None configured', toolResetBusy: 'Reloading…', toolResetDone: 'Tool states reloaded for this conversation.',
@@ -848,30 +846,6 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     BUSY.was = busy;
   }
 
-  // Long-session switch: off-screen assistant text skips layout and paint. Stored like the effects
-  // switch so the whole page keeps it across reloads, and applied to <body> so it works in every preset.
-  const LONG_SESSION_KEY = `${PLUGIN}:long-session`;
-  function storedLongSession() {
-    try { return localStorage.getItem(LONG_SESSION_KEY) !== '0'; } catch { return true; }
-  }
-  let longSession = storedLongSession();
-  const longSessionListeners = new Set();
-  const getLongSession = () => longSession;
-  function subscribeLongSession(listener) {
-    longSessionListeners.add(listener);
-    return () => longSessionListeners.delete(listener);
-  }
-  function setLongSession(on) {
-    if (longSession === on) return;
-    longSession = on;
-    try { localStorage.setItem(LONG_SESSION_KEY, on ? '1' : '0'); } catch { /* keep the in-memory value */ }
-    for (const listener of longSessionListeners) listener();
-  }
-  function syncLongSession() {
-    if (typeof document === 'undefined') return;
-    document.body?.toggleAttribute?.('data-dpt-lazy', getLongSession());
-  }
-
   function watchActiveSession() {
     if (typeof document === 'undefined') return () => {};
     let stopVisuals;
@@ -1197,15 +1171,6 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
       h('div', { className: 'dpt-side-label' }, h('span', null, label),
         h(SkillSwitch, { on: enabled, label, onChange: toggleEffects })),
       h('p', { className: 'dpt-side-note' }, appearance ? tf(t, 'visualEffectsAuto', { name: appearance }) : t('visualEffectsHint')));
-  }
-
-  // Long-session switch: one row in the appearance section.
-  function LongSessionSection({ t }) {
-    const on = React.useSyncExternalStore(subscribeLongSession, getLongSession, getLongSession);
-    const label = t('longSessionSwitch');
-    return h('section', { className: 'dpt-side-effects', 'aria-label': label },
-      h('div', { className: 'dpt-settings-row' }, h('p', null, h('strong', null, label), h('br'), h('span', { className: 'dpt-side-note' }, t('longSessionHint'))),
-        h(SkillSwitch, { on, label, onChange: setLongSession })));
   }
 
   // Deep PTC's own skills carry a summary in the display language; other skills show the catalog text.
@@ -2701,7 +2666,7 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
       h('section', { 'aria-label': t('skillsSection') }, h('h3', null, t('skillsSection')), h(SkillsSettingsSection, { t })),
       h('section', { 'aria-label': t('soundSection') }, h('h3', null, t('soundSection')), h(SoundSettings, { form, t })),
       h('section', { 'aria-label': t('appearance') }, h('h3', null, t('appearance')),
-        h(VisualEffectsSection, { t }), h(LongSessionSection, { t }), h(PanelLocationSection, { t }), h(CapsulePlacementSection, { t })),
+        h(VisualEffectsSection, { t }), h(PanelLocationSection, { t }), h(CapsulePlacementSection, { t })),
       h(DiagnosticsSection, { t }));
   }
 
@@ -2776,13 +2741,6 @@ window.__ModuleLoader__.load({ id: 'dsh-deep-ptc-mode', factory: require => {
     } catch { /* cards keep working without sounds */ }
     ctx.effect(() => injectCss(), `${PLUGIN}: style`);
     ctx.effect(() => watchActiveSession(), `${PLUGIN}: active session`);
-    ctx.effect(() => {
-      syncLongSession();
-      const unsubscribe = subscribeLongSession(syncLongSession);
-      const sync = event => { if (event.key === LONG_SESSION_KEY || event.key === null) { longSession = storedLongSession(); syncLongSession(); } };
-      window.addEventListener?.('storage', sync);
-      return () => { unsubscribe(); window.removeEventListener?.('storage', sync); document.body?.removeAttribute?.('data-dpt-lazy'); };
-    }, `${PLUGIN}: long sessions`);
     ctx.effect(() => {
       if (typeof window?.addEventListener !== 'function') return () => {};
       const sync = event => PANEL.sync(event);

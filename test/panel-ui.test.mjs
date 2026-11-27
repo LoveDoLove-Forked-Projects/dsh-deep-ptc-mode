@@ -843,23 +843,9 @@ test('a re-mounted transcript replays no entrance animation', () => {
   assert.match(source, /data-dpt-anim/u);
 });
 
-test('the long-session switch only skips off-screen assistant text', () => {
+test('the long-session optimisation is gone', () => {
   const source = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8');
-  assert.match(source, /body\[data-dpt-lazy\] \[data-chat-flow-kind="assistant-step"\]\{content-visibility:auto/u);
-  assert.match(source, /data-dpt-lazy/u, 'the switch drives the attribute');
-  assert.doesNotMatch(source, /body\[data-dpt-lazy\] \*\{/u, 'never every element');
-});
-
-test('the settings page offers a long-session switch that remembers the choice', async () => {
-  const storage = new Map();
-  const f = fixture({ snapshot: windows(), storage });
-  await withSettings(f, async view => {
-    const control = () => view.root.findByProps({ role: 'switch', 'aria-label': 'longSessionSwitch' });
-    assert.equal(control().props['aria-checked'], true, 'on by default');
-    await act(async () => control().props.onClick());
-    assert.equal(control().props['aria-checked'], false);
-    assert.equal(storage.get('dsh-deep-ptc-mode:long-session'), '0');
-  });
+  assert.doesNotMatch(source, /data-dpt-lazy|content-visibility:auto|longSessionSwitch/u);
 });
 
 test('the effects never rewrite host design tokens, fonts or every control on the page', () => {

@@ -1,8 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { blankSleep, confirmBriefItems, foldSleep, parseSleepState, records, SLEEP_EVENT, STATE_VERSION } from '../lib/deep-sleep-state.mjs';
+import { blankSleep, confirmBriefItems, foldSleep, parseSleepState, PROJECTION_VERSION, records, SLEEP_EVENT, STATE_VERSION } from '../lib/deep-sleep-state.mjs';
 
 const fold = (state, record) => foldSleep(state, { type: SLEEP_EVENT, data: record });
+
+function assertNoUndefined(value, path = 'state') {
+  if (value === undefined) assert.fail(path + ' is undefined');
+  if (value === null || typeof value !== 'object') return;
+  for (const [key, child] of Object.entries(value)) assertNoUndefined(child, path + '.' + key);
+}
 
 test('the switch arms the mode, and the run moves through every phase', () => {
   let state = blankSleep();
@@ -62,6 +68,37 @@ test('the switch arms the mode, and the run moves through every phase', () => {
   assert.equal(state.phase, 'asking');
   assert.deepEqual(state.cards, [], 'a new run starts a new batch');
   assert.equal(state.runs, 2);
+});
+
+test('every deep-sleep state is losslessly JSON-serializable', () => {
+  assert.equal(PROJECTION_VERSION, 2);
+  let state = blankSleep();
+  assertNoUndefined(state);
+  const steps = [
+    records.toggle(true, 1),
+    records.briefing({ series: 'sleep-1', at: 2, cards: [{ id: 'sleep-1-1', title: '目标', count: 2 }] }),
+    records.answered('sleep-1-1', 3),
+    records.confirm(4),
+    records.revise(5),
+    records.confirm(6),
+    records.start({ objective: '把迁移做完', goalId: 'goal-1', at: 7 }),
+    records.reopen('用户发来新信息', 8),
+    records.confirm(9),
+    records.start({ objective: '把迁移做完', goalId: '', at: 10 }),
+    records.round(1, 11),
+    records.complete(12),
+    records.toggle(false, 13),
+    records.reopen('ignored while off', 14),
+    records.toggle(true, 15),
+  ];
+  for (const record of steps) {
+    state = fold(state, record);
+    assertNoUndefined(state);
+  }
+  assert.equal(state.phase, 'asking');
+  assert.equal(Object.hasOwn(state, 'goalId'), false, 'rearming drops the previous goal id');
+  assert.equal(Object.hasOwn(state, 'series'), false, 'rearming drops the previous series');
+  assert.equal(Object.hasOwn(state, 'reason'), false, 'rearming drops the previous reason');
 });
 
 test('a malformed or out-of-order record changes nothing', () => {

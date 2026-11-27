@@ -1,5 +1,17 @@
 # Deep PTC 测试报告 / Test report
 
+## 2.5.7 · 2026-11-26
+
+- Windows、Node 24：420 项测试（419 通过、1 跳过）与 npm run check 通过。新增 5 项、替换 2 项为 1 项：虚拟 home 的 junction 清理、任务卡 waiting/完成分支无 undefined、deep-sleep 全生命周期无 undefined、四个 context 与两个 section 的 interpolate:false；#54 的假宿主改为 Cordis 式 Proxy 包装，原测试即可复现并验证监听顺序。
+- 复现与修复：#55 在隔离 Electron 环境里先复现 rmSync 跟随 junction 删除真实文件，再验证断开 junction 后目标保留；#51/#53 直接导入宿主模块确认 snapshotJsonValue(blankSleep()) 无效；#54 Cordis 4.1.0 实测 callback 是 Proxy；#52 宿主插值路径与四处 context 已核对。
+- 行为变化：#50 的「长会话优化」设置与 content-visibility 已移除；任务卡投影版本 7→8、深睡眠投影版本 1→2，旧冻结缓存读取时丢弃并重建。
+- 未安装到活动 profile；2.5.7 只发布到 GitHub 与 npm。
+
+- Windows and Node 24: 420 tests (419 passed, 1 skipped) and npm run check passed. Five new tests and one replacement for two: junction cleanup in a virtual home, no undefined in the task brief's waiting/completed branches, no undefined across the deep-sleep lifecycle, and interpolate:false on four contexts and two sections; the #54 fake host now wraps listeners in a Cordis-style Proxy, so the original test reproduces and verifies the listening order.
+- Reproduction and fixes: #55 was reproduced in an isolated Electron tree where rmSync followed a junction and deleted the real file, then verified that unlinking the junction preserves it; #51/#53 imported the host module and confirmed snapshotJsonValue(blankSleep()) is invalid; #54 observed a Proxy callback under Cordis 4.1.0; #52 checked the host interpolation path and the four contexts.
+- Behaviour change: the long-session optimisation setting and content-visibility are removed (#50); the task brief projection version goes 7→8 and deep sleep 1→2, so old frozen cache rows are dropped and rebuilt.
+- Not installed into the active profile; 2.5.7 was published to GitHub and npm only.
+
 ## 2.5.6 · 2026-11-26
 
 - Windows、Node 24：416 项测试（415 通过、1 跳过）与 npm run check 通过。新增 13 项：目录过滤与转义、隐藏项拒绝加载、目录替换与 /手势显式加载、store 校验与去重、设置页开关与保存、路由列表/保存/边界、工具 schema 形状、本地渲染器。

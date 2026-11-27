@@ -147,8 +147,6 @@ body[data-dpt-resizing],body[data-dpt-resizing] *{cursor:col-resize!important;us
 [data-chat-flow-kind="command"]:has([data-dpt-hidden-command]){display:none!important}
 .dpt-command-error{padding:4px 2px;font-size:12px;line-height:18px;color:var(--dsw-alias-state-error-primary,#c4321f)}
 @keyframes dpt-rise{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
-/* Long conversations: assistant text that is off screen is skipped during layout and paint. */
-body[data-dpt-lazy] [data-chat-flow-kind="assistant-step"]{content-visibility:auto;contain-intrinsic-size:auto 120px}
 @media (prefers-reduced-motion:reduce){.dpt-card,.dpt-panel,.dpt-capsule,.dpt-agent-dot,.dpt-switch,.dpt-switch-thumb,.dpt-job,.dpt-agent{animation:none!important;transition:none!important}}
 `;
   // The effects restyle a few host elements only. Toggling them never touches a design token, font or

@@ -16,16 +16,21 @@ export function createNotices() {
   // The host's own question box registered before this plugin and answers without passing on, so the
   // listener has to run first. The forwarded event's private name is read from where `$on` put it.
   function listenFirst(child, event, listener) {
+    const hooks = () => child.events?._hooks ?? {};
+    const before = new Map(Object.keys(hooks()).map(key => [key, Array.isArray(hooks()[key]) ? hooks()[key].length : 0]));
     const dispose = child.remote.$on(event, listener);
     try {
-      const hooks = child.events?._hooks ?? {};
-      const key = Object.keys(hooks).find(name => name.startsWith('internal/') && name.endsWith('/' + event)
-        && Array.from(hooks[name] ?? []).some(hook => hook?.callback === listener));
+      const all = hooks();
+      const candidates = Object.keys(all).filter(key => key.startsWith('internal/') && key.endsWith('/' + event)
+        && (Array.isArray(all[key]) ? all[key].length : 0) > (before.get(key) ?? 0));
+      // The deepest matching key is the forwarded event we just joined; a shorter prefix belongs to another client.
+      const key = candidates.sort((a, b) => b.length - a.length)[0];
       if (key !== undefined) {
         dispose();
         return child.on(key, listener, { prepend: true });
       }
     } catch { /* keep the plain registration */ }
+    try { console.warn('[deep-ptc] could not take the front seat for ' + event + '; a mirrored native question may be drawn twice.'); } catch { /* no console */ }
     return dispose;
   }
 

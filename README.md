@@ -1,12 +1,20 @@
 # Deep PTC mode
 
-[中文](README.zh.md) · MIT · **2.5.6**
+[中文](README.zh.md) · MIT · **2.5.7**
 
 [Changelog](CHANGELOG.md) · [Test report](TEST_REPORT.md) · [Plugin workflows and verification](COMPATIBILITY.md)
 
 Deep PTC is a DeepSeek Harness agent mode with progress reports, clarifying questions, task-size planning, and interruptible background work. It builds on the installed official PTC preset with selectable shells, on-demand tools and skills, and a two-layer preset identity adapter for third-party plugins. Cards face both you and the model: you see a clear card, the model reads precise context with ids, sources and states; the task brief files the goals, constraints and acceptance criteria in your messages and, once you confirm, can take the raw messages out of the model's context. Interactive cards are uncapped, project cards and the task brief hold far more records, and acceptance is verified as the work proceeds, with every task you add mid-way bringing its own checks. Every skill this plugin and DSH can load is listed in settings with its own model-visibility switch. Alert sounds are adjustable and can use your own clipped audio. When you want to step away, turn on **deep sleep** in the side panel: the model asks every open question in one batch, and after you confirm the settings it works on its own until the objective is complete without interrupting you again.
 
 The panel sits beside the conversation and shows the environment, Deep sleep mode, Deep creative mode with the virtual DSH, subagents, jobs, output files, SSH connections and tool state. The panel width can be dragged. The capsule expands or collapses it; it sits below the composer by default and can move into the toolbar or be hidden. Deep PTC also has its own settings page. Visual effects are lightweight and start off when an appearance plugin is installed.
+
+## Changes in 2.5.7
+
+- **Junction-safe virtual DSH cleanup**: stopping or cleaning a virtual DSH unlinks the NTFS junctions / symlinks in its temporary home first, so the real local plugin survives (#55).
+- **Session cache recovered**: the task brief and deep-sleep projections no longer write undefined; the projection versions are bumped, so old frozen cache rows are dropped at read time and rebuilt from the log (#51/#53).
+- **User text no longer breaks prompt assembly**: literal double-brace text in the task brief, project cards, subagent messages and deep-sleep objective is used as written (#52).
+- **No duplicate native question card on desktop**: the mirrored-question listener finds its hook by the before/after hook count, not callback identity (#54).
+- **Long-session optimisation removed**: the setting and content-visibility rule are gone; long-session performance is left to the host (#50).
 
 ## Changes in 2.5.6
 

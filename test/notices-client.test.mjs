@@ -6,9 +6,12 @@ import { createNotices } from '../src/client/notices.js';
 function client() {
   const hooks = {};
   const key = event => 'internal/api-gateway/remote-event/uuid/' + event;
+  // Cordis wraps every listener in a Proxy (reflect.bind), so callback identity never matches
+  // the function passed in; the fake reproduces that.
   const on = (name, callback, options = {}) => {
+    const wrapped = new Proxy(callback, { apply: (target, thisArg, args) => Reflect.apply(target, thisArg, args) });
     const list = hooks[name] ??= [];
-    const hook = { callback };
+    const hook = { callback: wrapped };
     list[options.prepend ? 'unshift' : 'push'](hook);
     return () => list.splice(list.indexOf(hook), 1);
   };

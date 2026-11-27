@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.5.7 — 2026-11-26
+
+- **虚拟 DSH 清理不再删除真实插件**：删除临时 home 前先断开里面所有 NTFS junction / symlink，再删空壳；真实插件目录保留，停止虚拟 DSH 不再清空本地插件源码（#55）。
+- **会话投影缓存恢复**：任务卡的 waiting 字段和深睡眠状态不再写 undefined；任务卡投影版本 7→8、深睡眠投影版本 1→2，宿主读取时丢弃旧缓存并从日志重建，历史冻结的会话不再变空白或每次从 seq 0 全量回放（#51/#53）。
+- **用户原文不再炸提示词**：任务卡、项目卡、子代理直聊、深睡眠目标四个 context，以及两处 section，统一关闭提示词插值；用户写的双花括号文本按原文使用，不再让整轮提示词组装抛错（#52）。
+- **桌面端不再同时出现原生提问卡**：镜像提问的监听器改为按注册前后 hook 数量定位，不再比较函数身份；Cordis 把监听器包成 Proxy 时仍能抢到宿主前面，找不到时输出警告（#54）。
+- **移除长会话优化**：删除「长会话优化」设置、data-dpt-lazy 属性和 content-visibility 规则；长会话性能交回宿主处理（#50）。
+- **测试**：420 项测试（419 通过、1 跳过）与 npm run check 通过。
+
+- **Junction-safe virtual DSH cleanup**: before deleting a temporary home, unlink every NTFS junction or symlink inside it and remove only the empty shell, so stopping a virtual DSH no longer deletes the real local plugin (issue #55).
+- **Session projection cache recovered**: the task brief's waiting field and the deep-sleep state no longer write undefined; the brief projection version goes 7→8 and deep sleep 1→2, so the host drops old cache rows and rebuilds from the log instead of hiding the session as blank or replaying it from seq 0 every time (#51/#53).
+- **User text no longer breaks prompt assembly**: the task brief, project cards, direct subagent messages and deep-sleep objective contexts, plus two sections, now opt out of prompt interpolation; literal double-brace text is used as written (#52).
+- **No duplicate native question card on desktop**: the mirrored-question listener now finds its hook by the before/after hook count instead of callback identity, so it still runs before the host when Cordis wraps listeners in a Proxy, and warns when it cannot (#54).
+- **Long-session optimisation removed**: the setting, data-dpt-lazy attribute and content-visibility rule are gone; long-session performance is left to the host (#50).
+- **Tests**: 420 tests (419 passed, 1 skipped) and npm run check passed.
+
 ## 2.5.6 — 2026-11-26
 
 - **Skill 管理**：设置 → 深度 PTC 新增「Skill 管理」，列出插件内置与 DSH 已装的全部 skill，每个可单独设置「模型可见」。隐藏的 skill 不进入模型目录，skill 工具按名加载会被拒绝；聊天里自己写 /skill-name 仍可显式加载。名单按 profile 保存在 $DSH_HOME/storages/deep-ptc-skills/。实现上深度 PTC 的预设行替换了官方 @deepseek-ai/dsh-tool-skill 的目录与加载器（官方行停用保留），其他模式不受影响，已加载正文不因隐藏而消失。

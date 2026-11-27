@@ -9,6 +9,12 @@ import { BRIEF_COMMAND, BRIEF_EVENT, briefContextText, briefRuntime, cardAnswerT
 const MESSAGE = '并且卡片展示给人类的样子，我们已经有了雏形，但是卡片展示给模型的样子，以什么形式进入上下文，则是我们这次需要额外做的，毕竟卡片本身的视觉信息并不都有价值，模型也不需要好看，而是需要效率与准确';
 const withMessage = (text = MESSAGE) => ({ ...blankBrief(), turn: 3, messages: [{ ref: 'm40', seq: 40, turn: 3, text }] });
 
+function assertNoUndefined(value, path = 'state') {
+  if (value === undefined) assert.fail(path + ' is undefined');
+  if (value === null || typeof value !== 'object') return;
+  for (const [key, child] of Object.entries(value)) assertNoUndefined(child, path + '.' + key);
+}
+
 test('items that restate the user must quote their words exactly; implicit needs are marked inferred', () => {
   const { brief, rejected, text } = applyUpdate(withMessage(), { items: [
     { section: 'goal', text: '设计卡片进入模型上下文的形式', quote: '卡片展示给模型的样子，以什么形式进入上下文' },
@@ -267,6 +273,24 @@ test('brief snapshots replace drafts and retain decisions across turns', () => {
   assert.equal(state.versions.length, 19, 'the first settled approval remains in history');
   assert.equal(state.versions.at(-1).rev, 20);
   assert.equal(briefView(state).versions.length, 19, 'the view carries the history');
+});
+
+test('a folded brief never stores undefined, including waiting and settled rounds', () => {
+  const item = status => ({ id: 'G1', section: 'goal', text: 'Keep this behavior', basis: 'user', quote: 'Keep this behavior', from: 'm7', status });
+  const record = (rev, items) => ({ type: BRIEF_EVENT, seq: rev, data: { v: 1, single: true, rev, updatedTurn: 2, next: { G: 2, C: 1, A: 1, K: 1, O: 1 }, items, marks: {} } });
+  let state = foldBrief(blankBrief(), { type: 'turn/start', data: { turn: 2 } });
+  state = foldBrief(state, record(1, [item('open')]));
+  assertNoUndefined(state);
+  assert.equal(Object.hasOwn(state.versions.at(-1), 'waiting'), false, 'a new waiting round has no undefined waiting key');
+  state = foldBrief(state, record(2, [item('done')]));
+  assertNoUndefined(state);
+  assert.equal(Object.hasOwn(state.versions.at(-1), 'waiting'), false, 'a settled round drops the waiting key');
+  let open = foldBrief(blankBrief(), { type: 'turn/start', data: { turn: 2 } });
+  open = foldBrief(open, record(1, [item('open')]));
+  const completing = record(2, [item('done')]);
+  completing.data.completed = { title: 'done' };
+  open = foldBrief(open, completing);
+  assertNoUndefined(open);
 });
 
 test('the root SDK call waits for every brief item and partial edits keep it paused', async () => {

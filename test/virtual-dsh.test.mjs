@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, utimesSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { PREFIX, cliCommand, mirrorHome, mirrorProfile, parseArgs, sourceProfile, sweep } from '../lib/preview.mjs';
+import { PREFIX, cliCommand, mirrorHome, mirrorProfile, parseArgs, removeTree, sourceProfile, sweep } from '../lib/preview.mjs';
 import { VIRTUAL_COMMAND, VIRTUAL_TOOL, command, createApi, createOperations, hostPath, readStatus, stagePackage, virtualToolDefinition } from '../lib/virtual-dsh.mjs';
 import { describePending, outcomeFor } from '../lib/virtual-client.mjs';
 import { findBrowser } from '../lib/virtual-ui.mjs';
@@ -89,6 +89,20 @@ test('leftovers of a stopped run are swept; a running or just-created one is lef
   const removed = sweep(base);
   assert.deepEqual(removed.map(dir => dir.slice(base.length + 1 + PREFIX.length)).sort(), ['dead', 'old']);
   assert.ok(existsSync(live) && existsSync(fresh));
+});
+
+test('removing a virtual home unlinks junctions instead of following them into the real plugin', () => {
+  const root = mkdtempSync(join(tmpdir(), 'dpt-remove-'));
+  const target = join(root, 'real-plugin');
+  const home = join(root, 'home');
+  mkdirSync(target, { recursive: true });
+  mkdirSync(join(home, 'node_modules'), { recursive: true });
+  writeFileSync(join(target, 'package.json'), '{"name":"real"}');
+  const link = join(home, 'node_modules', 'real-plugin');
+  symlinkSync(target, link, process.platform === 'win32' ? 'junction' : 'dir');
+  removeTree(home);
+  assert.equal(existsSync(home), false, 'the virtual home is removed');
+  assert.ok(existsSync(join(target, 'package.json')), 'the linked plugin is untouched');
 });
 
 test('arguments: named flags, and the 2.2.0 positional form still works', () => {
