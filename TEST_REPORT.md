@@ -1,5 +1,15 @@
 # Deep PTC 测试报告 / Test report
 
+## 2.5.9 · 2026-11-26
+
+- Windows、Node 24：423 项测试（422 通过、1 跳过）与 npm run check 通过。新增 2 项：配额模块单测（20 起、90 批、结束清零、下一轮重置、文本解析与上限）与深度睡眠集成测试（开启即 20、virtual_uses=60 生成额度卡、答 90 生效、结束后新批次重新 20）。
+- 虚拟 DSH（2.5.9 候选）实测：开启深度睡眠后，模型直接调用 virtual_dsh action=start 成功，uses_left 从 20 降到 19，全程没有审批卡；再以 virtual_uses=60 调 deep_sleep action=ask，初始提问批次第一张就是「虚拟 DSH 使用额度」卡（建议 60 次、可改），答 90 后简报显示 starts = «90»。启动时唯一警告仍是宿主自带的 dsh-webhook 缺包，与本插件无关。
+- 未安装到活动 profile；2.5.9 只发布到 GitHub 与 npm。
+
+- Windows and Node 24: 423 tests (422 passed, 1 skipped) and npm run check passed. Two new tests: the quota module (seed 20, grant 90, clear at completion, reseed next run, text parsing and cap) and the deep sleep integration (20 on start, virtual_uses=60 adds the quota card, an answer of 90 takes effect, and a new batch after completion reseeds 20).
+- Virtual DSH (2.5.9 candidate): after enabling deep sleep, the model called virtual_dsh action=start successfully and uses_left went from 20 to 19 with no approval card; with virtual_uses=60, the initial deep_sleep action=ask batch led with the virtual DSH quota card (suggested 60, editable), and answering 90 made the briefing show starts = «90». The only startup warning was still the host's own missing dsh-webhook package, unrelated to this plugin.
+- Not installed into the active profile; 2.5.9 was published to GitHub and npm only.
+
 ## 2.5.8 · 2026-11-26
 
 - Windows、Node 24：421 项测试（420 通过、1 跳过）与 npm run check 通过。新增 1 项设置页布局回归：设置根容器 width:100% / min-width:0 / minmax(0,1fr)，skill 行允许收缩，介绍 white-space:normal + overflow-wrap:anywhere，右侧面板的 nowrap 仍只作用于侧栏。

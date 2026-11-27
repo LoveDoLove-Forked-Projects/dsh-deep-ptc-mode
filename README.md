@@ -1,12 +1,16 @@
 # Deep PTC mode
 
-[中文](README.zh.md) · MIT · **2.5.8**
+[中文](README.zh.md) · MIT · **2.5.9**
 
 [Changelog](CHANGELOG.md) · [Test report](TEST_REPORT.md) · [Plugin workflows and verification](COMPATIBILITY.md)
 
 Deep PTC is a DeepSeek Harness agent mode with progress reports, clarifying questions, task-size planning, and interruptible background work. It builds on the installed official PTC preset with selectable shells, on-demand tools and skills, and a two-layer preset identity adapter for third-party plugins. Cards face both you and the model: you see a clear card, the model reads precise context with ids, sources and states; the task brief files the goals, constraints and acceptance criteria in your messages and, once you confirm, can take the raw messages out of the model's context. Interactive cards are uncapped, project cards and the task brief hold far more records, and acceptance is verified as the work proceeds, with every task you add mid-way bringing its own checks. Every skill this plugin and DSH can load is listed in settings with its own model-visibility switch. Alert sounds are adjustable and can use your own clipped audio. When you want to step away, turn on **deep sleep** in the side panel: the model asks every open question in one batch, and after you confirm the settings it works on its own until the objective is complete without interrupting you again.
 
 The panel sits beside the conversation and shows the environment, Deep sleep mode, Deep creative mode with the virtual DSH, subagents, jobs, output files, SSH connections and tool state. The panel width can be dragged. The capsule expands or collapses it; it sits below the composer by default and can move into the toolbar or be hidden. Deep PTC also has its own settings page. Visual effects are lightweight and start off when an appearance plugin is installed.
+
+## Changes in 2.5.9
+
+- **Virtual DSH quota in deep sleep**: each run starts with 20 uses and the first 20 need no approval; when the model expects more, it requests 3x its estimate as the total in the initial batch (at least 20, at most 200), and the user can edit it. The quota clears at the end and the next run seeds 20 again.
 
 ## Changes in 2.5.8
 

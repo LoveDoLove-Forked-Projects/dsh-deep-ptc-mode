@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { install as installCards, cardsRuntime } from '../lib/cards-context.mjs';
 import { install as installSleep, sleepRuntime } from '../lib/deep-sleep.mjs';
+import { virtualRuntime } from '../lib/virtual-dsh.mjs';
+import { finish as finishQuota } from '../lib/sleep-virtual-quota.mjs';
 import { apply as applySleepTool } from '../lib/deep-sleep-tool.mjs';
 import { CARD_COMMAND } from '../lib/cards.mjs';
 import { SLEEP_COMMAND, SLEEP_KEY } from '../lib/deep-sleep-state.mjs';
@@ -290,4 +292,33 @@ test('the sleep prompt no longer caps the batch and routes new tasks through the
   assert.doesNotMatch(rules, /at most 8 cards|5 questions per card/u);
   assert.match(rules, /file the new tasks with their acceptance criteria in task_brief/u);
   assert.match(wakeText(), /file the new tasks and their acceptance criteria in task_brief/u);
+});
+
+test('deep sleep seeds a per-run virtual DSH quota and the first batch can request more', async () => {
+  const calls = [];
+  const prior = virtualRuntime.api;
+  virtualRuntime.api = { setQuota(id, total) { calls.push([id, total]); } };
+  let session;
+  let command;
+  let call;
+  let answer;
+  try {
+    ({ command, call, answer, session } = await setup());
+    await command(SLEEP_COMMAND, 'on');
+    assert.deepEqual(calls.at(-1), ['agent-1', 20]);
+    const posted = await call({ action: 'ask', virtual_uses: 60, cards: batch() });
+    const quotaCard = posted.cards.find(row => row.title === '虚拟 DSH 使用额度');
+    assert.ok(quotaCard, 'the first batch carries the quota card');
+    await answer(quotaCard.id, { starts: '90' });
+    assert.deepEqual(calls.at(-1), ['agent-1', 90]);
+    await call({ action: 'complete' });
+    assert.deepEqual(calls.at(-1), ['agent-1', 0]);
+    await call({ action: 'ask', cards: batch() });
+    assert.deepEqual(calls.at(-1), ['agent-1', 20], 'the next run seeds 20 again');
+    await command(SLEEP_COMMAND, 'off');
+    assert.deepEqual(calls.at(-1), ['agent-1', 0]);
+  } finally {
+    if (session !== undefined) finishQuota(session);
+    virtualRuntime.api = prior;
+  }
 });

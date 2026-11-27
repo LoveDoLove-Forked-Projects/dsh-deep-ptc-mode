@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.5.9 — 2026-11-26
+
+- **深度睡眠模式自带虚拟 DSH 额度**：每次运行开始即预置 20 次，前 20 次不再弹使用审批；模型预判超过 20 次时，在初始 deep_sleep 提问批次里用 virtual_uses 申请，按估算值的 3 倍作为总次数（至少 20、最多 200），用户可在额度卡里改。运行结束清零，下一次任务重新预置 20。
+- **Deep sleep starts with a virtual DSH quota**: each run is seeded with 20 uses and the first 20 no longer raise the approval card; when the model expects more, it passes virtual_uses in the initial deep_sleep batch and asks for 3x its estimate as the total (at least 20, at most 200), which the user can edit in the quota card. The run clears it on completion and the next task seeds 20 again.
+
 ## 2.5.8 — 2026-11-26
 
 - **设置页不再横向滚动**：设置内容限制在容器宽度内，窄窗口自动收缩；skill 列表和介绍按容器作用域拆分，skill 介绍不再被强制成一行，而是在宽度内完整换行、用高度承载，不再出现左右滚动（#50 后续评论）。
