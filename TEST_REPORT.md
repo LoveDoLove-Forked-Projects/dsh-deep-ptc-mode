@@ -1,5 +1,15 @@
 # Deep PTC 测试报告 / Test report
 
+## 2.6.0 · 2026-11-27
+
+- Windows、Node 24：427 项测试（426 通过、1 跳过）与 npm run check 通过。新增 4 项：长消息分页读回、部分快照不覆盖缓存、实时清单读取嵌套调用权限、缓存回退保留仅用户调用标记；并扩展现有设置页测试断言「仅用户可调用」标签。
+- 本次未另启虚拟 DSH 手测；任务卡集成、设置页路由与 React 组件测试覆盖上述路径。
+- 未安装到活动 profile；2.6.0 只发布到 GitHub 与 npm。
+
+- Windows and Node 24: 427 tests (426 passed, 1 skipped) and npm run check passed. Four new tests: paging a long message back to its last line, a partial snapshot not replacing the cache, the live list reading the nested invocation policy, and the cache fallback preserving the user-only flag; the existing settings-page test now also asserts the "user only" label.
+- No separate virtual-DSH manual run this time; the task-brief integration, settings route and React component tests cover these paths.
+- Not installed into the active profile; 2.6.0 was published to GitHub and npm only.
+
 ## 2.5.9 · 2026-11-26
 
 - Windows、Node 24：423 项测试（422 通过、1 跳过）与 npm run check 通过。新增 2 项：配额模块单测（20 起、90 批、结束清零、下一轮重置、文本解析与上限）与深度睡眠集成测试（开启即 20、virtual_uses=60 生成额度卡、答 90 生效、结束后新批次重新 20）。

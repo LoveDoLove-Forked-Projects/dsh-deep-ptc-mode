@@ -1,12 +1,18 @@
 # Deep PTC mode
 
-[中文](README.zh.md) · MIT · **2.5.9**
+[中文](README.zh.md) · MIT · **2.6.0**
 
 [Changelog](CHANGELOG.md) · [Test report](TEST_REPORT.md) · [Plugin workflows and verification](COMPATIBILITY.md)
 
 Deep PTC is a DeepSeek Harness agent mode with progress reports, clarifying questions, task-size planning, and interruptible background work. It builds on the installed official PTC preset with selectable shells, on-demand tools and skills, and a two-layer preset identity adapter for third-party plugins. Cards face both you and the model: you see a clear card, the model reads precise context with ids, sources and states; the task brief files the goals, constraints and acceptance criteria in your messages and, once you confirm, can take the raw messages out of the model's context. Interactive cards are uncapped, project cards and the task brief hold far more records, and acceptance is verified as the work proceeds, with every task you add mid-way bringing its own checks. Every skill this plugin and DSH can load is listed in settings with its own model-visibility switch. Alert sounds are adjustable and can use your own clipped audio. When you want to step away, turn on **deep sleep** in the side panel: the model asks every open question in one batch, and after you confirm the settings it works on its own until the objective is complete without interrupting you again.
 
 The panel sits beside the conversation and shows the environment, Deep sleep mode, Deep creative mode with the virtual DSH, subagents, jobs, output files, SSH connections and tool state. The panel width can be dragged. The capsule expands or collapses it; it sits below the composer by default and can move into the toolbar or be hidden. Deep PTC also has its own settings page. Visual effects are lightweight and start off when an appearance plugin is installed.
+
+## Changes in 2.6.0
+
+- **Long messages stay recoverable after condensation**: the brief keeps a 6,000-character summary, while `task_brief source` pages the original by `offset` and reports the total, the remaining characters and the next offset; the condensed stub names where the rest is.
+- **Partial skill discovery no longer overwrites the complete list**: only a complete host snapshot refreshes the persistent cache, so installed skills stay visible in settings after a conversation closes.
+- **Settings and the executor agree on skill invocation**: the live list reads `invocation.modelInvocable`, treats a missing policy as user-only, and shows the "user only" label correctly.
 
 ## Changes in 2.5.9
 

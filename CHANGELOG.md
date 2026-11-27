@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.6.0 — 2026-11-27
+
+- **长需求精简后仍能读回最后一条约束**：任务卡仍只保留前 6000 字符的摘要；`task_brief source` 新增 `offset` 分页读取原文，返回总长度、剩余字符和下一段偏移，精简后的 stub 会指出剩余内容的位置。6017 字符回归用例验证最后一行可读回。
+- **Skill 部分快照不再覆盖完整缓存**：只有宿主快照 `complete` 不为 false 时才更新持久缓存；关闭会话后，设置页仍显示上一次完整清单。
+- **设置页与执行器统一 Skill 调用权限**：实时清单复用 `invocation.modelInvocable` 判断，缺省视为仅用户可调用，设置页正确显示「仅用户可调用」。
+- **Live update 兼容**：取全文的纯函数拆到新模块 `lib/brief-text.mjs`，旧模块的导出名保持不变。
+- **测试**：427 项测试（426 通过、1 跳过）与 npm run check 通过。
+
+- **The last constraint survives a condensed long message**: the brief still keeps the first 6,000 characters; `task_brief source` pages the original with `offset` and returns the total, the remaining characters and the next offset, while the condensed stub names where the rest is. A 6,017-character regression reads the last line back.
+- **A partial skill discovery no longer replaces the complete cache**: the persistent list updates only when the host snapshot is not `complete: false`, so closing the conversation no longer makes installed skills disappear from settings.
+- **Settings and the executor share one skill invocation policy**: the live list reads `invocation.modelInvocable`, treats a missing policy as user-only, and shows the "user only" label correctly.
+- **Live-update compatibility**: the full-text helper moved to the new `lib/brief-text.mjs` module; existing modules keep their export names.
+- **Tests**: 427 tests (426 passed, 1 skipped) and npm run check passed.
+
 ## 2.5.9 — 2026-11-26
 
 - **深度睡眠模式自带虚拟 DSH 额度**：每次运行开始即预置 20 次，前 20 次不再弹使用审批；模型预判超过 20 次时，在初始 deep_sleep 提问批次里用 virtual_uses 申请，按估算值的 3 倍作为总次数（至少 20、最多 200），用户可在额度卡里改。运行结束清零，下一次任务重新预置 20。
