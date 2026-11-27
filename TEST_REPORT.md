@@ -1,5 +1,17 @@
 # Deep PTC 测试报告 / Test report
 
+## 2.6.1 · 2026-11-27
+
+- Windows、Node 24：431 项测试（430 通过、1 跳过）与 npm run check 通过。新增 5 项：6 个 step 只有 1 条目录、断点续接复用会话日志里的目录、无会话日志时进程内记忆兜底、空目录不发布、可见性切换只发一条 update；测试假宿主改为真实 pre-step 语义（每步只给本步领取的消息，决策消息写入会话表面）。
+- 修复前实测：本机 3 个会话 step 数 = 目录条数（20/20、23/23、72/72），update 全为 false、每份 6330 字符，确认重复副本会随 deriveMessages() 全部进入请求。
+- 虚拟 DSH（2.6.1 候选）实测：7 个 step 的会话只有 1 条 skill-catalog（修复前同条件应为 7 条），update=false、24 条、6330 字符；测试会话 session-5d30d268。
+- 未安装到活动 profile；2.6.1 只发布到 GitHub 与 npm。
+
+- Windows and Node 24: 431 tests (430 passed, 1 skipped) and npm run check passed. Five new tests: one catalog across six steps, a resumed session reusing the catalog in its log, the process-memory fallback, no catalog while no skill exists, and a single update after a toggle; the fake host now matches the real pre-step semantics (only the step's claimed messages, and every decided message lands on the session surface).
+- Before the fix: on this machine three sessions had catalog counts equal to their step counts (20/20, 23/23, 72/72), all update=false, 6,330 characters each, confirming every copy entered the request through deriveMessages().
+- Virtual DSH (2.6.1 candidate): a 7-step session held exactly one skill-catalog message (the same conditions produced 7 before the fix), update=false, 24 entries, 6,330 characters; session session-5d30d268.
+- Not installed into the active profile; 2.6.1 was published to GitHub and npm only.
+
 ## 2.6.0 · 2026-11-27
 
 - Windows、Node 24：427 项测试（426 通过、1 跳过）与 npm run check 通过。新增 4 项：长消息分页读回、部分快照不覆盖缓存、实时清单读取嵌套调用权限、缓存回退保留仅用户调用标记；并扩展现有设置页测试断言「仅用户可调用」标签。

@@ -1,12 +1,16 @@
 # Deep PTC mode
 
-[中文](README.zh.md) · MIT · **2.6.0**
+[中文](README.zh.md) · MIT · **2.6.1**
 
 [Changelog](CHANGELOG.md) · [Test report](TEST_REPORT.md) · [Plugin workflows and verification](COMPATIBILITY.md)
 
 Deep PTC is a DeepSeek Harness agent mode with progress reports, clarifying questions, task-size planning, and interruptible background work. It builds on the installed official PTC preset with selectable shells, on-demand tools and skills, and a two-layer preset identity adapter for third-party plugins. Cards face both you and the model: you see a clear card, the model reads precise context with ids, sources and states; the task brief files the goals, constraints and acceptance criteria in your messages and, once you confirm, can take the raw messages out of the model's context. Interactive cards are uncapped, project cards and the task brief hold far more records, and acceptance is verified as the work proceeds, with every task you add mid-way bringing its own checks. Every skill this plugin and DSH can load is listed in settings with its own model-visibility switch. Alert sounds are adjustable and can use your own clipped audio. When you want to step away, turn on **deep sleep** in the side panel: the model asks every open question in one batch, and after you confirm the settings it works on its own until the objective is complete without interrupting you again.
 
 The panel sits beside the conversation and shows the environment, Deep sleep mode, Deep creative mode with the virtual DSH, subagents, jobs, output files, SSH connections and tool state. The panel width can be dragged. The capsule expands or collapses it; it sits below the composer by default and can move into the toolbar or be hidden. Deep PTC also has its own settings page. Visual effects are lightweight and start off when an appearance plugin is installed.
+
+## Changes in 2.6.1
+
+- **The skill catalog is no longer re-sent every step**: `agent/pre-step` receives only the messages claimed for the current step, so the old lookup could never find a previous catalog and every step appended a full copy (#57). The baseline now comes from the session events: the newest catalog still on the surface. The first step publishes it, an unchanged catalog publishes nothing, and a visibility change publishes one update; hosts without a readable log fall back to process memory. The "replaced only when its content changes" promise from 2.5.6 is finally true.
 
 ## Changes in 2.6.0
 

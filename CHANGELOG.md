@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.6.1 — 2026-11-27
+
+- **skill 目录不再每个 step 重复注入**：`agent/pre-step` 只带本步从 inbox 领取的新消息、不含会话历史，旧实现却从 `decision.messages` 里找上一版目录，第一步之后永远找不到，于是每一步都追加一份完整目录（#57：23 步的会话重复约 3.4 万 token）。现在从会话事件里取最后一条仍在会话表面上的目录做 baseline：首次发全量，内容不变不再发，可见性或 skill 清单变化时只发一条 update；无法读取会话日志的宿主退回进程内记忆。
+- **测试假宿主改为真实语义**：每步只给本步领取的消息，决策消息写入会话表面。新增 5 项回归：6 个 step 只有 1 条目录、断点续接复用日志里的目录、无会话日志时内存兜底、空目录不发布、权限切换只发一条 update。
+- **Live update 兼容**：历史扫描放在新模块 `lib/skill-catalog-history.mjs`，旧模块的导出名保持不变。
+- **测试**：431 项测试（430 通过、1 跳过）与 npm run check 通过。
+
+- **The skill catalog is no longer injected on every step**: `agent/pre-step` carries only the messages claimed for the current step and no session history, so the old lookup for a previous catalog in `decision.messages` never matched and every step appended a full copy (#57: a 23-step session repeated about 34k tokens). The baseline now comes from the session's own events: the newest catalog still on the session surface. The first step publishes the full catalog, an unchanged catalog publishes nothing, and a visibility or skill-list change publishes one update. Hosts without a readable log fall back to process memory.
+- **The test host now behaves like the real one**: each step receives only its own claimed messages and every decided message lands on the session surface. Five regressions were added: one catalog across six steps, a resumed session reusing the catalog in its log, the process-memory fallback, no catalog while no skill exists, and a single update after a toggle.
+- **Live-update compatibility**: the history scan lives in the new `lib/skill-catalog-history.mjs`, and existing modules keep their export names.
+- **Tests**: 431 tests (430 passed, 1 skipped) and npm run check passed.
+
 ## 2.6.0 — 2026-11-27
 
 - **长需求精简后仍能读回最后一条约束**：任务卡仍只保留前 6000 字符的摘要；`task_brief source` 新增 `offset` 分页读取原文，返回总长度、剩余字符和下一段偏移，精简后的 stub 会指出剩余内容的位置。6017 字符回归用例验证最后一行可读回。

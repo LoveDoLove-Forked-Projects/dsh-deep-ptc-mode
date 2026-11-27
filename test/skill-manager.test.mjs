@@ -21,7 +21,22 @@ function helpers() {
   };
 }
 
-function setup({ skills = [], hidden = [], owner = true, snapshot } = {}) {
+/** A session surface like the host's: every decision message is appended and stays visible. */
+function sessionLog(seed = []) {
+  const events = seed.map(message => ({ type: 'user/message', data: message }));
+  const surface = { nodes: events.map((_, index) => index) };
+  return {
+    events,
+    surface,
+    session: { get seq() { return events.length; }, eventAt: index => events[index], surface },
+    show(message) {
+      events.push({ type: 'user/message', data: message });
+      surface.nodes.push(events.length - 1);
+    },
+  };
+}
+
+function setup({ skills = [], hidden = [], owner = true, snapshot, session, readable = true } = {}) {
   const directory = temporary();
   const store = createSkillStore({ directory });
   for (const name of hidden) store.setHidden(name, true);
@@ -44,10 +59,17 @@ function setup({ skills = [], hidden = [], owner = true, snapshot } = {}) {
     get(name) { return name === 'agentPresets' ? { presetForSession: () => 'deep-ptc' } : undefined; },
   };
   installSkillManager(ctx, helpers(), { store });
-  const agent = { session: { id: 'session-1', header: {} } };
-  const preStep = async (messages, decision) => handlers.get('agent/pre-step')({ agent, messages, signal: undefined },
-    async () => decision ?? { kind: 'continue', messages });
-  return { ctx, store, agent, registered, preStep, directory };
+  const log = session ?? sessionLog();
+  // An older host keeps the session object but cannot replay its log.
+  const agent = { session: readable ? log.session : { id: 'session-1' } };
+  const preStep = async (claimed = [], decided) => {
+    for (const message of claimed) log.show(message);
+    const next = async () => decided ?? { kind: 'continue', messages: claimed };
+    const decision = await handlers.get('agent/pre-step')({ agent, messages: claimed, signal: undefined }, next);
+    for (const message of decision?.messages ?? []) if (!claimed.includes(message)) log.show(message);
+    return decision;
+  };
+  return { ctx, store, agent, registered, preStep, directory, log };
 }
 
 const sample = () => [
@@ -90,24 +112,52 @@ test('the skill tool loads a visible skill and refuses a hidden or user-only one
   await assert.rejects(tool.execute({ name: 'Bad Name' }, { agent: host.agent }), /invalid skill name/u);
 });
 
-test('the catalog lists visible skills, stays quiet when unchanged and replaces itself when a toggle changes', async () => {
+test('the catalog lists visible skills, stays quiet when unchanged and publishes one update when a toggle changes', async () => {
   const host = setup({ skills: sample(), hidden: ['secret-notes'] });
-  const first = await host.preStep([]);
+  const first = await host.preStep();
   const catalog = catalogMessageOf(first.messages);
   assert.ok(catalog, 'a catalog message is published');
   assert.match(catalog.message.content[0].text, /- `dsh-doc`: DSH documentation/u);
   assert.doesNotMatch(catalog.message.content[0].text, /secret-notes|user-only/u);
+  assert.equal(catalog.message.source.update, undefined);
 
-  const stable = { kind: 'continue', messages: first.messages };
-  const second = await host.preStep([], stable);
-  assert.equal(second, stable, 'an unchanged catalog does not touch the step messages');
+  const second = await host.preStep();
+  assert.deepEqual(second.messages, [], 'an unchanged catalog does not touch the step messages');
+  assert.equal(host.log.events.filter(event => event.data?.source?.kind === 'skill-catalog').length, 1);
 
   host.store.setHidden('dsh-doc', true);
-  const third = await host.preStep([], stable);
+  const third = await host.preStep();
   const replaced = catalogMessageOf(third.messages);
   assert.match(replaced.message.content[0].text, /available skill catalog changed/u);
+  assert.equal(replaced.message.source.update, true);
   assert.doesNotMatch(replaced.message.content[0].text, /dsh-doc/u);
   assert.doesNotMatch(replaced.message.content[0].text, /secret-notes/u);
+});
+
+test('one catalog per session, however many steps run', async () => {
+  const host = setup({ skills: sample() });
+  for (let step = 0; step < 6; step += 1) await host.preStep();
+  assert.equal(host.log.events.filter(event => event.data?.source?.kind === 'skill-catalog').length, 1);
+  assert.equal(host.log.surface.nodes.length, 1, 'the surface holds the single catalog message');
+});
+
+test('a resumed session reuses the catalog already in its log', async () => {
+  const first = setup({ skills: sample() });
+  const published = (await first.preStep()).messages[0];
+  const resumed = setup({ skills: sample(), session: sessionLog([published]) });
+  assert.deepEqual((await resumed.preStep()).messages, []);
+});
+
+test('a host without a readable session log falls back to process memory', async () => {
+  const host = setup({ skills: sample(), readable: false });
+  assert.ok(catalogMessageOf((await host.preStep()).messages), 'the first step still publishes');
+  assert.deepEqual((await host.preStep()).messages, [], 'later steps remember what they published');
+});
+
+test('an empty catalog is not published until a skill exists', async () => {
+  const host = setup({ skills: [] });
+  assert.deepEqual((await host.preStep()).messages, []);
+  assert.equal(host.log.events.length, 0);
 });
 
 test('a typed /skill-name loads that skill even when it is hidden from the model', async () => {
@@ -135,7 +185,7 @@ test('a partial discovery keeps the last complete list for the settings page', a
 
   visible = [full[0]];
   complete = false;
-  await host.preStep([], { kind: 'continue', messages: [] });
+  await host.preStep();
   assert.deepEqual(host.store.known().map(row => row.name), ['dsh-doc', 'secret-notes', 'user-only']);
 
   // The settings route reopens the same store after the conversation closes.
