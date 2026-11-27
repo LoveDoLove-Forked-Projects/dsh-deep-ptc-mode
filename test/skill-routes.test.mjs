@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { builtinSkills, installSkillRoutes, SKILL_ROUTE_PREFIX } from '../lib/skill-routes.mjs';
 import { createSkillStore } from '../lib/skill-store.mjs';
 
-function setup({ agents = [], skills = [] } = {}) {
+function setup({ agents = [], skills = [], store = createSkillStore({ directory: mkdtempSync(join(tmpdir(), 'dpt-skill-routes-')) }) } = {}) {
   let registered;
   const ctx = {
     logger: { warn() {} },
@@ -19,7 +19,6 @@ function setup({ agents = [], skills = [] } = {}) {
       return undefined;
     },
   };
-  const store = createSkillStore({ directory: mkdtempSync(join(tmpdir(), 'dpt-skill-routes-')) });
   installSkillRoutes(ctx, { store });
   return { registered, store };
 }
@@ -77,6 +76,37 @@ test('a live Deep PTC conversation supplies the merged list', async () => {
   assert.equal(listed.origin, 'live');
   assert.ok(listed.skills.some(row => row.name === 'dsh-doc'));
   assert.ok(listed.skills.some(row => row.name === 'deep-ptc-cards'), 'plugin skills are merged in');
+});
+
+test('without a conversation the settings page reads the last complete cached list', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'dpt-skill-routes-'));
+  const store = createSkillStore({ directory });
+  store.remember([
+    { name: 'cached-model', description: 'Cached', source: 'user-dsh', provider: 'filesystem', modelInvocable: true },
+    { name: 'cached-user-only', description: 'User only', source: 'user-dsh', provider: 'runtime', modelInvocable: false },
+  ]);
+  const { registered } = setup({ store });
+  const listed = JSON.parse((await call(registered, 'GET', SKILL_ROUTE_PREFIX + '/list')).body);
+  assert.equal(listed.origin, 'cache');
+  const byName = Object.fromEntries(listed.skills.map(row => [row.name, row]));
+  assert.equal(byName['cached-model'].modelInvocable, true);
+  assert.equal(byName['cached-user-only'].modelInvocable, false);
+  assert.ok(byName['deep-ptc-cards'], 'plugin skills are still merged in');
+});
+
+test('the live list follows the host invocation policy from invocation', async () => {
+  const agent = { session: { id: 's', header: { agentPreset: 'deep-ptc', cwd: '/work' } } };
+  const { registered } = setup({ agents: [agent], skills: [
+    { name: 'both-ways', description: 'Both', source: 'bundled', provider: 'filesystem', invocation: { modelInvocable: true, userInvocable: true } },
+    { name: 'user-gesture-only', description: 'User only', source: 'runtime', provider: 'runtime', invocation: { modelInvocable: false, userInvocable: true } },
+    { name: 'no-invocation', description: 'No policy', source: 'custom', provider: '' },
+  ] });
+  const listed = JSON.parse((await call(registered, 'GET', SKILL_ROUTE_PREFIX + '/list')).body);
+  const byName = Object.fromEntries(listed.skills.map(row => [row.name, row]));
+  assert.equal(byName['both-ways'].modelInvocable, true);
+  assert.equal(byName['user-gesture-only'].modelInvocable, false);
+  assert.equal(byName['no-invocation'].modelInvocable, false);
+  assert.equal(byName['deep-ptc-cards'].modelInvocable, true);
 });
 
 test('bad input and unknown paths answer with a status, not a crash', async () => {

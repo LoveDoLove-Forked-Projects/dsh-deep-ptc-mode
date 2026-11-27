@@ -153,6 +153,46 @@ test('condensing swaps the message for its stub before the next request, and res
   assert.equal(host.state(s).messages[0].condensed, undefined);
 });
 
+test('a condensed long message pages back to its last line', async () => {
+  const host = fakeHost();
+  await install(host.ctx, host.records);
+  const s = host.session('brief-long');
+  const agent = { session: s };
+  s.append('turn/start', { turn: 1 });
+  const marker = '验收条件：最后一行必须能读回。';
+  const sent = '甲'.repeat(6017 - marker.length) + marker;
+  assert.equal(sent.length, 6017);
+  const said = host.say(s, sent);
+  const tool = briefToolDefinition();
+  await tool.execute({ action: 'update', items: [{ section: 'goal', text: '处理长需求', quote: '甲甲甲甲' }] }, { agent });
+  const run = payload => host.handlers.get(BRIEF_COMMAND)({ agent, rawInput: JSON.stringify(payload) });
+  assert.equal((await run({ op: 'confirm', ids: ['G1'] })).kind, 'success');
+  await host.listeners.get('agent/pre-step')({ agent }, async () => ({ kind: 'enter', messages: [] }));
+  const state = host.state(s);
+  assert.equal(state.messages[0].condensed, true);
+  assert.equal(state.messages[0].text.length, 6000);
+  assert.equal(state.messages[0].fullLength, 6017);
+  const stub = s.eventAt(s.surface.nodes[0]).data.content[0].text;
+  assert.match(stub, /keeps the first 6000 of 6017 characters/u);
+  assert.match(stub, /offset=6000/u);
+
+  const first = await tool.execute({ action: 'source', ref: 'm' + said.seq }, { agent });
+  assert.equal(first.offset, 0);
+  assert.equal(first.total, 6017);
+  assert.equal(first.text.length, 6000);
+  assert.equal(first.nextOffset, 6000);
+  assert.equal(first.remaining, 17);
+  assert.match(first.next, /offset=6000/u);
+  assert.doesNotMatch(first.text, /最后一行必须能读回/u);
+
+  const rest = await tool.execute({ action: 'source', ref: 'm' + said.seq, offset: first.nextOffset }, { agent });
+  assert.equal(rest.offset, 6000);
+  assert.equal(rest.total, 6017);
+  assert.equal(rest.text, sent.slice(6000));
+  assert.match(rest.text, /最后一行必须能读回/u);
+  assert.equal(rest.nextOffset, undefined);
+});
+
 test('answering the last review item condenses the reviewed message without a second click', async () => {
   const host = fakeHost();
   await install(host.ctx, host.records);

@@ -201,6 +201,7 @@ test('the skill manager lists skills and switches model visibility', async () =>
     if (url === '/deep-ptc/skills/list') return { ok: true, json: async () => ({ origin: 'live', skills: [
       { name: 'deep-ptc-cards', description: 'Cards for results', source: 'plugin', modelInvocable: true, hidden: false },
       { name: 'dsh-doc', description: 'DSH documentation', source: 'bundled', modelInvocable: true, hidden: true },
+      { name: 'user-gesture-only', description: 'Only the user can invoke it', source: 'runtime', modelInvocable: false, hidden: false },
     ] }) };
     if (url === '/deep-ptc/skills/set') return { ok: true, json: async () => ({ name: 'dsh-doc', hidden: false }) };
     return { ok: false, json: async () => ({}) };
@@ -217,6 +218,7 @@ test('the skill manager lists skills and switches model visibility', async () =>
     assert.match(text, /deep-ptc-cards/u);
     assert.match(text, /dsh-doc/u);
     assert.match(text, /DSH 内置/u);
+    assert.match(text, /仅用户可调用/u);
     const switches = view.root.findAllByType('button').filter(node => node.props.role === 'switch' && node.props['aria-label']);
     const doc = switches.find(node => node.props['aria-label'] === 'dsh-doc');
     const cards = switches.find(node => node.props['aria-label'] === 'deep-ptc-cards');

@@ -21,7 +21,7 @@ function helpers() {
   };
 }
 
-function setup({ skills = [], hidden = [], owner = true } = {}) {
+function setup({ skills = [], hidden = [], owner = true, snapshot } = {}) {
   const directory = temporary();
   const store = createSkillStore({ directory });
   for (const name of hidden) store.setHidden(name, true);
@@ -38,7 +38,7 @@ function setup({ skills = [], hidden = [], owner = true } = {}) {
     skills: {
       async list() { return skills; },
       async get(name) { const skill = skills.find(row => row.name === name); return skill === undefined ? undefined : { ...skill }; },
-      async snapshot() { return { skills, complete: true }; },
+      async snapshot() { return snapshot === undefined ? { skills, complete: true } : snapshot(); },
     },
     workingDirectory: { ensure: async () => '/work' },
     get(name) { return name === 'agentPresets' ? { presetForSession: () => 'deep-ptc' } : undefined; },
@@ -47,7 +47,7 @@ function setup({ skills = [], hidden = [], owner = true } = {}) {
   const agent = { session: { id: 'session-1', header: {} } };
   const preStep = async (messages, decision) => handlers.get('agent/pre-step')({ agent, messages, signal: undefined },
     async () => decision ?? { kind: 'continue', messages });
-  return { ctx, store, agent, registered, preStep };
+  return { ctx, store, agent, registered, preStep, directory };
 }
 
 const sample = () => [
@@ -125,6 +125,25 @@ test('the manager stays quiet when another plugin owns the skill tool', async ()
   assert.equal(catalogMessageOf(decision.messages), undefined);
 });
 
+test('a partial discovery keeps the last complete list for the settings page', async () => {
+  const full = sample();
+  let visible = full;
+  let complete = true;
+  const host = setup({ skills: full, snapshot: () => ({ skills: visible, complete }) });
+  await host.preStep([]);
+  assert.deepEqual(host.store.known().map(row => row.name), ['dsh-doc', 'secret-notes', 'user-only']);
+
+  visible = [full[0]];
+  complete = false;
+  await host.preStep([], { kind: 'continue', messages: [] });
+  assert.deepEqual(host.store.known().map(row => row.name), ['dsh-doc', 'secret-notes', 'user-only']);
+
+  // The settings route reopens the same store after the conversation closes.
+  const settings = createSkillStore({ directory: host.directory });
+  assert.deepEqual(settings.known().map(row => row.name), ['dsh-doc', 'secret-notes', 'user-only']);
+  assert.equal(settings.known().find(row => row.name === 'user-only').modelInvocable, false);
+});
+
 test('the store keeps hidden names and a validated known list', () => {
   const directory = temporary();
   const store = createSkillStore({ directory });
@@ -149,6 +168,7 @@ test('stored values never carry junk', () => {
   const value = normalizeSkillStore({ hidden: ['ok-name', 'bad name', '', 'ok-name', 42], known: [{ name: 'x' }] });
   assert.deepEqual(value.hidden, ['ok-name']);
   assert.deepEqual(value.known.map(row => [row.name, row.source]), [['x', 'unknown']]);
+  assert.equal(value.known[0].modelInvocable, false);
 });
 test('the local renderer matches the host frame and the name grammar', () => {
   assert.equal(isSkillName('deep-ptc-cards'), true);
