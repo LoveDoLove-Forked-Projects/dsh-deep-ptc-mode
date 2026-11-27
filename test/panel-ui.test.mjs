@@ -848,6 +848,17 @@ test('the long-session optimisation is gone', () => {
   assert.doesNotMatch(source, /data-dpt-lazy|content-visibility:auto|longSessionSwitch/u);
 });
 
+test('the settings page fits its width and skill descriptions wrap instead of forcing a horizontal scroll', () => {
+  const source = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8');
+  assert.match(source, /\.dpt-settings\{display:grid;[^}]*width:100%[^}]*min-width:0[^}]*grid-template-columns:minmax\(0,1fr\)/u);
+  assert.match(source, /\.dpt-settings \.dpt-skill-list\{[^}]*min-width:0/u);
+  assert.match(source, /\.dpt-settings \.dpt-skill-row\{[^}]*min-width:0[^}]*max-width:100%/u);
+  assert.match(source, /\.dpt-settings \.dpt-skill-desc\{[^}]*white-space:normal/u);
+  assert.match(source, /\.dpt-settings \.dpt-skill-desc\{[^}]*overflow-wrap:anywhere/u);
+  assert.doesNotMatch(source, /\.dpt-settings \.dpt-skill-desc\{[^}]*-webkit-line-clamp/u, 'the settings description is not clamped');
+  assert.match(source, /\.dpt-skill \.dpt-skill-desc\{[^}]*white-space:nowrap/u, 'the side panel keeps its one-line summary');
+});
+
 test('the effects never rewrite host design tokens, fonts or every control on the page', () => {
   const source = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8');
   const theme = source.slice(source.indexOf('const THEME_CSS'), source.indexOf('function injectCss'));

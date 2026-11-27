@@ -1,5 +1,15 @@
 # Deep PTC 测试报告 / Test report
 
+## 2.5.8 · 2026-11-26
+
+- Windows、Node 24：421 项测试（420 通过、1 跳过）与 npm run check 通过。新增 1 项设置页布局回归：设置根容器 width:100% / min-width:0 / minmax(0,1fr)，skill 行允许收缩，介绍 white-space:normal + overflow-wrap:anywhere，右侧面板的 nowrap 仍只作用于侧栏。
+- 虚拟 DSH（2.5.8 候选）实测：打开设置 → 深度 PTC，在 1280×860 的界面里截图；设置页无横向滚动条，skill 介绍完整换行（如 deep-ptc-dsh-plugin-dev 的介绍分成三行），开关与筛选框都在容器内。启动时唯一警告是宿主自带 dsh-webhook 缺包，与本插件无关。
+- 未安装到活动 profile；2.5.8 只发布到 GitHub 与 npm。
+
+- Windows and Node 24: 421 tests (420 passed, 1 skipped) and npm run check passed. One new settings-layout regression: the settings root uses width:100% / min-width:0 / minmax(0,1fr), skill rows may shrink, descriptions use white-space:normal + overflow-wrap:anywhere, and the side panel's nowrap stays scoped to the side panel.
+- Virtual DSH (2.5.8 candidate): opened Settings → Deep PTC and screenshotted at 1280×860; there is no horizontal scrollbar, skill descriptions wrap fully (for example deep-ptc-dsh-plugin-dev takes three lines), and every switch and the filter stay inside the container. The only startup warning was the host's own missing dsh-webhook package, unrelated to this plugin.
+- Not installed into the active profile; 2.5.8 was published to GitHub and npm only.
+
 ## 2.5.7 · 2026-11-26
 
 - Windows、Node 24：420 项测试（419 通过、1 跳过）与 npm run check 通过。新增 5 项、替换 2 项为 1 项：虚拟 home 的 junction 清理、任务卡 waiting/完成分支无 undefined、deep-sleep 全生命周期无 undefined、四个 context 与两个 section 的 interpolate:false；#54 的假宿主改为 Cordis 式 Proxy 包装，原测试即可复现并验证监听顺序。

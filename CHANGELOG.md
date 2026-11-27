@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.5.8 — 2026-11-26
+
+- **设置页不再横向滚动**：设置内容限制在容器宽度内，窄窗口自动收缩；skill 列表和介绍按容器作用域拆分，skill 介绍不再被强制成一行，而是在宽度内完整换行、用高度承载，不再出现左右滚动（#50 后续评论）。
+- **Settings no longer scroll sideways**: the settings content is bounded by its container and shrinks in narrow windows; the skill list and descriptions are scoped per container, so a description wraps fully and takes height instead of forcing a single wide line and a horizontal scrollbar (follow-up on #50).
+
 ## 2.5.7 — 2026-11-26
 
 - **虚拟 DSH 清理不再删除真实插件**：删除临时 home 前先断开里面所有 NTFS junction / symlink，再删空壳；真实插件目录保留，停止虚拟 DSH 不再清空本地插件源码（#55）。
